@@ -27,7 +27,7 @@ git submodule update --init --remote docs
 
 ## Для ИИ-агентов
 
-Правила в [CLAUDE.md](CLAUDE.md) (дубликат в `AGENTS.md`) и в [docs/agents/workflow.md](docs/agents/workflow.md).
+Правила в [CLAUDE.md](docs/CLAUDE.md) (дубликат в `docs/AGENTS.md`) и в [docs/agents/workflow.md](docs/agents/workflow.md).
 
 ## Запуск
 

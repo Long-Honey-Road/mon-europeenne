@@ -34,3 +34,33 @@ go.work.sum
 
 # macOS
 .DS_Store
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+cmake-build-*/
+out/
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history/
+*.code-workspace
+
+# Neovim & Vim
+*.swp
+*.swo
+*.swn
+*~
+.netrwhist
+Session.vim
+.nvim.lua
+.exrc
+.nvimrc
+
