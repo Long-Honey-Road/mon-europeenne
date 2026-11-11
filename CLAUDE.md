@@ -23,6 +23,9 @@ Hard rules, never to be broken:
 - Synthetic data only; test instructions are labelled as such, never presented as Avito regulations.
 - Permissions are enforced in tools and search, not in prompts; what a role cannot see is neither shown nor executed.
 - Agent actions only through MCP tools; tools only through mock services with an OpenAPI contract.
+- Mocks stay minimal: no request portal, no Jira/Confluence clones. SDD specs use spec-kit.
+- Permissions are RBAC plus ABAC (role and attributes), checked in tools and search before the model sees data.
+- The agent never writes code for the intern; it explains the task, the repository and the team process.
 - LLM and service calls never block the UI; status events and failure handling are mandatory.
 - Secrets only in environment variables; `.env.example` in the repo.
 - Documentation changes: commit inside `docs/` first, then commit the updated submodule pointer here.
