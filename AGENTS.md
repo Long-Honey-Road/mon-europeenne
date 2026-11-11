@@ -1,18 +1,31 @@
-# mon-europeenne: AI-buddy для стажёра Авито (Hack&Change 2026)
+# mon-europeenne: AI-buddy for Avito interns (Hack&Change 2026)
 
-Вся документация в сабмодуле `docs/` (репозиторий `Long-Honey-Road/ochre-stonecrop`).
-Если каталог `docs/` пуст: `git submodule update --init`.
+All documentation lives in the `docs/` submodule (an "ochre" repo: a private docs repository attached as a git
+submodule; this one is `Long-Honey-Road/ochre-stonecrop`). It is written in Russian.
 
-Перед любой задачей прочитай `docs/agents/workflow.md`: там порядок чтения, правила кода, SDD, тесты,
-git и чек-лист готовности. Карта документации в `docs/README.md`.
+Before any task:
 
-Коротко, что нельзя нарушать:
-- только синтетические данные, тестовые инструкции помечены как учебные, не регламенты Авито;
-- права проверяются в инструментах и в поиске, недоступное роли не раскрывается и не выполняется;
-- действия агента только через MCP-инструменты, инструменты только через мок-сервисы с OpenAPI;
-- вызовы модели и сервисов не блокируют интерфейс;
-- покрытие прикладного кода тестами выше 80%, спека до кода;
-- секреты только в env.
+```bash
+git submodule update --init --remote docs
+```
 
-Решения, которых нет в документации, не придумывай молча: спроси или запиши предположение
-в `docs/product/decisions.md`.
+Then read `docs/agents/workflow.md` (reading order, code rules, SDD, tests, git, definition of done) and
+`docs/plan.md` (current stage and what "done" means). The documentation map is `docs/README.md`.
+
+Hard rules, never to be broken:
+
+- **No `git push` without an explicit instruction from a human.** Commit locally, report "branch ready to push",
+  wait. Applies to every repository, including `docs/`, in every circumstance.
+- Work in a branch (`feat/`, `fix/`, `foundation/`, `docs/`); `main` only via PR after green CI.
+- Tests first: a failing test before implementation code. Line coverage of application code above 80%.
+- Spec before code for every agent scenario and tool (SDD).
+- Code, comments, README and code-adjacent docs in English. Comments only where intent is not visible from code.
+- Synthetic data only; test instructions are labelled as such, never presented as Avito regulations.
+- Permissions are enforced in tools and search, not in prompts; what a role cannot see is neither shown nor executed.
+- Agent actions only through MCP tools; tools only through mock services with an OpenAPI contract.
+- LLM and service calls never block the UI; status events and failure handling are mandatory.
+- Secrets only in environment variables; `.env.example` in the repo.
+- Documentation changes: commit inside `docs/` first, then commit the updated submodule pointer here.
+
+Decisions that are not documented are not invented silently: ask, or record an assumption in
+`docs/product/decisions.md`.

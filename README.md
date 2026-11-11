@@ -17,11 +17,13 @@ git clone --recurse-submodules git@github.com:Long-Honey-Road/mon-europeenne.git
 git submodule update --init
 ```
 
-Обновить документацию до последней версии:
+Обновить документацию до последней версии (делать перед началом любой работы):
 
 ```bash
-git submodule update --remote docs
+git submodule update --init --remote docs
 ```
+
+`docs/` это ochre-репо: приватный репозиторий с документацией, подключённый сабмодулем.
 
 ## Для ИИ-агентов
 
