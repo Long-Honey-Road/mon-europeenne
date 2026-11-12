@@ -69,4 +69,6 @@ type Response struct {
 
 type Client interface {
 	Chat(ctx context.Context, req Request) (Response, error)
+	// ChatStream is Chat that calls onDelta with each piece of answer text as the model writes it.
+	ChatStream(ctx context.Context, req Request, onDelta func(text string)) (Response, error)
 }
