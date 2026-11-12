@@ -67,3 +67,5 @@ Session.vim
 
 # Build output
 bin/
+
+.claude
