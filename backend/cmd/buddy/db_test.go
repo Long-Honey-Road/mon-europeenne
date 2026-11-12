@@ -7,10 +7,13 @@ import (
 	"testing"
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/testdb"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/testredis"
 )
 
 func TestMain(m *testing.M) {
-	os.Exit(testdb.Main(m))
+	code := testdb.Main(m)
+	testredis.Stop()
+	os.Exit(code)
 }
 
 func TestMigrateUpThenDown(t *testing.T) {

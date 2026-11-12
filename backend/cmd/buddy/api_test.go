@@ -8,8 +8,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
 )
 
 func TestAPIRequiresSessionSecret(t *testing.T) {
@@ -35,10 +33,11 @@ func TestAPIReportsBadListenAddress(t *testing.T) {
 }
 
 func TestServeAnswersUntilCancelled(t *testing.T) {
-	h, err := buildAPI(context.Background(), config.Config{SessionSecret: "test-session-secret-0123456789"})
+	h, cleanup, err := buildAPI(context.Background(), stackConfig(t))
 	if err != nil {
 		t.Fatalf("buildAPI: %v", err)
 	}
+	defer cleanup()
 	var lc net.ListenConfig
 	ln, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
@@ -66,5 +65,22 @@ func TestServeAnswersUntilCancelled(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("serve did not stop after cancel")
+	}
+}
+
+func TestAPIRequiresDatabaseAndRedis(t *testing.T) {
+	t.Setenv("SESSION_SECRET", "test-session-secret-0123456789")
+	for name, env := range map[string][2]string{
+		"no database": {"", "redis:6379"},
+		"no redis":    {"postgres://x", ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", env[0])
+			t.Setenv("REDIS_ADDR", env[1])
+			var stdout, stderr bytes.Buffer
+			if code := run([]string{"api"}, &stdout, &stderr); code != exitError {
+				t.Fatalf("exit %d, want %d", code, exitError)
+			}
+		})
 	}
 }

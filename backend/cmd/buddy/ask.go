@@ -13,7 +13,7 @@ import (
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/agent"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
-	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/tools"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/profile"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/seed"
 )
 
@@ -55,15 +55,7 @@ func runAsk(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	who, err := tools.WhoToAsk(data.Directory())
-	if err != nil {
-		return err
-	}
-	notFound, err := tools.ReportNotFound(data.Directory())
-	if err != nil {
-		return err
-	}
-	registry, err := tools.NewRegistry(who, notFound)
+	registry, err := agentTools(data)
 	if err != nil {
 		return err
 	}
@@ -72,11 +64,15 @@ func runAsk(args []string, stdout io.Writer) error {
 	if *detailed {
 		mode = agent.ModeDetailed
 	}
-	profile, err := profileJSON(data, *login)
+	user, err := seedUsers(data).User(principal.UserID)
 	if err != nil {
 		return err
 	}
-	turn := agent.Turn{Principal: principal, Thread: thread, Mode: mode, Profile: profile, Message: question}
+	prof, err := profile.Build(context.Background(), user, data.Directory())
+	if err != nil {
+		return err
+	}
+	turn := agent.Turn{Principal: principal, Thread: thread, Mode: mode, Profile: prof, Message: question}
 	var toolset agent.Tools = registry
 	if *verbose {
 		toolset = loggingTools{Tools: registry, w: stdout}
@@ -111,32 +107,6 @@ func (p printer) Reset()             { fmt.Fprint(p.w, "\n[reset]\n") }
 func (p printer) Block(b agent.Block) {
 	raw, _ := json.Marshal(b)
 	fmt.Fprintf(p.w, "\n[block] %s", raw)
-}
-
-// profileJSON is a compact profile for the prompt; A-04 builds the real one from the database.
-func profileJSON(data seed.Data, login string) (string, error) {
-	names := map[string]string{}
-	for _, p := range data.People.People {
-		names[p.ID] = p.Name
-	}
-	teams := map[string]seed.Team{}
-	for _, t := range data.People.Teams {
-		teams[t.ID] = t
-	}
-	for _, p := range data.People.People {
-		a := p.Account
-		if a == nil || a.Login != login {
-			continue
-		}
-		team := teams[p.TeamID]
-		raw, err := json.Marshal(map[string]any{
-			"name": p.Name, "role": a.Role, "direction": a.Direction, "team": team.Name, "unit": team.Unit,
-			"cluster": team.Cluster, "mentor": names[a.MentorID], "manager": names[a.ManagerID], "hr_bp": names[a.HRBPID],
-			"repos": a.Repos, "jira_projects": a.JiraProjects, "start_date": a.StartDate,
-		})
-		return string(raw), err
-	}
-	return "", fmt.Errorf("no test account %q", login)
 }
 
 // loggingTools prints every tool call with its arguments and result.

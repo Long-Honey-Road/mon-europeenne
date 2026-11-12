@@ -24,7 +24,7 @@ type command struct {
 
 var commands = []command{
 	{name: "api", summary: "serve the HTTP API and SSE", run: runAPI},
-	{name: "worker", summary: "run background jobs and the scheduler", run: notImplemented},
+	{name: "worker", summary: "run background jobs and the scheduler", run: runWorker},
 	{name: "mcp", summary: "expose agent tools over MCP", run: notImplemented},
 	{name: "mocks", summary: "serve mock corporate services", run: notImplemented},
 	{name: "migrate", summary: "apply (up) or revert (down) database migrations", run: runMigrate},

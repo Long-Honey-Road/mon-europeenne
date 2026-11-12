@@ -48,7 +48,7 @@ func TestRunUnknownCommandFails(t *testing.T) {
 }
 
 func TestRunStubCommandsReportNotImplemented(t *testing.T) {
-	for _, name := range []string{"worker", "mcp", "mocks"} {
+	for _, name := range []string{"mcp", "mocks"} {
 		t.Run(name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 

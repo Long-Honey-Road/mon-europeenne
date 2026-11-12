@@ -11,6 +11,7 @@ import (
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm/fake"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm/openaicompat"
 )
 
@@ -28,7 +29,7 @@ func newLLM(cfg config.LLM) (llm.Client, error) {
 			MaxRetries:      1,
 		}), nil
 	case config.ProviderFake:
-		return nil, fmt.Errorf("provider %q needs a script and works only in tests for now", cfg.Provider)
+		return fake.NewEcho(fakeAnswer), nil
 	default:
 		return nil, fmt.Errorf("provider %q: %w", cfg.Provider, errNotImplemented)
 	}
