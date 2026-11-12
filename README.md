@@ -36,12 +36,23 @@ Requirements: Go 1.27, Docker (also for tests: they start Postgres via testconta
 
 ```bash
 cp deploy/.env.example deploy/.env
-docker compose -f deploy/docker-compose.yml up -d --build --wait   # api, postgres, redis
+docker compose -f deploy/docker-compose.yml up -d --build --wait
 ```
 
 ```bash
-deploy/smoke.sh   # test login, then the private profile
+deploy/smoke.sh   # login, profile, then one chat turn over SSE
 ```
+
+The stack: `postgres`, `redis`, one-shot `migrate` and `seed`, `api` (HTTP and SSE) and `worker` (agent turns
+from the queue). The worker calls the model from `LLM_*` in `deploy/.env`: by default Ollama on the host
+(`http://host.docker.internal:11434/v1`, model `qwen3.6:35b-a3b`). With `LLM_PROVIDER=fake` it answers every
+question with a fixed text: for CI and frontend work without a model.
+
+Chat flow for clients: create a thread, open `GET /v1/private/threads/{id}/events` (SSE) first, then
+`POST /v1/private/threads/{id}/messages` (202). Events: `status` (what the agent is doing), `delta` (answer text
+as it is generated), `reset` (drop the streamed text), `block` (sources, person, not_found), then `done` with
+`message_id` and the final `text` (show it instead of the stream: the server may remove invented links) or
+`error` with `escalation`.
 
 The API listens on `http://localhost:8080` (`API_PORT` to change). Paths follow
 `/{version}/{public|private}/{resource}`: `/v1/public/...` needs no session, `/v1/private/...` needs
