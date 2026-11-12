@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package buddy.v1;
+
+import "google/api/annotations.proto";
+
+// PeopleService is the company directory as the caller may see it.
+service PeopleService {
+  rpc ListPeople(ListPeopleRequest) returns (ListPeopleResponse) {
+    option (google.api.http) = {get: "/v1/private/people"};
+  }
+  rpc GetPerson(GetPersonRequest) returns (GetPersonResponse) {
+    option (google.api.http) = {get: "/v1/private/people/{person_id}"};
+  }
+}
+
+message Person {
+  string id = 1;
+  string name = 2;
+  string role_title = 3;
+  string team_id = 4;
+  repeated string responsibilities = 5;
+  repeated string ask_me_about = 6;
+  // Only for people in the caller's cluster.
+  string contact = 7;
+  // True when the person is outside the caller's team.
+  bool other_team = 8;
+}
+
+message ListPeopleRequest {
+  // Words to match in name, role, responsibilities and topics; empty lists everyone.
+  string q = 1;
+  string team_id = 2;
+}
+
+message ListPeopleResponse {
+  // The caller's team first, then by name.
+  repeated Person people = 1;
+}
+
+message GetPersonRequest {
+  string person_id = 1;
+}
+
+message GetPersonResponse {
+  Person person = 1;
+}

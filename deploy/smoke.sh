@@ -12,6 +12,13 @@ TOKEN=$(curl -fsS -X POST "$BASE/v1/public/auth/login" -H 'Content-Type: applica
 curl -fsS "$BASE/v1/private/me" -H "Authorization: Bearer $TOKEN" \
   | python3 -c 'import json,sys; me=json.load(sys.stdin); assert me["user"]["login"] == "intern", me; print("smoke ok:", me["user"]["display_name"], "/", me["team"]["name"])'
 
+curl -fsS "$BASE/v1/private/today" -H "Authorization: Bearer $TOKEN" \
+  | python3 -c 'import json,sys; t=json.load(sys.stdin); assert t["total"] > 0 and t["next_steps"], t; print("smoke ok: today, day", t["day"], "done", t["done"], "of", t["total"])'
+curl -fsS "$BASE/v1/private/plan" -H "Authorization: Bearer $TOKEN" \
+  | python3 -c 'import json,sys; p=json.load(sys.stdin); assert len(p["items"]) == p["total"] > 0, p; print("smoke ok: plan,", p["total"], "items")'
+curl -fsS "$BASE/v1/private/people?q=staging" -H "Authorization: Bearer $TOKEN" \
+  | python3 -c 'import json,sys; p=json.load(sys.stdin)["people"]; assert p, p; print("smoke ok: people,", p[0]["name"])'
+
 STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/v1/private/me")
 [ "$STATUS" = "401" ] || { echo "private path without token returned $STATUS, want 401"; exit 1; }
 

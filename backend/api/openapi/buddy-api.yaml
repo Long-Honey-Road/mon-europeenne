@@ -25,6 +25,107 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/private/people:
+        get:
+            tags:
+                - PeopleService
+            operationId: PeopleService_ListPeople
+            parameters:
+                - name: q
+                  in: query
+                  description: Words to match in name, role, responsibilities and topics; empty lists everyone.
+                  schema:
+                    type: string
+                - name: team_id
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListPeopleResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/private/people/{person_id}:
+        get:
+            tags:
+                - PeopleService
+            operationId: PeopleService_GetPerson
+            parameters:
+                - name: person_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetPersonResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/private/plan:
+        get:
+            tags:
+                - PlanService
+            operationId: PlanService_GetPlan
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetPlanResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/private/plan/items/{item_id}:
+        patch:
+            tags:
+                - PlanService
+            description: UpdatePlanItem sets the status of one item; items outside the caller's plan are NOT_FOUND.
+            operationId: PlanService_UpdatePlanItem
+            parameters:
+                - name: item_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UpdatePlanItemRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UpdatePlanItemResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/private/threads:
         get:
             tags:
@@ -153,6 +254,25 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/private/today:
+        get:
+            tags:
+                - PlanService
+            description: 'GetToday is the "today" panel: day of onboarding, current stage, next steps and blockers.'
+            operationId: PlanService_GetToday
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetTodayResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/public/auth/login:
         post:
             tags:
@@ -179,6 +299,18 @@ paths:
                                 $ref: '#/components/schemas/Status'
 components:
     schemas:
+        Blocker:
+            type: object
+            properties:
+                kind:
+                    type: string
+                    description: '"plan_item" for now; access requests come with S-02.'
+                id:
+                    type: string
+                title:
+                    type: string
+                reason:
+                    type: string
         CreateThreadRequest:
             type: object
             properties:
@@ -209,11 +341,67 @@ components:
                     $ref: '#/components/schemas/Team'
                 relations:
                     $ref: '#/components/schemas/Relations'
+        GetPersonResponse:
+            type: object
+            properties:
+                person:
+                    $ref: '#/components/schemas/Person'
+        GetPlanResponse:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/PlanItem'
+                    description: In period order, then by map position.
+                done:
+                    type: integer
+                    format: int32
+                total:
+                    type: integer
+                    format: int32
         GetThreadResponse:
             type: object
             properties:
                 thread:
                     $ref: '#/components/schemas/Thread'
+        GetTodayResponse:
+            type: object
+            properties:
+                day:
+                    type: integer
+                    description: Calendar day since the start date, 1-based; 0 before the start.
+                    format: int32
+                week:
+                    type: integer
+                    format: int32
+                period:
+                    enum:
+                        - PLAN_PERIOD_UNSPECIFIED
+                        - PLAN_PERIOD_W1
+                        - PLAN_PERIOD_W2
+                        - PLAN_PERIOD_M1
+                        - PLAN_PERIOD_M2
+                        - PLAN_PERIOD_EQUATOR
+                        - PLAN_PERIOD_FINAL
+                    type: string
+                    description: Earliest period with unfinished items.
+                    format: enum
+                next_steps:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/PlanItem'
+                    description: Up to three items to do now, in progress first.
+                blockers:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Blocker'
+                done:
+                    type: integer
+                    format: int32
+                total:
+                    type: integer
+                    format: int32
         GoogleProtobufAny:
             type: object
             properties:
@@ -229,6 +417,14 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Message'
+        ListPeopleResponse:
+            type: object
+            properties:
+                people:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Person'
+                    description: The caller's team first, then by name.
         ListThreadsResponse:
             type: object
             properties:
@@ -251,6 +447,18 @@ components:
                     description: 'Session token for the Authorization: Bearer header.'
                 user:
                     $ref: '#/components/schemas/User'
+        MapPosition:
+            type: object
+            properties:
+                x:
+                    type: number
+                    format: double
+                y:
+                    type: number
+                    format: double
+                group:
+                    type: string
+            description: Position of an item on the plan map.
         Message:
             type: object
             properties:
@@ -275,6 +483,31 @@ components:
                 created_at:
                     type: string
                     description: RFC 3339.
+        Person:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                role_title:
+                    type: string
+                team_id:
+                    type: string
+                responsibilities:
+                    type: array
+                    items:
+                        type: string
+                ask_me_about:
+                    type: array
+                    items:
+                        type: string
+                contact:
+                    type: string
+                    description: Only for people in the caller's cluster.
+                other_team:
+                    type: boolean
+                    description: True when the person is outside the caller's team.
         PersonRef:
             type: object
             properties:
@@ -285,6 +518,64 @@ components:
                 role_title:
                     type: string
             description: Short reference to a person from the directory.
+        PlanItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Stable key, e.g. "w1-access".
+                title:
+                    type: string
+                practice:
+                    type: string
+                period:
+                    enum:
+                        - PLAN_PERIOD_UNSPECIFIED
+                        - PLAN_PERIOD_W1
+                        - PLAN_PERIOD_W2
+                        - PLAN_PERIOD_M1
+                        - PLAN_PERIOD_M2
+                        - PLAN_PERIOD_EQUATOR
+                        - PLAN_PERIOD_FINAL
+                    type: string
+                    format: enum
+                status:
+                    enum:
+                        - PLAN_ITEM_STATUS_UNSPECIFIED
+                        - PLAN_ITEM_STATUS_TODO
+                        - PLAN_ITEM_STATUS_DOING
+                        - PLAN_ITEM_STATUS_BLOCKED
+                        - PLAN_ITEM_STATUS_DONE
+                    type: string
+                    format: enum
+                note:
+                    type: string
+                depends_on:
+                    type: array
+                    items:
+                        type: string
+                blocked_by:
+                    type: array
+                    items:
+                        type: string
+                    description: Dependencies that are not done yet.
+                sources:
+                    type: array
+                    items:
+                        type: string
+                map:
+                    $ref: '#/components/schemas/MapPosition'
+                team_id:
+                    type: string
+                    description: Empty when the item is for everyone.
+                direction:
+                    enum:
+                        - DIRECTION_UNSPECIFIED
+                        - DIRECTION_BACKEND
+                        - DIRECTION_FRONTEND
+                        - DIRECTION_QA
+                    type: string
+                    format: enum
         Relations:
             type: object
             properties:
@@ -366,6 +657,27 @@ components:
                 created_at:
                     type: string
                     description: RFC 3339.
+        UpdatePlanItemRequest:
+            type: object
+            properties:
+                item_id:
+                    type: string
+                status:
+                    enum:
+                        - PLAN_ITEM_STATUS_UNSPECIFIED
+                        - PLAN_ITEM_STATUS_TODO
+                        - PLAN_ITEM_STATUS_DOING
+                        - PLAN_ITEM_STATUS_BLOCKED
+                        - PLAN_ITEM_STATUS_DONE
+                    type: string
+                    format: enum
+                note:
+                    type: string
+        UpdatePlanItemResponse:
+            type: object
+            properties:
+                item:
+                    $ref: '#/components/schemas/PlanItem'
         User:
             type: object
             properties:
@@ -411,6 +723,10 @@ components:
 tags:
     - name: AuthService
       description: AuthService signs in test accounts; real auth is assumed to exist at Avito.
+    - name: PeopleService
+      description: PeopleService is the company directory as the caller may see it.
+    - name: PlanService
+      description: PlanService shows and updates the caller's own adaptation plan.
     - name: ProfileService
     - name: ThreadService
       description: ThreadService keeps the caller's conversations with buddy; answers arrive over SSE.

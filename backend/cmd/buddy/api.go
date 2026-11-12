@@ -83,9 +83,10 @@ func buildAPI(ctx context.Context, cfg config.Config) (http.Handler, func(), err
 		pool.Close()
 	}
 
+	st := store.New(pool)
 	h, err := httpapi.New(ctx, httpapi.Deps{
 		Accounts: accounts, Tokens: tokens, Directory: data.Directory(),
-		Threads: store.New(pool), Jobs: queue, Bus: stream.NewRedisBus(rdb),
+		Threads: st, Plans: st, Jobs: queue, Bus: stream.NewRedisBus(rdb),
 	})
 	if err != nil {
 		cleanup()

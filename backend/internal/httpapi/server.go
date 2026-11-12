@@ -32,6 +32,7 @@ type Directory interface {
 	Person(ctx context.Context, id string) (domain.Person, error)
 	Team(ctx context.Context, id string) (domain.Team, error)
 	Relations(ctx context.Context, userID string) (people.Relations, error)
+	People(ctx context.Context) ([]domain.Person, error)
 }
 
 // Threads is the storage the thread API needs.
@@ -53,10 +54,20 @@ type Deps struct {
 	Tokens    *auth.Tokens
 	Directory Directory
 	Threads   Threads
+	Plans     Plans
 	Jobs      Jobs
 	Bus       Bus
 	// Heartbeat is how often SSE sends a comment so proxies keep the stream open; 15 s if zero.
 	Heartbeat time.Duration
+	// Now is the clock for "today"; time.Now if nil.
+	Now func() time.Time
+}
+
+func (d Deps) now() time.Time {
+	if d.Now != nil {
+		return d.Now()
+	}
+	return time.Now()
 }
 
 // Bus delivers live turn events of one thread.
@@ -83,6 +94,12 @@ func New(ctx context.Context, d Deps) (http.Handler, error) {
 	}
 	if err := buddyv1.RegisterThreadServiceHandlerServer(ctx, gw, &threadService{deps: d}); err != nil {
 		return nil, fmt.Errorf("register thread service: %w", err)
+	}
+	if err := buddyv1.RegisterPlanServiceHandlerServer(ctx, gw, &planService{deps: d}); err != nil {
+		return nil, fmt.Errorf("register plan service: %w", err)
+	}
+	if err := buddyv1.RegisterPeopleServiceHandlerServer(ctx, gw, &peopleService{deps: d}); err != nil {
+		return nil, fmt.Errorf("register people service: %w", err)
 	}
 
 	mux := http.NewServeMux()

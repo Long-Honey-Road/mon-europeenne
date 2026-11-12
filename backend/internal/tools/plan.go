@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/plan"
 )
 
 // PlanStore keeps each user's adaptation plan; it returns ErrNotFound for items outside the user's plan.
@@ -59,29 +60,16 @@ func GetPlan(plans PlanStore) (Tool, error) {
 			if err != nil {
 				return getPlanOut{}, err
 			}
-
-			done := map[string]bool{}
-			for _, e := range entries {
-				done[e.Item.Key] = e.Status == domain.ItemDone
-			}
-			out := getPlanOut{Items: []PlanItemOut{}, Total: len(entries)}
-			for _, e := range entries {
-				if e.Status == domain.ItemDone {
-					out.Done++
-				}
-				if (period != 0 && e.Item.Period != period) || (status != 0 && e.Status != status) {
+			view := plan.Build(entries)
+			out := getPlanOut{Items: []PlanItemOut{}, Done: view.Done, Total: view.Total}
+			for _, it := range view.Items {
+				if (period != 0 && it.Item.Period != period) || (status != 0 && it.Status != status) {
 					continue
 				}
-				item := PlanItemOut{
-					ItemID: e.Item.Key, Title: e.Item.Title, Practice: e.Item.Practice,
-					Period: e.Item.Period.String(), Status: e.Status.String(), Note: e.Note, BlockedBy: []string{},
-				}
-				for _, dep := range e.Item.DependsOn {
-					if !done[dep] {
-						item.BlockedBy = append(item.BlockedBy, dep)
-					}
-				}
-				out.Items = append(out.Items, item)
+				out.Items = append(out.Items, PlanItemOut{
+					ItemID: it.Item.Key, Title: it.Item.Title, Practice: it.Item.Practice,
+					Period: it.Item.Period.String(), Status: it.Status.String(), Note: it.Note, BlockedBy: it.BlockedBy,
+				})
 			}
 			return out, nil
 		})
