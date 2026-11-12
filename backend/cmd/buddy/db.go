@@ -8,7 +8,9 @@ import (
 	"os"
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/store"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/seed"
 )
 
 var errBadDirection = errors.New("want up or down")
@@ -33,9 +35,13 @@ func runMigrate(args []string, stdout io.Writer) error {
 	return nil
 }
 
-// runSeed only checks the database for now; loading seed data comes with F-06.
+// runSeed loads teams and test users into the database; plan and documents come with their tasks.
 func runSeed(_ []string, stdout io.Writer) error {
 	cfg, err := databaseConfig()
+	if err != nil {
+		return err
+	}
+	data, err := seed.Load(seed.Files)
 	if err != nil {
 		return err
 	}
@@ -46,7 +52,15 @@ func runSeed(_ []string, stdout io.Writer) error {
 	}
 	defer pool.Close()
 
-	fmt.Fprintln(stdout, "database reachable, nothing to seed yet")
+	teams := data.Teams()
+	var users []domain.User
+	for _, c := range data.Credentials() {
+		users = append(users, c.User)
+	}
+	if err := store.New(pool).SeedOrg(ctx, teams, users); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "seeded %d teams, %d users\n", len(teams), len(users))
 	return nil
 }
 

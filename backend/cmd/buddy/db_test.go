@@ -39,19 +39,29 @@ func TestMigrateRejectsBadDirection(t *testing.T) {
 	}
 }
 
-func TestSeedConnectsToMigratedDatabase(t *testing.T) {
+func TestSeedLoadsTeamsAndUsersTwice(t *testing.T) {
 	t.Setenv("DATABASE_URL", testdb.Fresh(t))
 	var stdout, stderr bytes.Buffer
 	if code := run([]string{"migrate", "up"}, &stdout, &stderr); code != exitOK {
 		t.Fatalf("migrate up: exit %d, stderr %q", code, stderr.String())
 	}
 
-	stdout.Reset()
-	if code := run([]string{"seed"}, &stdout, &stderr); code != exitOK {
-		t.Fatalf("seed: exit %d, stderr %q", code, stderr.String())
+	for range 2 {
+		stdout.Reset()
+		if code := run([]string{"seed"}, &stdout, &stderr); code != exitOK {
+			t.Fatalf("seed: exit %d, stderr %q", code, stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "seeded 4 teams, 3 users") {
+			t.Errorf("seed stdout = %q", stdout.String())
+		}
 	}
-	if !strings.Contains(stdout.String(), "nothing to seed yet") {
-		t.Errorf("seed stdout = %q", stdout.String())
+}
+
+func TestSeedNeedsMigratedDatabase(t *testing.T) {
+	t.Setenv("DATABASE_URL", testdb.Fresh(t))
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"seed"}, &stdout, &stderr); code != exitError {
+		t.Fatalf("seed on empty database: exit %d, want %d", code, exitError)
 	}
 }
 

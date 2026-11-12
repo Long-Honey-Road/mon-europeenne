@@ -160,12 +160,7 @@ func decodeFile(fsys fs.FS, name string, dst any) error {
 
 // Directory serves the seed people as the in-memory directory used by tools.
 func (d Data) Directory() *people.Memory {
-	teams := make([]domain.Team, 0, len(d.People.Teams))
-	for _, t := range d.People.Teams {
-		teams = append(teams, domain.Team{
-			ID: t.ID, Name: t.Name, Unit: t.Unit, Cluster: t.Cluster, MattermostChannel: t.MattermostChannel,
-		})
-	}
+	teams := d.Teams()
 	persons := make([]domain.Person, 0, len(d.People.People))
 	relations := map[string]people.Relations{}
 	for _, p := range d.People.People {
@@ -203,6 +198,15 @@ func (d Data) Credentials() []auth.Credential {
 			u.StartDate, _ = time.Parse(time.DateOnly, a.StartDate)
 		}
 		out = append(out, auth.Credential{User: u, Password: a.Password})
+	}
+	return out
+}
+
+// Teams returns the seed teams as domain values.
+func (d Data) Teams() []domain.Team {
+	out := make([]domain.Team, 0, len(d.People.Teams))
+	for _, t := range d.People.Teams {
+		out = append(out, domain.Team{ID: t.ID, Name: t.Name, Unit: t.Unit, Cluster: t.Cluster, MattermostChannel: t.MattermostChannel})
 	}
 	return out
 }
