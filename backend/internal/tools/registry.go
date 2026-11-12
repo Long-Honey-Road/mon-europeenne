@@ -20,6 +20,8 @@ var (
 	ErrForbidden   = errors.New("forbidden")
 	ErrNotInThread = errors.New("tool not available in this thread")
 	ErrInvalidArgs = errors.New("invalid tool arguments")
+	// ErrNotFound means the object the tool was asked about does not exist for this user.
+	ErrNotFound = domain.ErrNotFound
 )
 
 // Tool is a named action with its argument schema and the roles and thread types allowed to use it.

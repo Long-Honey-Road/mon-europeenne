@@ -193,6 +193,8 @@ func toolError(err error, name string, thread domain.ThreadType) (code, message 
 		return "forbidden", "this data is not available to the user"
 	case errors.Is(err, tools.ErrNotInThread):
 		return "not_in_thread", fmt.Sprintf("%s is not available in a %s thread", name, thread)
+	case errors.Is(err, tools.ErrNotFound):
+		return "not_found", fmt.Sprintf("%s found nothing with these arguments", name)
 	case errors.Is(err, tools.ErrInvalidArgs):
 		return "invalid_args", err.Error()
 	default:

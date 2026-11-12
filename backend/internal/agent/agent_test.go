@@ -109,6 +109,10 @@ func registry(t *testing.T, s *stubs) *tools.Registry {
 			func(context.Context, domain.Principal, query) (map[string]string, error) { return nil, nil })),
 		must(tools.Define("flaky", "Always fails", allRoles, []domain.ThreadType{domain.ThreadGeneral},
 			func(context.Context, domain.Principal, query) (map[string]string, error) { return nil, errFlaky })),
+		must(tools.Define("find_item", "Finds nothing", allRoles, []domain.ThreadType{domain.ThreadGeneral},
+			func(context.Context, domain.Principal, query) (map[string]string, error) {
+				return nil, tools.ErrNotFound
+			})),
 		must(tools.WhoToAsk(directory())),
 		must(tools.ReportNotFound(directory())),
 	)
@@ -194,7 +198,7 @@ func TestG1AnswerWithSources(t *testing.T) {
 	}
 
 	first := model.Calls()[0]
-	if first.Format != nil || !slices.Equal(toolNames(first), []string{"flaky", "get_request_status", "report_not_found", "search_docs", "who_to_ask"}) {
+	if first.Format != nil || !slices.Equal(toolNames(first), []string{"find_item", "flaky", "get_request_status", "report_not_found", "search_docs", "who_to_ask"}) {
 		t.Errorf("first call tools %v, format %v", toolNames(first), first.Format)
 	}
 	found := lastToolMessage(t, model)["sources"].([]any)[0].(map[string]any)
@@ -396,6 +400,7 @@ func TestToolErrorsBecomeCodesForTheModel(t *testing.T) {
 		"unknown tool": {fake.ToolCall("drop_db", map[string]string{}), "unknown_tool"},
 		"invalid args": {fake.ToolCall("search_docs", map[string]int{"query": 5}), "invalid_args"},
 		"handler fail": {fake.ToolCall("flaky", map[string]string{"query": "x"}), "tool_failed"},
+		"not found":    {fake.ToolCall("find_item", map[string]string{"query": "w9"}), "not_found"},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
