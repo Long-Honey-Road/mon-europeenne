@@ -27,7 +27,7 @@ func TestRunHelpListsAllCommands(t *testing.T) {
 	if code != exitOK {
 		t.Fatalf("exit code = %d, want %d", code, exitOK)
 	}
-	for _, name := range []string{"api", "worker", "mcp", "mocks", "seed"} {
+	for _, name := range []string{"api", "worker", "mcp", "mocks", "migrate", "seed"} {
 		if !strings.Contains(stdout.String(), name) {
 			t.Errorf("help output misses %q: %q", name, stdout.String())
 		}
@@ -48,7 +48,7 @@ func TestRunUnknownCommandFails(t *testing.T) {
 }
 
 func TestRunStubCommandsReportNotImplemented(t *testing.T) {
-	for _, name := range []string{"api", "worker", "mcp", "mocks", "seed"} {
+	for _, name := range []string{"api", "worker", "mcp", "mocks"} {
 		t.Run(name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 

@@ -19,7 +19,7 @@ var errNotImplemented = errors.New("not implemented yet")
 type command struct {
 	name    string
 	summary string
-	run     func(args []string) error
+	run     func(args []string, stdout io.Writer) error
 }
 
 var commands = []command{
@@ -27,7 +27,8 @@ var commands = []command{
 	{name: "worker", summary: "run background jobs and the scheduler", run: notImplemented},
 	{name: "mcp", summary: "expose agent tools over MCP", run: notImplemented},
 	{name: "mocks", summary: "serve mock corporate services", run: notImplemented},
-	{name: "seed", summary: "load synthetic data and build the index", run: notImplemented},
+	{name: "migrate", summary: "apply (up) or revert (down) database migrations", run: runMigrate},
+	{name: "seed", summary: "load synthetic data and build the index", run: runSeed},
 }
 
 func main() {
@@ -50,7 +51,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		if cmd.name != name {
 			continue
 		}
-		if err := cmd.run(args[1:]); err != nil {
+		if err := cmd.run(args[1:], stdout); err != nil {
 			fmt.Fprintf(stderr, "buddy %s: %v\n", name, err)
 			return exitError
 		}
@@ -71,6 +72,6 @@ func printUsage(w io.Writer) {
 	}
 }
 
-func notImplemented([]string) error {
+func notImplemented([]string, io.Writer) error {
 	return errNotImplemented
 }
