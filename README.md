@@ -43,10 +43,13 @@ docker compose -f deploy/docker-compose.yml up -d --build --wait
 deploy/smoke.sh   # login, profile, then one chat turn over SSE
 ```
 
-The stack: `postgres`, `redis`, one-shot `migrate` and `seed`, `api` (HTTP and SSE) and `worker` (agent turns
-from the queue). The worker calls the model from `LLM_*` in `deploy/.env`: by default Ollama on the host
+The stack: `postgres`, `redis`, one-shot `migrate` and `seed`, `api` (HTTP and SSE), `worker` (agent turns
+from the queue) and `frontend`. The worker calls the model from `LLM_*` in `deploy/.env`: by default Ollama on the host
 (`http://host.docker.internal:11434/v1`, model `qwen3.6:35b-a3b`). With `LLM_PROVIDER=fake` it answers every
 question with a fixed text: for CI and frontend work without a model.
+
+`frontend` serves the built app on http://localhost:3000 (`WEB_PORT` to change) and proxies `/v1` and `/healthz`
+to the API, so the browser talks to one origin; SSE goes through unbuffered.
 
 Chat flow for clients: create a thread, open `GET /v1/private/threads/{id}/events` (SSE) first, then
 `POST /v1/private/threads/{id}/messages` (202). Events: `status` (what the agent is doing), `delta` (answer text
