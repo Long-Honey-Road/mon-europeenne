@@ -31,7 +31,7 @@ git submodule update --init --remote docs
 
 ## Development
 
-Requirements: Go 1.27, Docker. Dev tools (golangci-lint, buf, protoc plugins) are pinned in
+Requirements: Go 1.27, Docker (also for tests: they start Postgres via testcontainers). Dev tools (golangci-lint, buf, protoc plugins) are pinned in
 `backend/tools.mod` and run via `go tool`, nothing to install.
 
 ```bash
@@ -48,6 +48,7 @@ From `backend/`:
 | `make lint` | golangci-lint, buf lint and proto format check |
 | `make gen` | regenerate Go, gRPC, grpc-gateway and OpenAPI from `api/proto` |
 | `make run CMD=api` | run a `buddy` subcommand |
+| `make run CMD="migrate up"` | apply migrations to `DATABASE_URL` (`down` reverts all) |
 
 Contracts live in `backend/api/proto` (source of truth). `backend/gen` and
 `backend/api/openapi/buddy-api.yaml` are generated and committed; CI fails if they are stale.
