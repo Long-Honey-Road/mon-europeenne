@@ -1,0 +1,14 @@
+version: v2
+modules:
+  - path: api/proto
+    lint:
+      use:
+        - STANDARD
+    breaking:
+      use:
+        - FILE
+  # Vendored from googleapis@8f28f48bf9ea: buf.build is unreachable from our network.
+  - path: third_party/proto
+    lint:
+      ignore:
+        - third_party/proto

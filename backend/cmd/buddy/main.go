@@ -1,0 +1,76 @@
+// Command buddy is the single binary of AI-buddy; each subcommand runs one process.
+package main
+
+import (
+	"errors"
+	"fmt"
+	"io"
+	"os"
+)
+
+const (
+	exitOK = iota
+	exitError
+	exitUsage
+)
+
+var errNotImplemented = errors.New("not implemented yet")
+
+type command struct {
+	name    string
+	summary string
+	run     func(args []string) error
+}
+
+var commands = []command{
+	{name: "api", summary: "serve the HTTP API and SSE", run: notImplemented},
+	{name: "worker", summary: "run background jobs and the scheduler", run: notImplemented},
+	{name: "mcp", summary: "expose agent tools over MCP", run: notImplemented},
+	{name: "mocks", summary: "serve mock corporate services", run: notImplemented},
+	{name: "seed", summary: "load synthetic data and build the index", run: notImplemented},
+}
+
+func main() {
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+}
+
+func run(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 {
+		printUsage(stderr)
+		return exitUsage
+	}
+
+	name := args[0]
+	if name == "help" || name == "-h" || name == "--help" {
+		printUsage(stdout)
+		return exitOK
+	}
+
+	for _, cmd := range commands {
+		if cmd.name != name {
+			continue
+		}
+		if err := cmd.run(args[1:]); err != nil {
+			fmt.Fprintf(stderr, "buddy %s: %v\n", name, err)
+			return exitError
+		}
+		return exitOK
+	}
+
+	fmt.Fprintf(stderr, "buddy: unknown command %q\n\n", name)
+	printUsage(stderr)
+	return exitUsage
+}
+
+func printUsage(w io.Writer) {
+	fmt.Fprintln(w, "usage: buddy <command> [flags]")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "commands:")
+	for _, cmd := range commands {
+		fmt.Fprintf(w, "  %-8s %s\n", cmd.name, cmd.summary)
+	}
+}
+
+func notImplemented([]string) error {
+	return errNotImplemented
+}

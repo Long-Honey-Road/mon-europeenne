@@ -1,0 +1,167 @@
+# Generated with protoc-gen-openapi
+# https://github.com/google/gnostic/tree/master/cmd/protoc-gen-openapi
+
+openapi: 3.0.3
+info:
+    title: AI-buddy API
+    version: 0.1.0
+paths:
+    /v1/auth/login:
+        post:
+            tags:
+                - AuthService
+            operationId: AuthService_Login
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/LoginRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/LoginResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/me:
+        get:
+            tags:
+                - ProfileService
+            description: GetMe returns the caller's profile resolved from the session.
+            operationId: ProfileService_GetMe
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetMeResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+components:
+    schemas:
+        GetMeResponse:
+            type: object
+            properties:
+                user:
+                    $ref: '#/components/schemas/User'
+                team:
+                    $ref: '#/components/schemas/Team'
+                relations:
+                    $ref: '#/components/schemas/Relations'
+        GoogleProtobufAny:
+            type: object
+            properties:
+                '@type':
+                    type: string
+                    description: The type of the serialized message.
+            additionalProperties: true
+            description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+        LoginRequest:
+            type: object
+            properties:
+                login:
+                    type: string
+                password:
+                    type: string
+        LoginResponse:
+            type: object
+            properties:
+                token:
+                    type: string
+                    description: 'Session token for the Authorization: Bearer header.'
+                user:
+                    $ref: '#/components/schemas/User'
+        PersonRef:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                roleTitle:
+                    type: string
+            description: Short reference to a person from the directory.
+        Relations:
+            type: object
+            properties:
+                mentor:
+                    $ref: '#/components/schemas/PersonRef'
+                manager:
+                    $ref: '#/components/schemas/PersonRef'
+                hrBp:
+                    $ref: '#/components/schemas/PersonRef'
+        Status:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+                    format: int32
+                message:
+                    type: string
+                    description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+                details:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/GoogleProtobufAny'
+                    description: A list of messages that carry the error details.  There is a common set of message types for APIs to use.
+            description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
+        Team:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                unit:
+                    type: string
+                cluster:
+                    type: string
+                mattermostChannel:
+                    type: string
+        User:
+            type: object
+            properties:
+                id:
+                    type: string
+                login:
+                    type: string
+                displayName:
+                    type: string
+                role:
+                    type: integer
+                    format: enum
+                direction:
+                    type: integer
+                    format: enum
+                teamId:
+                    type: string
+                repos:
+                    type: array
+                    items:
+                        type: string
+                jiraProjects:
+                    type: array
+                    items:
+                        type: string
+                location:
+                    type: string
+                startDate:
+                    type: string
+                    description: ISO 8601 date, e.g. 2026-11-09.
+tags:
+    - name: AuthService
+      description: AuthService signs in test accounts; real auth is assumed to exist at Avito.
+    - name: ProfileService

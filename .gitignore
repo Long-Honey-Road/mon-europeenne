@@ -64,3 +64,6 @@ Session.vim
 .exrc
 .nvimrc
 
+
+# Build output
+bin/

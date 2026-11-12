@@ -29,6 +29,25 @@ git submodule update --init --remote docs
 
 Правила в [CLAUDE.md](docs/CLAUDE.md) (дубликат в `docs/AGENTS.md`) и в [docs/agents/workflow.md](docs/agents/workflow.md).
 
-## Запуск
+## Development
 
-Появится вместе с кодом.
+Requirements: Go 1.27, Docker. Dev tools (golangci-lint, buf, protoc plugins) are pinned in
+`backend/tools.mod` and run via `go tool`, nothing to install.
+
+```bash
+cp deploy/.env.example deploy/.env
+docker compose -f deploy/docker-compose.yml up -d --wait   # postgres + redis
+```
+
+From `backend/`:
+
+| Command | What it does |
+|---|---|
+| `make test` | unit tests |
+| `make cover` | tests with coverage, generated code excluded |
+| `make lint` | golangci-lint, buf lint and proto format check |
+| `make gen` | regenerate Go, gRPC, grpc-gateway and OpenAPI from `api/proto` |
+| `make run CMD=api` | run a `buddy` subcommand |
+
+Contracts live in `backend/api/proto` (source of truth). `backend/gen` and
+`backend/api/openapi/buddy-api.yaml` are generated and committed; CI fails if they are stale.

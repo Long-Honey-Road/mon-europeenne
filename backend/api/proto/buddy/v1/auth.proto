@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package buddy.v1;
+
+import "buddy/v1/user.proto";
+import "google/api/annotations.proto";
+
+// AuthService signs in test accounts; real auth is assumed to exist at Avito.
+service AuthService {
+  rpc Login(LoginRequest) returns (LoginResponse) {
+    option (google.api.http) = {
+      post: "/v1/auth/login"
+      body: "*"
+    };
+  }
+}
+
+message LoginRequest {
+  string login = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  // Session token for the Authorization: Bearer header.
+  string token = 1;
+  User user = 2;
+}

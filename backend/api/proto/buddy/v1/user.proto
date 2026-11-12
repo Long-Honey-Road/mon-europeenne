@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package buddy.v1;
+
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_INTERN = 1;
+  ROLE_MENTOR = 2;
+  ROLE_MANAGER = 3;
+  ROLE_HR_BP = 4;
+  ROLE_HR_ADMIN = 5;
+}
+
+enum Direction {
+  DIRECTION_UNSPECIFIED = 0;
+  DIRECTION_BACKEND = 1;
+  DIRECTION_FRONTEND = 2;
+  DIRECTION_QA = 3;
+}
+
+message User {
+  string id = 1;
+  string login = 2;
+  string display_name = 3;
+  Role role = 4;
+  Direction direction = 5;
+  string team_id = 6;
+  repeated string repos = 7;
+  repeated string jira_projects = 8;
+  string location = 9;
+  // ISO 8601 date, e.g. 2026-11-09.
+  string start_date = 10;
+}
+
+message Team {
+  string id = 1;
+  string name = 2;
+  string unit = 3;
+  string cluster = 4;
+  string mattermost_channel = 5;
+}
+
+// Short reference to a person from the directory.
+message PersonRef {
+  string id = 1;
+  string name = 2;
+  string role_title = 3;
+}

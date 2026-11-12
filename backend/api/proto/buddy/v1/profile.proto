@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package buddy.v1;
+
+import "buddy/v1/user.proto";
+import "google/api/annotations.proto";
+
+service ProfileService {
+  // GetMe returns the caller's profile resolved from the session.
+  rpc GetMe(GetMeRequest) returns (GetMeResponse) {
+    option (google.api.http) = {get: "/v1/me"};
+  }
+}
+
+message GetMeRequest {}
+
+message GetMeResponse {
+  User user = 1;
+  Team team = 2;
+  Relations relations = 3;
+}
+
+message Relations {
+  PersonRef mentor = 1;
+  PersonRef manager = 2;
+  PersonRef hr_bp = 3;
+}
