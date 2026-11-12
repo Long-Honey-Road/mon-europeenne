@@ -102,6 +102,10 @@ When the available materials do not answer the question, the agent says so and s
   and may try again within the iteration limit.
 - **Repository link in a non-task thread** (path or URL from the team repo in the text): removed before saving,
   `invariant_violation` written.
+- **Invented link** (a URL that no tool returned in this turn): a markdown link keeps only its text, a bare URL
+  is removed, `invariant_violation` written. Found on the live model: it made up `https://avito.internal/...`.
+- **Invented footnotes** (the model's own list of sources, lines starting with a marker to an unknown ref):
+  the line is removed.
 - **Empty or whitespace-only user message**: rejected before any model call.
 
 ## Requirements *(mandatory)*
@@ -119,12 +123,14 @@ When the available materials do not answer the question, the agent says so and s
   SSE `delta` events while generated; text followed by tool calls MUST be withdrawn with `reset`.
 - **FR-005**: The loop MUST stop after 6 model calls with tools (then one call without tools); the whole turn
   MUST stop after 60 s.
-- **FR-006**: Fragments returned by `search_docs` and `read_repo` MUST get turn-wide numbers `ref` 1..n in the
-  tool result the model sees; the model cites them as `[n]`.
+- **FR-006**: Citable fragments are the items of a top-level `sources` array in any tool result (`search_docs`
+  and `read_repo` use it); each item MUST get a turn-wide number `ref` 1..n in the result the model sees; the
+  model cites them as `[n]`.
 - **FR-007**: After the text, the server MUST build blocks only from this turn's tool results: `sources` from
   cited refs (all found refs if the text cites none), `person` from `who_to_ask`, `not_found` from
-  `report_not_found` with the caller's escalation chain. Markers to unknown refs and repository links outside
-  task threads MUST be removed from the text, with an `invariant_violation` event.
+  `report_not_found` with the caller's escalation chain. Markers and footnote lines to unknown refs, links to URLs
+  that no tool returned, and repository links outside task threads MUST be removed from the text, with an
+  `invariant_violation` event.
 - **FR-008**: The agent MUST emit `status` events while working (one per tool call with a human-readable text,
   e.g. «ищу в документах»), `delta` with text, `block` per built block, then `done` with the saved message id,
   or `error`.
@@ -182,7 +188,7 @@ User: «Покажи Makefile нашего сервиса»
 
 | # | Model call | Fake returns | Then |
 |---|---|---|---|
-| 1 | `read_repo` not offered | tool call `read_repo {"path":"Makefile"}` | registry returns `ErrNotInThread`; handler call count stays 0; model gets `{"error":"not_in_thread","message":"read_repo works only in a work task thread"}` |
+| 1 | `read_repo` not offered | tool call `read_repo {"path":"Makefile"}` | registry returns `ErrNotInThread`; handler call count stays 0; model gets `{"error":"not_in_thread","message":"read_repo is not available in a general thread"}` |
 | 2 | same tools | text «Репозиторий доступен в треде «Рабочая задача». Создай его, и я покажу Makefile.» | turn ends |
 
 Expect: no file content in any message; event `tool_called(read_repo, not_in_thread)`.
