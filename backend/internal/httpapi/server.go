@@ -11,10 +11,12 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	buddyv1 "github.com/Long-Honey-Road/mon-europeenne/backend/gen/buddy/v1"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/auth"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/jobs"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/people"
 )
 
@@ -30,25 +32,47 @@ type Directory interface {
 	Relations(ctx context.Context, userID string) (people.Relations, error)
 }
 
+// Threads is the storage the thread API needs.
+type Threads interface {
+	CreateThread(ctx context.Context, userID string, typ domain.ThreadType, title string, pin domain.ThreadPin) (domain.Thread, error)
+	Thread(ctx context.Context, userID, id string) (domain.Thread, error)
+	Threads(ctx context.Context, userID string) ([]domain.Thread, error)
+	AddMessage(ctx context.Context, m domain.Message) (domain.Message, error)
+	Messages(ctx context.Context, threadID string, limit int) ([]domain.Message, error)
+}
+
+// Jobs queues background work.
+type Jobs interface {
+	EnqueueChatTurn(ctx context.Context, t jobs.ChatTurn) (jobID string, err error)
+}
+
 type Deps struct {
 	Accounts  *auth.Accounts
 	Tokens    *auth.Tokens
 	Directory Directory
+	Threads   Threads
+	Jobs      Jobs
 }
 
 // New routes /v1/public/ without a session, /v1/private/ only with one, and 404s everything else under /v1/.
 func New(ctx context.Context, d Deps) (http.Handler, error) {
-	gw := runtime.NewServeMux(runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
-		Marshaler: &runtime.JSONPb{
-			MarshalOptions:   protojson.MarshalOptions{UseProtoNames: true, EmitUnpopulated: true},
-			UnmarshalOptions: protojson.UnmarshalOptions{DiscardUnknown: true},
-		},
-	}))
+	gw := runtime.NewServeMux(
+		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
+			Marshaler: &runtime.JSONPb{
+				MarshalOptions:   protojson.MarshalOptions{UseProtoNames: true, EmitUnpopulated: true},
+				UnmarshalOptions: protojson.UnmarshalOptions{DiscardUnknown: true},
+			},
+		}),
+		runtime.WithForwardResponseOption(acceptedForQueuedWork),
+	)
 	if err := buddyv1.RegisterAuthServiceHandlerServer(ctx, gw, &authService{deps: d}); err != nil {
 		return nil, fmt.Errorf("register auth service: %w", err)
 	}
 	if err := buddyv1.RegisterProfileServiceHandlerServer(ctx, gw, &profileService{deps: d}); err != nil {
 		return nil, fmt.Errorf("register profile service: %w", err)
+	}
+	if err := buddyv1.RegisterThreadServiceHandlerServer(ctx, gw, &threadService{deps: d}); err != nil {
+		return nil, fmt.Errorf("register thread service: %w", err)
 	}
 
 	mux := http.NewServeMux()
@@ -95,4 +119,12 @@ func writeStatus(w http.ResponseWriter, httpCode int, code codes.Code, msg strin
 func ok(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	_, _ = w.Write([]byte("ok"))
+}
+
+// acceptedForQueuedWork answers 202 when the work was queued rather than done.
+func acceptedForQueuedWork(_ context.Context, w http.ResponseWriter, m proto.Message) error {
+	if _, ok := m.(*buddyv1.SendMessageResponse); ok {
+		w.WriteHeader(http.StatusAccepted)
+	}
+	return nil
 }

@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package buddy.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+
+// ThreadService keeps the caller's conversations with buddy; answers arrive over SSE.
+service ThreadService {
+  rpc ListThreads(ListThreadsRequest) returns (ListThreadsResponse) {
+    option (google.api.http) = {get: "/v1/private/threads"};
+  }
+  // CreateThread returns the existing thread for types that are one per user (plan).
+  rpc CreateThread(CreateThreadRequest) returns (CreateThreadResponse) {
+    option (google.api.http) = {
+      post: "/v1/private/threads"
+      body: "*"
+    };
+  }
+  rpc GetThread(GetThreadRequest) returns (GetThreadResponse) {
+    option (google.api.http) = {get: "/v1/private/threads/{thread_id}"};
+  }
+  rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse) {
+    option (google.api.http) = {get: "/v1/private/threads/{thread_id}/messages"};
+  }
+  // SendMessage saves the message and queues the agent turn; answers 202, the reply streams over
+  // GET /v1/private/threads/{thread_id}/events.
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse) {
+    option (google.api.http) = {
+      post: "/v1/private/threads/{thread_id}/messages"
+      body: "*"
+    };
+  }
+}
+
+enum ThreadType {
+  THREAD_TYPE_UNSPECIFIED = 0;
+  THREAD_TYPE_GENERAL = 1;
+  THREAD_TYPE_PLAN = 2;
+  THREAD_TYPE_REQUEST = 3;
+  THREAD_TYPE_TASK = 4;
+}
+
+enum MessageRole {
+  MESSAGE_ROLE_UNSPECIFIED = 0;
+  MESSAGE_ROLE_USER = 1;
+  MESSAGE_ROLE_ASSISTANT = 2;
+}
+
+enum AnswerMode {
+  ANSWER_MODE_UNSPECIFIED = 0;
+  ANSWER_MODE_BRIEF = 1;
+  ANSWER_MODE_DETAILED = 2;
+}
+
+message Thread {
+  string id = 1;
+  ThreadType type = 2;
+  string title = 3;
+  // Pinned context: {plan_item_id} or {request_id} or {task: {key, title, repo}}.
+  google.protobuf.Struct pin = 4;
+  // RFC 3339.
+  string created_at = 5;
+}
+
+message Message {
+  string id = 1;
+  string thread_id = 2;
+  MessageRole role = 3;
+  string text = 4;
+  // Server-built blocks of an assistant message (sources, person, not_found, ...).
+  repeated google.protobuf.Struct blocks = 5;
+  // RFC 3339.
+  string created_at = 6;
+}
+
+message ListThreadsRequest {}
+
+message ListThreadsResponse {
+  repeated Thread threads = 1;
+}
+
+message CreateThreadRequest {
+  ThreadType type = 1;
+  string title = 2;
+  google.protobuf.Struct pin = 3;
+}
+
+message CreateThreadResponse {
+  Thread thread = 1;
+}
+
+message GetThreadRequest {
+  string thread_id = 1;
+}
+
+message GetThreadResponse {
+  Thread thread = 1;
+}
+
+message ListMessagesRequest {
+  string thread_id = 1;
+  // Last N messages, oldest first; default 50, at most 200.
+  int32 limit = 2;
+}
+
+message ListMessagesResponse {
+  repeated Message messages = 1;
+}
+
+message SendMessageRequest {
+  string thread_id = 1;
+  string content = 2;
+  AnswerMode mode = 3;
+}
+
+message SendMessageResponse {
+  string message_id = 1;
+  string job_id = 2;
+}
