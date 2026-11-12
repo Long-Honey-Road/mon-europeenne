@@ -96,8 +96,14 @@ func (w whoToAsk) run(ctx context.Context, p domain.Principal, in whoToAskIn) (w
 		if person.UserID != "" && person.UserID == p.UserID {
 			continue
 		}
-		if in.TeamID != "" && person.TeamID != in.TeamID {
-			continue
+		if in.TeamID != "" {
+			match, err := clusters.teamMatches(ctx, person.TeamID, in.TeamID)
+			if err != nil {
+				return whoToAskOut{}, err
+			}
+			if !match {
+				continue
+			}
 		}
 		score, reason := match(topic, person)
 		if score == 0 {
@@ -197,26 +203,43 @@ func stems(text string) map[string]bool {
 	return out
 }
 
-// clusterCache resolves team clusters once per call; unknown teams have no cluster.
+// clusterCache resolves teams once per call; unknown teams have no cluster.
 type clusterCache struct {
 	dir  PeopleDirectory
-	seen map[string]string
+	seen map[string]domain.Team
 }
 
-func (c *clusterCache) of(ctx context.Context, teamID string) (string, error) {
+func (c *clusterCache) team(ctx context.Context, teamID string) (domain.Team, error) {
 	if teamID == "" {
-		return "", nil
+		return domain.Team{}, nil
 	}
-	if cluster, ok := c.seen[teamID]; ok {
-		return cluster, nil
+	if team, ok := c.seen[teamID]; ok {
+		return team, nil
 	}
 	team, err := c.dir.Team(ctx, teamID)
 	if err != nil && !errors.Is(err, people.ErrNotFound) {
-		return "", err
+		return domain.Team{}, err
 	}
 	if c.seen == nil {
-		c.seen = map[string]string{}
+		c.seen = map[string]domain.Team{}
 	}
-	c.seen[teamID] = team.Cluster
-	return team.Cluster, nil
+	c.seen[teamID] = team
+	return team, nil
+}
+
+func (c *clusterCache) of(ctx context.Context, teamID string) (string, error) {
+	team, err := c.team(ctx, teamID)
+	return team.Cluster, err
+}
+
+// teamMatches accepts a team id or a team name: models naturally pass the name they see in the profile.
+func (c *clusterCache) teamMatches(ctx context.Context, teamID, want string) (bool, error) {
+	if teamID == want {
+		return true, nil
+	}
+	team, err := c.team(ctx, teamID)
+	if err != nil {
+		return false, err
+	}
+	return team.Name != "" && strings.EqualFold(team.Name, want), nil
 }
