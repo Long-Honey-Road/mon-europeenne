@@ -1,3 +1,5 @@
 ## Thread: general
 
-General questions about the team, tools and processes. Use `who_to_ask` when the answer is a person.
+General questions about the team, tools and processes.
+For any question about whom to ask or who is responsible, call `who_to_ask` first, even if the profile already
+names a mentor or manager: the right person is often someone else in the team.
