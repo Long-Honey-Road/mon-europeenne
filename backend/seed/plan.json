@@ -1,0 +1,94 @@
+{
+  "items": [
+    {
+      "key": "w1-team", "title": "Познакомиться с командой", "period": "w1",
+      "practice": "Открой раздел «Команда», выбери трёх коллег и узнай у каждого, с какими вопросами к нему идти. Запиши ответы в конспект.",
+      "map": {"x": 0, "y": 0, "group": "team"}
+    },
+    {
+      "key": "w1-access", "title": "Запросить доступы", "period": "w1",
+      "practice": "Запроси семь доступов по списку для твоей роли: Jira, Confluence, Bitbucket, Mattermost, VPN, Sentry, Grafana. В обосновании сошлись на первую задачу.",
+      "map": {"x": 0, "y": 1, "group": "access"}
+    },
+    {
+      "key": "w1-channels", "title": "Вступить в каналы команды", "period": "w1", "depends_on": ["w1-access"],
+      "practice": "Вступи в ~messenger-team, попроси руководителя добавить тебя в ~tech-dep и напиши приветствие в канал команды.",
+      "map": {"x": 0, "y": 2, "group": "team"}
+    },
+    {
+      "key": "w1-mentor-notes", "title": "Завести конспект встреч с наставником", "period": "w1", "depends_on": ["w1-access"],
+      "practice": "Создай страницу в пространстве команды в Confluence и запиши итоги первой встречи 1:1 с наставником.",
+      "map": {"x": 0, "y": 3, "group": "team"}
+    },
+    {
+      "key": "w1-avito-cli", "title": "Настроить avito-cli", "period": "w1", "direction": "backend", "depends_on": ["w1-access"],
+      "practice": "Установи avito-cli и выведи список сервисов команды: в нём должен быть messenger-api.",
+      "map": {"x": 0, "y": 4, "group": "tools"}
+    },
+    {
+      "key": "w1-ssh-keys", "title": "Добавить SSH-ключ и склонировать сервис", "period": "w1", "direction": "backend", "depends_on": ["w1-access"],
+      "practice": "Сгенерируй SSH-ключ, добавь его в профиль Bitbucket и склонируй messenger-api.",
+      "map": {"x": 0, "y": 5, "group": "tools"}
+    },
+    {
+      "key": "w1-sentry", "title": "Разобраться с Sentry", "period": "w1", "direction": "backend", "depends_on": ["w1-access"],
+      "practice": "Открой проект messenger-api в Sentry, найди самую частую ошибку за неделю и обсуди с наставником, откуда она берётся.",
+      "map": {"x": 0, "y": 6, "group": "tools"}
+    },
+    {
+      "key": "w2-team-docs", "title": "Изучить документы команды", "period": "w2", "depends_on": ["w1-ssh-keys"],
+      "practice": "Прочитай README и CONTRIBUTING сервиса и выпиши три правила команды, которых не ожидал.",
+      "map": {"x": 1, "y": 0, "group": "docs"}
+    },
+    {
+      "key": "w2-paas", "title": "Найти свой сервис в PaaS", "period": "w2", "direction": "backend", "depends_on": ["w1-avito-cli"],
+      "practice": "Открой PaaS-дашборд, найди messenger-api, посмотри логи последнего деплоя и конфигурацию сервиса.",
+      "map": {"x": 1, "y": 1, "group": "tools"}
+    },
+    {
+      "key": "w2-go-guide", "title": "Прочитать гайд по Go", "period": "w2", "direction": "backend", "depends_on": ["w2-team-docs"],
+      "practice": "Прочитай гайд команды по Go и найди в коде messenger-api два места, где он применён.",
+      "map": {"x": 1, "y": 2, "group": "docs"}
+    },
+    {
+      "key": "w2-first-task", "title": "Взять первую задачу", "period": "w2", "depends_on": ["w2-team-docs"],
+      "practice": "Возьми задачу с меткой good-first-task и разбери её в треде «Рабочая задача» по DoR команды до того, как писать код.",
+      "map": {"x": 1, "y": 3, "group": "task"}
+    },
+    {
+      "key": "m1-data-protection", "title": "Пройти курс по защите данных", "period": "m1",
+      "practice": "Пройди лендинг «Защита данных» и памятку по раскрытию информации, ответь на вопросы теста в конце.",
+      "map": {"x": 2, "y": 0, "group": "docs"}
+    },
+    {
+      "key": "m1-grafana", "title": "Добавить панель в Grafana", "period": "m1", "direction": "backend", "depends_on": ["w1-access"],
+      "practice": "Открой дашборд messenger-api, найди время ответа p95 и добавь свою панель с RPS по ручке отправки сообщения.",
+      "map": {"x": 2, "y": 1, "group": "tools"}
+    },
+    {
+      "key": "m1-agile", "title": "Пройти курс «Agile в Авито»", "period": "m1",
+      "practice": "Пройди курс и сравни описанный Scrum с процессом команды: что совпадает, что устроено иначе.",
+      "map": {"x": 2, "y": 2, "group": "docs"}
+    },
+    {
+      "key": "m2-practice", "title": "Оформить учебную практику", "period": "m2",
+      "practice": "Прочитай памятку, как закрывать практику по Авито, и согласуй тему отчёта с куратором.",
+      "map": {"x": 3, "y": 0, "group": "career"}
+    },
+    {
+      "key": "eq-prepare", "title": "Подготовиться к экватору", "period": "equator", "depends_on": ["w2-first-task", "m2-practice"],
+      "practice": "Собери презентацию: задачи, результаты, планы. Согласуй её с куратором и наставником и проведи репетицию на 15 минут.",
+      "map": {"x": 4, "y": 0, "group": "career"}
+    },
+    {
+      "key": "final-graduation", "title": "Выпускной и опрос", "period": "final", "depends_on": ["eq-prepare"],
+      "practice": "Пройди опрос о стажировке и подготовь итоговую встречу с руководителем.",
+      "map": {"x": 5, "y": 0, "group": "career"}
+    }
+  ],
+  "statuses": [
+    {"user_id": "u-liza", "item_key": "w1-team", "status": "done"},
+    {"user_id": "u-liza", "item_key": "w1-access", "status": "doing", "note": "Доступы ещё не запрошены"},
+    {"user_id": "u-liza", "item_key": "w1-mentor-notes", "status": "blocked", "note": "Нужен доступ к Confluence"}
+  ]
+}

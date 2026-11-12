@@ -1,0 +1,141 @@
+{
+  "types": [
+    {
+      "key": "access.jira_project", "title": "Доступ к проекту Jira", "category": "access",
+      "fields_schema": {
+        "type": "object", "additionalProperties": false,
+        "required": ["project_key", "level", "justification"],
+        "properties": {
+          "project_key": {"type": "string", "title": "Ключ проекта"},
+          "level": {"enum": ["read", "write"], "title": "Уровень"},
+          "justification": {"type": "string", "title": "Обоснование", "minLength": 10}
+        }
+      },
+      "approval_chain": [{"resolver": "object_owner", "object": "jira_project"}],
+      "sla_hours": 24,
+      "demo": {"outcome": "approve", "after_seconds": 30}
+    },
+    {
+      "key": "access.confluence_space", "title": "Доступ к пространству Confluence", "category": "access",
+      "fields_schema": {
+        "type": "object", "additionalProperties": false,
+        "required": ["space_key", "level", "justification"],
+        "properties": {
+          "space_key": {"type": "string", "title": "Пространство"},
+          "level": {"enum": ["read", "write"], "title": "Уровень"},
+          "justification": {"type": "string", "title": "Обоснование", "minLength": 10}
+        }
+      },
+      "approval_chain": [{"resolver": "object_owner", "object": "confluence_space"}],
+      "sla_hours": 24,
+      "demo": {"outcome": "approve", "after_seconds": 40}
+    },
+    {
+      "key": "access.bitbucket_repo", "title": "Доступ к репозиторию Bitbucket", "category": "access",
+      "fields_schema": {
+        "type": "object", "additionalProperties": false,
+        "required": ["repo", "level", "justification"],
+        "properties": {
+          "repo": {"type": "string", "title": "Репозиторий"},
+          "level": {"enum": ["read", "write"], "title": "Уровень"},
+          "justification": {"type": "string", "title": "Обоснование", "minLength": 10}
+        }
+      },
+      "approval_chain": [{"resolver": "object_owner", "object": "bitbucket_repo"}],
+      "sla_hours": 24,
+      "demo": {"outcome": "approve", "after_seconds": 45}
+    },
+    {
+      "key": "access.mattermost_channel", "title": "Доступ в канал Mattermost", "category": "access",
+      "fields_schema": {
+        "type": "object", "additionalProperties": false,
+        "required": ["channel"],
+        "properties": {
+          "channel": {"type": "string", "title": "Канал"}
+        }
+      },
+      "approval_chain": [{"resolver": "object_owner", "object": "mattermost_channel"}],
+      "sla_hours": 8,
+      "demo": {"outcome": "approve", "after_seconds": 15}
+    },
+    {
+      "key": "access.vpn", "title": "Доступ к корпоративному VPN", "category": "access",
+      "fields_schema": {
+        "type": "object", "additionalProperties": false,
+        "required": ["justification"],
+        "properties": {
+          "justification": {"type": "string", "title": "Обоснование", "minLength": 10}
+        }
+      },
+      "approval_chain": [{"resolver": "devops"}],
+      "sla_hours": 24,
+      "demo": {"outcome": "approve", "after_seconds": 60}
+    },
+    {
+      "key": "access.sentry_project", "title": "Доступ к проекту Sentry", "category": "access",
+      "fields_schema": {
+        "type": "object", "additionalProperties": false,
+        "required": ["project", "justification"],
+        "properties": {
+          "project": {"type": "string", "title": "Проект"},
+          "justification": {"type": "string", "title": "Обоснование", "minLength": 10}
+        }
+      },
+      "approval_chain": [{"resolver": "object_owner", "object": "sentry_project"}],
+      "sla_hours": 24,
+      "demo": {"outcome": "reject", "after_seconds": 50, "reason": "Обоснование слишком общее: укажи задачу, для которой нужен доступ к ошибкам сервиса."}
+    },
+    {
+      "key": "access.grafana_folder", "title": "Доступ к папке Grafana", "category": "access",
+      "fields_schema": {
+        "type": "object", "additionalProperties": false,
+        "required": ["folder", "level", "justification"],
+        "properties": {
+          "folder": {"type": "string", "title": "Папка дашбордов"},
+          "level": {"enum": ["viewer", "editor"], "title": "Уровень"},
+          "justification": {"type": "string", "title": "Обоснование", "minLength": 10}
+        }
+      },
+      "approval_chain": [{"resolver": "object_owner", "object": "grafana_folder"}],
+      "sla_hours": 24,
+      "demo": {"outcome": "approve", "after_seconds": 35}
+    },
+    {
+      "key": "absence.day_off", "title": "Отгул", "category": "absence",
+      "fields_schema": {
+        "type": "object", "additionalProperties": false,
+        "required": ["date", "reason"],
+        "properties": {
+          "date": {"type": "string", "format": "date", "title": "Дата"},
+          "reason": {"type": "string", "title": "Причина"}
+        }
+      },
+      "approval_chain": [{"resolver": "manager"}, {"resolver": "hr_admin"}],
+      "sla_hours": 48,
+      "demo": {"outcome": "approve", "after_seconds": 30}
+    },
+    {
+      "key": "absence.vacation", "title": "Отпуск", "category": "absence",
+      "fields_schema": {
+        "type": "object", "additionalProperties": false,
+        "required": ["start_date", "end_date"],
+        "properties": {
+          "start_date": {"type": "string", "format": "date", "title": "Первый день"},
+          "end_date": {"type": "string", "format": "date", "title": "Последний день"},
+          "comment": {"type": "string", "title": "Комментарий"}
+        }
+      },
+      "approval_chain": [{"resolver": "manager"}, {"resolver": "hr_admin"}],
+      "sla_hours": 72,
+      "demo": {"outcome": "approve", "after_seconds": 30}
+    }
+  ],
+  "objects": [
+    {"kind": "jira_project", "key": "MSG", "title": "Messenger", "owner_id": "p-dmitry"},
+    {"kind": "confluence_space", "key": "MSG", "title": "Messenger: документация юнита", "owner_id": "p-dmitry"},
+    {"kind": "bitbucket_repo", "key": "messenger-api", "title": "messenger-api", "owner_id": "p-anna"},
+    {"kind": "mattermost_channel", "key": "messenger-team", "title": "~messenger-team", "owner_id": "p-dmitry"},
+    {"kind": "sentry_project", "key": "messenger-api", "title": "messenger-api", "owner_id": "p-igor"},
+    {"kind": "grafana_folder", "key": "Messenger", "title": "Messenger", "owner_id": "p-igor"}
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "teams": [
+    {"id": "t-messenger", "name": "Messenger", "unit": "Messenger", "cluster": "Коммуникации", "mattermost_channel": "~messenger-team"},
+    {"id": "t-notifications", "name": "Notifications", "unit": "Notifications", "cluster": "Коммуникации", "mattermost_channel": "~notifications"},
+    {"id": "t-platform", "name": "Platform PaaS", "unit": "Platform", "cluster": "Инфраструктура", "mattermost_channel": "~paas-support"},
+    {"id": "t-people", "name": "People Partners", "unit": "HR", "cluster": "Люди", "mattermost_channel": "~people-help"}
+  ],
+  "people": [
+    {
+      "id": "p-liza", "name": "Лиза Орлова", "role_title": "Стажёр, backend", "team_id": "t-messenger",
+      "contact": "@liza.orlova",
+      "account": {
+        "user_id": "u-liza", "login": "intern", "password": "intern-demo", "role": "intern", "direction": "backend",
+        "mentor_id": "p-anna", "manager_id": "p-dmitry", "hr_bp_id": "p-elena",
+        "repos": ["messenger-api"], "jira_projects": ["MSG"], "location": "Москва", "start_date": "2026-11-09"
+      }
+    },
+    {
+      "id": "p-anna", "name": "Анна Белова", "role_title": "Senior backend, наставник", "team_id": "t-messenger",
+      "responsibilities": ["архитектура messenger-api", "наставничество стажёров"],
+      "ask_me_about": ["сборка и локальный запуск сервиса", "ревью кода и стиль Go", "архитектура сервиса сообщений"],
+      "contact": "@anna.belova",
+      "account": {
+        "user_id": "u-anna", "login": "mentor", "password": "mentor-demo", "role": "mentor", "direction": "backend",
+        "manager_id": "p-dmitry", "repos": ["messenger-api"], "jira_projects": ["MSG"], "location": "Москва"
+      }
+    },
+    {
+      "id": "p-dmitry", "name": "Дмитрий Козлов", "role_title": "Руководитель юнита Messenger", "team_id": "t-messenger",
+      "responsibilities": ["приоритеты и цели юнита", "отпуска и отгулы команды", "согласование доступов к проекту"],
+      "ask_me_about": ["цели на испытательный срок", "планирование задач"],
+      "contact": "@dmitry.kozlov",
+      "account": {
+        "user_id": "u-dmitry", "login": "manager", "password": "manager-demo", "role": "manager",
+        "hr_bp_id": "p-elena", "jira_projects": ["MSG"], "location": "Москва"
+      }
+    },
+    {
+      "id": "p-oleg", "name": "Олег Смирнов", "role_title": "Frontend-разработчик", "team_id": "t-messenger",
+      "ask_me_about": ["веб-клиент мессенджера", "фронтенд-сборка и storybook"],
+      "contact": "@oleg.smirnov"
+    },
+    {
+      "id": "p-maria", "name": "Мария Лебедева", "role_title": "QA-инженер", "team_id": "t-messenger",
+      "ask_me_about": ["тест-планы", "автотесты и их запуск", "приёмка задач"],
+      "contact": "@maria.lebedeva"
+    },
+    {
+      "id": "p-igor", "name": "Игорь Волков", "role_title": "Инфраструктура юнита", "team_id": "t-messenger",
+      "responsibilities": ["стенды и деплой messenger-api", "алерты и дашборды"],
+      "ask_me_about": ["деплой на staging", "dev-окружение и стенды", "логи и метрики сервиса", "доступы к kubernetes"],
+      "contact": "@igor.volkov"
+    },
+    {
+      "id": "p-pavel", "name": "Павел Егоров", "role_title": "Backend, юнит Notifications", "team_id": "t-notifications",
+      "ask_me_about": ["push-уведомления", "очереди и Kafka"],
+      "contact": "@pavel.egorov"
+    },
+    {
+      "id": "p-artem", "name": "Артём Фёдоров", "role_title": "Владелец PaaS", "team_id": "t-platform",
+      "responsibilities": ["PaaS-дашборд", "выдача VPN и квот"],
+      "ask_me_about": ["avito-cli", "PaaS-дашборд", "квоты и ресурсы сервиса"],
+      "contact": "@artem.fedorov",
+      "approver_for": ["devops"]
+    },
+    {
+      "id": "p-elena", "name": "Елена Соколова", "role_title": "HR BP кластера Коммуникации", "team_id": "t-people",
+      "ask_me_about": ["адаптация и испытательный срок", "обратная связь и 1:1", "сложности в команде"],
+      "contact": "@elena.sokolova"
+    },
+    {
+      "id": "p-zoya", "name": "Зоя Михайлова", "role_title": "HR admin", "team_id": "t-people",
+      "ask_me_about": ["оформление отсутствий", "кадровые документы"],
+      "contact": "@zoya.mikhailova",
+      "approver_for": ["hr_admin"]
+    },
+    {
+      "id": "p-ksenia", "name": "Ксения Павлова", "role_title": "Куратор стажировки", "team_id": "t-people",
+      "ask_me_about": ["программа стажировки", "экватор и итоговая защита", "учебная практика"],
+      "contact": "@ksenia.pavlova"
+    }
+  ]
+}
