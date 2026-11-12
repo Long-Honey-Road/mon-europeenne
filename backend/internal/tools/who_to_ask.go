@@ -135,13 +135,13 @@ func (w whoToAsk) run(ctx context.Context, p domain.Principal, in whoToAskIn) (w
 	for i := 0; i < len(found) && i < maxHints; i++ {
 		out.People = append(out.People, found[i].hint)
 	}
-	out.Escalation, err = w.escalation(ctx, p)
+	out.Escalation, err = escalationChain(ctx, w.dir, p)
 	return out, err
 }
 
-// escalation follows the order agreed at the Q&A: mentor, manager, HR BP, then open sources.
-func (w whoToAsk) escalation(ctx context.Context, p domain.Principal) ([]EscalationStep, error) {
-	rel, err := w.dir.Relations(ctx, p.UserID)
+// escalationChain follows the order agreed at the Q&A: mentor, manager, HR BP, then open sources.
+func escalationChain(ctx context.Context, dir PeopleDirectory, p domain.Principal) ([]EscalationStep, error) {
+	rel, err := dir.Relations(ctx, p.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (w whoToAsk) escalation(ctx context.Context, p domain.Principal) ([]Escalat
 		if link.id == "" {
 			continue
 		}
-		person, err := w.dir.Person(ctx, link.id)
+		person, err := dir.Person(ctx, link.id)
 		if errors.Is(err, people.ErrNotFound) {
 			continue
 		}
