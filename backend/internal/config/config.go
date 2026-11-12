@@ -25,6 +25,8 @@ type LLM struct {
 	BaseURL  string
 	Model    string
 	APIKey   string
+	// ReasoningEffort is passed to the provider as is; empty keeps the model default.
+	ReasoningEffort string
 }
 
 type Embeddings struct {
@@ -56,10 +58,11 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 
 	cfg := Config{
 		LLM: LLM{
-			Provider: Provider(str("LLM_PROVIDER", string(ProviderOpenAICompat))),
-			BaseURL:  str("LLM_BASE_URL", ""),
-			Model:    str("LLM_MODEL", ""),
-			APIKey:   str("LLM_API_KEY", ""),
+			Provider:        Provider(str("LLM_PROVIDER", string(ProviderOpenAICompat))),
+			BaseURL:         str("LLM_BASE_URL", ""),
+			Model:           str("LLM_MODEL", ""),
+			APIKey:          str("LLM_API_KEY", ""),
+			ReasoningEffort: str("LLM_REASONING_EFFORT", ""),
 		},
 		Embeddings:    Embeddings{Model: str("EMBEDDINGS_MODEL", "")},
 		DatabaseURL:   str("DATABASE_URL", ""),
@@ -74,6 +77,12 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 	case ProviderOpenAICompat, ProviderAnthropic, ProviderFake:
 	default:
 		return Config{}, fmt.Errorf("LLM_PROVIDER=%q: %w", cfg.LLM.Provider, ErrInvalid)
+	}
+
+	switch cfg.LLM.ReasoningEffort {
+	case "", "none", "minimal", "low", "medium", "high":
+	default:
+		return Config{}, fmt.Errorf("LLM_REASONING_EFFORT=%q: %w", cfg.LLM.ReasoningEffort, ErrInvalid)
 	}
 
 	var err error

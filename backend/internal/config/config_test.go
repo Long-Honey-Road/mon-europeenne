@@ -37,19 +37,20 @@ func TestLoadAppliesDefaults(t *testing.T) {
 
 func TestLoadReadsEnvironment(t *testing.T) {
 	cfg, err := Load(envOf(map[string]string{
-		"LLM_PROVIDER":       "fake",
-		"LLM_BASE_URL":       "http://ollama:11434/v1",
-		"LLM_MODEL":          "qwen3.6:35b-a3b",
-		"LLM_API_KEY":        "secret",
-		"EMBEDDINGS_ENABLED": "true",
-		"EMBEDDINGS_MODEL":   "bge-m3",
-		"DATABASE_URL":       "postgres://buddy:buddy@postgres:5432/buddy",
-		"REDIS_ADDR":         "redis:6379",
-		"MOCKS_BASE_URL":     "http://mocks:8090",
-		"SESSION_SECRET":     "s3",
-		"MOCK_FAIL_RATE":     "0.25",
-		"HTTP_ADDR":          ":18080",
-		"GRPC_ADDR":          ":19090",
+		"LLM_PROVIDER":         "fake",
+		"LLM_BASE_URL":         "http://ollama:11434/v1",
+		"LLM_MODEL":            "qwen3.6:35b-a3b",
+		"LLM_API_KEY":          "secret",
+		"LLM_REASONING_EFFORT": "none",
+		"EMBEDDINGS_ENABLED":   "true",
+		"EMBEDDINGS_MODEL":     "bge-m3",
+		"DATABASE_URL":         "postgres://buddy:buddy@postgres:5432/buddy",
+		"REDIS_ADDR":           "redis:6379",
+		"MOCKS_BASE_URL":       "http://mocks:8090",
+		"SESSION_SECRET":       "s3",
+		"MOCK_FAIL_RATE":       "0.25",
+		"HTTP_ADDR":            ":18080",
+		"GRPC_ADDR":            ":19090",
 	}))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -57,10 +58,11 @@ func TestLoadReadsEnvironment(t *testing.T) {
 
 	want := Config{
 		LLM: LLM{
-			Provider: ProviderFake,
-			BaseURL:  "http://ollama:11434/v1",
-			Model:    "qwen3.6:35b-a3b",
-			APIKey:   "secret",
+			Provider:        ProviderFake,
+			BaseURL:         "http://ollama:11434/v1",
+			Model:           "qwen3.6:35b-a3b",
+			APIKey:          "secret",
+			ReasoningEffort: "none",
 		},
 		Embeddings:    Embeddings{Enabled: true, Model: "bge-m3"},
 		DatabaseURL:   "postgres://buddy:buddy@postgres:5432/buddy",
@@ -78,12 +80,13 @@ func TestLoadReadsEnvironment(t *testing.T) {
 
 func TestLoadRejectsInvalidValues(t *testing.T) {
 	cases := map[string]map[string]string{
-		"unknown provider":     {"LLM_PROVIDER": "gpt"},
-		"bad bool":             {"EMBEDDINGS_ENABLED": "yes please"},
-		"bad float":            {"MOCK_FAIL_RATE": "often"},
-		"fail rate above one":  {"MOCK_FAIL_RATE": "1.5"},
-		"negative fail rate":   {"MOCK_FAIL_RATE": "-0.1"},
-		"empty provider value": {"LLM_PROVIDER": ""},
+		"unknown provider":         {"LLM_PROVIDER": "gpt"},
+		"bad bool":                 {"EMBEDDINGS_ENABLED": "yes please"},
+		"bad float":                {"MOCK_FAIL_RATE": "often"},
+		"fail rate above one":      {"MOCK_FAIL_RATE": "1.5"},
+		"negative fail rate":       {"MOCK_FAIL_RATE": "-0.1"},
+		"empty provider value":     {"LLM_PROVIDER": ""},
+		"unknown reasoning effort": {"LLM_REASONING_EFFORT": "max"},
 	}
 	for name, vars := range cases {
 		t.Run(name, func(t *testing.T) {
