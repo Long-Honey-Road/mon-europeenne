@@ -14,7 +14,6 @@ import (
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/profile"
-	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/store"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/seed"
 )
 
@@ -56,20 +55,11 @@ func runAsk(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	// With DATABASE_URL the plan and requests tools work too; without it only the directory ones.
-	var st *store.Store
-	if cfg.DatabaseURL != "" {
-		pool, err := store.Open(context.Background(), cfg.DatabaseURL)
-		if err != nil {
-			return err
-		}
-		defer pool.Close()
-		st = store.New(pool)
-	}
-	registry, err := agentTools(data, st, cfg.FeatureRequests)
+	registry, closeTools, err := localTools(context.Background(), cfg, data)
 	if err != nil {
 		return err
 	}
+	defer closeTools()
 
 	mode := agent.ModeBrief
 	if *detailed {

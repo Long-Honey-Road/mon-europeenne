@@ -24,6 +24,53 @@ var (
 	ErrNotFound = domain.ErrNotFound
 )
 
+// Error codes a caller of a tool sees; anything unrecognized is CodeFailed.
+const (
+	CodeUnknownTool = "unknown_tool"
+	CodeForbidden   = "forbidden"
+	CodeNotInThread = "not_in_thread"
+	CodeNotFound    = "not_found"
+	CodeInvalidArgs = "invalid_args"
+	CodeFailed      = "tool_failed"
+)
+
+// Code maps a registry or handler error to its error code.
+func Code(err error) string {
+	switch {
+	case errors.Is(err, ErrUnknownTool):
+		return CodeUnknownTool
+	case errors.Is(err, ErrForbidden):
+		return CodeForbidden
+	case errors.Is(err, ErrNotInThread):
+		return CodeNotInThread
+	case errors.Is(err, ErrNotFound):
+		return CodeNotFound
+	case errors.Is(err, ErrInvalidArgs):
+		return CodeInvalidArgs
+	default:
+		return CodeFailed
+	}
+}
+
+// Explain gives the code and a message for a model; handler error text never leaks except for invalid arguments.
+func Explain(err error, name string, thread domain.ThreadType) (code, message string) {
+	code = Code(err)
+	switch code {
+	case CodeUnknownTool:
+		return code, fmt.Sprintf("there is no tool named %s", name)
+	case CodeForbidden:
+		return code, "this data is not available to the user"
+	case CodeNotInThread:
+		return code, fmt.Sprintf("%s is not available in a %s thread", name, thread)
+	case CodeNotFound:
+		return code, fmt.Sprintf("%s found nothing with these arguments", name)
+	case CodeInvalidArgs:
+		return code, err.Error()
+	default:
+		return code, "the tool failed; answer without it or try again later"
+	}
+}
+
 // Tool is a named action with its argument schema and the roles and thread types allowed to use it.
 type Tool struct {
 	Name        string

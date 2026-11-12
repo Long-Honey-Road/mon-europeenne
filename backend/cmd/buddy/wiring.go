@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/requests"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/store"
@@ -46,6 +48,26 @@ func agentTools(data seed.Data, st *store.Store, requestsOn bool) (*tools.Regist
 		}
 	}
 	return tools.NewRegistry(list...)
+}
+
+// localTools builds the tool set for dev commands: with DATABASE_URL the plan and requests tools work too,
+// without it only the directory ones.
+func localTools(ctx context.Context, cfg config.Config, data seed.Data) (*tools.Registry, func(), error) {
+	var st *store.Store
+	closeFn := func() {}
+	if cfg.DatabaseURL != "" {
+		pool, err := store.Open(ctx, cfg.DatabaseURL)
+		if err != nil {
+			return nil, nil, err
+		}
+		st, closeFn = store.New(pool), pool.Close
+	}
+	reg, err := agentTools(data, st, cfg.FeatureRequests)
+	if err != nil {
+		closeFn()
+		return nil, nil, err
+	}
+	return reg, closeFn, nil
 }
 
 // seedUsers looks up test users by id without hashing passwords.

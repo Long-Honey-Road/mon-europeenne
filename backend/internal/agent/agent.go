@@ -177,29 +177,11 @@ func (a *Agent) Run(ctx context.Context, t Turn, emit Emitter) (Result, error) {
 func (a *Agent) callTool(ctx context.Context, t Turn, call llm.ToolCall, st *turnState) (string, string) {
 	raw, err := a.tools.Call(ctx, t.Principal, t.Thread, call.Name, call.Arguments)
 	if err != nil {
-		code, msg := toolError(err, call.Name, t.Thread)
+		code, msg := tools.Explain(err, call.Name, t.Thread)
 		out, _ := json.Marshal(map[string]string{"error": code, "message": msg})
 		return string(out), code
 	}
 	return string(st.absorb(call.Name, raw)), "ok"
-}
-
-// toolError maps registry and handler errors to codes; handler error text never reaches the model.
-func toolError(err error, name string, thread domain.ThreadType) (code, message string) {
-	switch {
-	case errors.Is(err, tools.ErrUnknownTool):
-		return "unknown_tool", fmt.Sprintf("there is no tool named %s", name)
-	case errors.Is(err, tools.ErrForbidden):
-		return "forbidden", "this data is not available to the user"
-	case errors.Is(err, tools.ErrNotInThread):
-		return "not_in_thread", fmt.Sprintf("%s is not available in a %s thread", name, thread)
-	case errors.Is(err, tools.ErrNotFound):
-		return "not_found", fmt.Sprintf("%s found nothing with these arguments", name)
-	case errors.Is(err, tools.ErrInvalidArgs):
-		return "invalid_args", err.Error()
-	default:
-		return "tool_failed", "the tool failed; answer without it or try again later"
-	}
 }
 
 var statusTexts = map[string]string{

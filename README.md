@@ -81,5 +81,14 @@ From `backend/`:
 | `make run CMD=llm-check` | probe the model from `LLM_*` env: plain answer, tool call, JSON by schema, stream |
 | `make run CMD='ask -v Кто поможет с деплоем?'` | one agent turn as `intern` (`-as`, `-thread`, `-detailed`); `-v` prints tool calls |
 
+The agent's tools over MCP (stdio), as a test user in one thread type; with `DATABASE_URL` the plan and
+request tools are there too. For Claude Code, from the repo root:
+
+```bash
+claude mcp add buddy -- go -C backend run ./cmd/buddy mcp -as intern -thread plan
+```
+
+Or MCP Inspector: `npx @modelcontextprotocol/inspector go -C backend run ./cmd/buddy mcp`.
+
 Contracts live in `backend/api/proto` (source of truth). `backend/gen` and
 `backend/api/openapi/buddy-api.yaml` are generated and committed; CI fails if they are stale.
