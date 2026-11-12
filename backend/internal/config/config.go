@@ -44,6 +44,8 @@ type Config struct {
 	MockFailRate  float64
 	HTTPAddr      string
 	GRPCAddr      string
+	// FeatureRequests turns on the access requests module.
+	FeatureRequests bool
 }
 
 // Load builds Config from lookup (os.LookupEnv in production).
@@ -88,6 +90,10 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 	var err error
 	if cfg.Embeddings.Enabled, err = strconv.ParseBool(str("EMBEDDINGS_ENABLED", "false")); err != nil {
 		return Config{}, fmt.Errorf("EMBEDDINGS_ENABLED: %w", ErrInvalid)
+	}
+
+	if cfg.FeatureRequests, err = strconv.ParseBool(str("FEATURE_REQUESTS", "true")); err != nil {
+		return Config{}, fmt.Errorf("FEATURE_REQUESTS: %w", ErrInvalid)
 	}
 
 	if cfg.MockFailRate, err = strconv.ParseFloat(str("MOCK_FAIL_RATE", "0"), 64); err != nil {
