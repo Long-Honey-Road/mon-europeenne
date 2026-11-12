@@ -14,7 +14,7 @@ import (
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 )
 
-var ErrNotFound = errors.New("not found")
+var ErrNotFound = domain.ErrNotFound
 
 // Store reads and writes application data; callers pass external user ids, never database uuids.
 type Store struct{ pool *pgxpool.Pool }

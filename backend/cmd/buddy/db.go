@@ -35,7 +35,7 @@ func runMigrate(args []string, stdout io.Writer) error {
 	return nil
 }
 
-// runSeed loads teams and test users into the database; plan and documents come with their tasks.
+// runSeed loads teams, test users and the adaptation plan into the database; documents come with A-03.
 func runSeed(_ []string, stdout io.Writer) error {
 	cfg, err := databaseConfig()
 	if err != nil {
@@ -57,10 +57,15 @@ func runSeed(_ []string, stdout io.Writer) error {
 	for _, c := range data.Credentials() {
 		users = append(users, c.User)
 	}
-	if err := store.New(pool).SeedOrg(ctx, teams, users); err != nil {
+	st := store.New(pool)
+	if err := st.SeedOrg(ctx, teams, users); err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "seeded %d teams, %d users\n", len(teams), len(users))
+	items := data.PlanItems()
+	if err := st.SeedPlan(ctx, items, data.PlanStatuses()); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "seeded %d teams, %d users, %d plan items\n", len(teams), len(users), len(items))
 	return nil
 }
 

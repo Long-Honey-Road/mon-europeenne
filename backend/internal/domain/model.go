@@ -102,6 +102,13 @@ type PlanItem struct {
 	Map       MapPosition
 }
 
+// PlanEntry is a plan item as one user sees it: with their status and note.
+type PlanEntry struct {
+	Item   PlanItem
+	Status PlanItemStatus
+	Note   string
+}
+
 type PlanStatus struct {
 	UserID    string
 	ItemID    string

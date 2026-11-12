@@ -8,6 +8,9 @@ import (
 
 var ErrUnknownValue = errors.New("unknown enum value")
 
+// ErrNotFound is shared by storage and tools so callers can tell "nothing there" from failures.
+var ErrNotFound = errors.New("not found")
+
 // Enum ids equal the smallint keys of the lookup tables; store tests keep them in sync.
 type (
 	Role           int16

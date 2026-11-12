@@ -54,7 +54,7 @@ func TestSeedLoadsTeamsAndUsersTwice(t *testing.T) {
 		if code := run([]string{"seed"}, &stdout, &stderr); code != exitOK {
 			t.Fatalf("seed: exit %d, stderr %q", code, stderr.String())
 		}
-		if !strings.Contains(stdout.String(), "seeded 4 teams, 3 users") {
+		if !strings.Contains(stdout.String(), "seeded 4 teams, 3 users, 17 plan items") {
 			t.Errorf("seed stdout = %q", stdout.String())
 		}
 	}
