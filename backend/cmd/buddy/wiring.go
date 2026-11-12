@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/requests"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/store"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/tools"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/seed"
 )
@@ -11,17 +13,39 @@ import (
 // fakeAnswer is what LLM_PROVIDER=fake says to every question; it names the mode so nobody mistakes it for buddy.
 const fakeAnswer = "Тестовый режим: модель не подключена (LLM_PROVIDER=fake). Вопрос получен, ответ придёт, когда подключат модель."
 
-// agentTools is the tool set available today; A-05 adds plan, requests and repository tools.
-func agentTools(data seed.Data) (*tools.Registry, error) {
-	who, err := tools.WhoToAsk(data.Directory())
-	if err != nil {
+// agentTools builds the tool set; without a store (buddy ask without DATABASE_URL) only directory tools exist.
+// The requests module is added only when FEATURE_REQUESTS is on.
+func agentTools(data seed.Data, st *store.Store, requestsOn bool) (*tools.Registry, error) {
+	var list []tools.Tool
+	add := func(t tools.Tool, err error) error {
+		if err != nil {
+			return err
+		}
+		list = append(list, t)
+		return nil
+	}
+	if err := add(tools.WhoToAsk(data.Directory())); err != nil {
 		return nil, err
 	}
-	notFound, err := tools.ReportNotFound(data.Directory())
-	if err != nil {
+	if err := add(tools.ReportNotFound(data.Directory())); err != nil {
 		return nil, err
 	}
-	return tools.NewRegistry(who, notFound)
+	if st != nil {
+		if err := add(tools.GetPlan(st)); err != nil {
+			return nil, err
+		}
+		if err := add(tools.UpdateItemStatus(st)); err != nil {
+			return nil, err
+		}
+		if requestsOn {
+			reqTools, err := requests.Tools(requests.CatalogFromSeed(data), st, data.Directory())
+			if err != nil {
+				return nil, err
+			}
+			list = append(list, reqTools...)
+		}
+	}
+	return tools.NewRegistry(list...)
 }
 
 // seedUsers looks up test users by id without hashing passwords.

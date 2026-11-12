@@ -49,12 +49,14 @@ func buildWorker(cfg config.Config) (*asynq.Server, *asynq.ServeMux, func(), err
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	registry, err := agentTools(data)
+	pool, err := store.Open(context.Background(), cfg.DatabaseURL)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	pool, err := store.Open(context.Background(), cfg.DatabaseURL)
+	st := store.New(pool)
+	registry, err := agentTools(data, st, cfg.FeatureRequests)
 	if err != nil {
+		pool.Close()
 		return nil, nil, nil, err
 	}
 	rdb := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr})
@@ -64,7 +66,7 @@ func buildWorker(cfg config.Config) (*asynq.Server, *asynq.ServeMux, func(), err
 	}
 
 	h := jobs.NewHandler(jobs.Deps{
-		Store: store.New(pool), Publisher: stream.NewRedisBus(rdb),
+		Store: st, Publisher: stream.NewRedisBus(rdb),
 		Agent: agent.New(model, registry, agent.Config{}), Users: seedUsers(data), Directory: data.Directory(),
 	})
 	return jobs.NewServer(cfg.RedisAddr, workerConcurrency), jobs.Mux(h), cleanup, nil
