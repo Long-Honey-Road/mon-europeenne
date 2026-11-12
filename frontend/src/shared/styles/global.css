@@ -63,6 +63,28 @@ button {
   color: var(--text-soft);
 }
 
+/* Avito-logo cluster of four dots, used in the header and on the login card. */
+.logo {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+.logo i {
+  position: absolute;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translate(-50%, -50%);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

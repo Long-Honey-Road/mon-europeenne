@@ -1,15 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { RouterProvider, createMemoryHistory } from '@tanstack/react-router'
-import { createAppRouter } from '../../app/router'
+import { renderApp } from '../../test/render'
 import { sections } from '../nav/sections'
 
-function renderAt(path: string) {
-  const router = createAppRouter(createMemoryHistory({ initialEntries: [path] }))
-  render(<RouterProvider router={router} />)
-  return router
-}
+const renderAt = (path: string) => renderApp(path).router
 
 const orbs = () => screen.findByRole('navigation', { name: 'Разделы' })
 

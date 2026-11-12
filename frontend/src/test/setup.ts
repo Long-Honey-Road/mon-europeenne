@@ -1,8 +1,17 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
-import { afterEach } from 'vitest'
+import { afterAll, afterEach, beforeAll } from 'vitest'
+import { useSession } from '../features/auth/session'
+import { server } from './api'
 
-afterEach(cleanup)
+beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
+afterEach(() => {
+  cleanup()
+  server.resetHandlers()
+  useSession.getState().signOut()
+  localStorage.clear()
+})
+afterAll(() => server.close())
 
 // jsdom has no scrolling; the router restores scroll on navigation.
 window.scrollTo = () => {}

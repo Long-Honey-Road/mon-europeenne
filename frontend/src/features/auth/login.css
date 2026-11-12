@@ -1,0 +1,124 @@
+.login {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 24px var(--gutter);
+  background:
+    radial-gradient(60% 50% at 30% 20%, rgb(150 94 235 / 0.16), transparent 70%),
+    radial-gradient(50% 40% at 75% 85%, rgb(0 170 255 / 0.12), transparent 70%),
+    var(--space);
+}
+
+.login__card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(100%, 400px);
+  padding: 32px clamp(20px, 5vw, 36px);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--space-raised);
+  animation: rise 0.5s var(--ease-out) both;
+}
+
+.login__logo {
+  width: 56px;
+  height: 56px;
+}
+
+.login__title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.login__lead {
+  margin-top: -8px;
+  font-size: var(--text-small);
+  color: var(--text-soft);
+}
+
+.login__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.login__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.login__input {
+  padding: 12px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--glass);
+  transition: border-color 0.2s;
+}
+.login__input:focus-visible {
+  outline: none;
+  border-color: rgb(255 255 255 / 0.45);
+}
+.login__input:disabled {
+  opacity: 0.6;
+}
+
+.login__error {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgb(255 64 83 / 0.12);
+  color: #ffb3bb;
+  font-size: var(--text-small);
+}
+
+.login__submit {
+  margin-top: 4px;
+  padding: 13px 18px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--space);
+  font-weight: 800;
+  transition:
+    opacity 0.2s,
+    transform 0.2s var(--ease-spring);
+}
+.login__submit:hover:not(:disabled) {
+  transform: scale(1.02);
+}
+.login__submit:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.login__demo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline);
+}
+
+.login__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.login__chip {
+  padding: 7px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--glass);
+  font-size: var(--text-small);
+  transition: border-color 0.2s;
+}
+.login__chip:hover:not(:disabled) {
+  border-color: rgb(255 255 255 / 0.45);
+}
+.login__chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
