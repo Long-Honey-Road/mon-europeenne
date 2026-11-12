@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io/fs"
 	"strings"
+	"time"
 
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/auth"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/people"
 )
@@ -178,4 +180,29 @@ func (d Data) Directory() *people.Memory {
 		persons = append(persons, person)
 	}
 	return people.NewMemory(teams, persons, relations)
+}
+
+// Credentials returns the test accounts with their users; Load has already validated roles and dates.
+func (d Data) Credentials() []auth.Credential {
+	var out []auth.Credential
+	for _, p := range d.People.People {
+		a := p.Account
+		if a == nil {
+			continue
+		}
+		role, _ := domain.ParseRole(a.Role)
+		u := domain.User{
+			ID: a.UserID, Login: a.Login, DisplayName: p.Name, Role: role, TeamID: p.TeamID,
+			ManagerID: a.ManagerID, MentorID: a.MentorID,
+			Repos: a.Repos, JiraProjects: a.JiraProjects, Location: a.Location,
+		}
+		if a.Direction != "" {
+			u.Direction, _ = domain.ParseDirection(a.Direction)
+		}
+		if a.StartDate != "" {
+			u.StartDate, _ = time.Parse(time.DateOnly, a.StartDate)
+		}
+		out = append(out, auth.Credential{User: u, Password: a.Password})
+	}
+	return out
 }
