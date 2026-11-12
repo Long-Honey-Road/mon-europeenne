@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc/codes"
@@ -18,6 +19,7 @@ import (
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/jobs"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/people"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/stream"
 )
 
 const (
@@ -52,6 +54,14 @@ type Deps struct {
 	Directory Directory
 	Threads   Threads
 	Jobs      Jobs
+	Bus       Bus
+	// Heartbeat is how often SSE sends a comment so proxies keep the stream open; 15 s if zero.
+	Heartbeat time.Duration
+}
+
+// Bus delivers live turn events of one thread.
+type Bus interface {
+	Subscribe(ctx context.Context, threadID string) (<-chan stream.Event, func(), error)
 }
 
 // New routes /v1/public/ without a session, /v1/private/ only with one, and 404s everything else under /v1/.
@@ -78,6 +88,7 @@ func New(ctx context.Context, d Deps) (http.Handler, error) {
 	mux := http.NewServeMux()
 	mux.Handle(publicPrefix, gw)
 	mux.Handle(privatePrefix, requireSession(d, gw))
+	mux.Handle("GET "+privatePrefix+"threads/{id}/events", requireSession(d, streamThread(d)))
 	mux.HandleFunc("GET /healthz", ok)
 	mux.HandleFunc("GET /readyz", ok)
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
