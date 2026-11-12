@@ -88,7 +88,7 @@ message UpdatePlanItemResponse {
 message GetTodayRequest {}
 
 message Blocker {
-  // "plan_item" for now; access requests come with S-02.
+  // plan_item, request (waiting or rejected) or access_missing (interns who have not requested every access).
   string kind = 1;
   string id = 2;
   string title = 3;

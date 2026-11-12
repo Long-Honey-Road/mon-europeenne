@@ -573,7 +573,7 @@ func (*GetTodayRequest) Descriptor() ([]byte, []int) {
 
 type Blocker struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// "plan_item" for now; access requests come with S-02.
+	// plan_item, request (waiting or rejected) or access_missing (interns who have not requested every access).
 	Kind          string `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
 	Id            string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 	Title         string `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`

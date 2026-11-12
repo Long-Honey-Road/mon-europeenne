@@ -92,6 +92,15 @@ func (s *planService) GetToday(ctx context.Context, _ *buddyv1.GetTodayRequest) 
 	for _, it := range t.Blocked {
 		resp.Blockers = append(resp.Blockers, &buddyv1.Blocker{Kind: "plan_item", Id: it.Item.Key, Title: it.Item.Title, Reason: it.Note})
 	}
+	for _, src := range s.deps.Blockers {
+		extra, err := src.Blockers(ctx, p)
+		if err != nil {
+			return nil, storeError(err)
+		}
+		for _, b := range extra {
+			resp.Blockers = append(resp.Blockers, &buddyv1.Blocker{Kind: b.Kind, Id: b.ID, Title: b.Title, Reason: b.Reason})
+		}
+	}
 	return resp, nil
 }
 

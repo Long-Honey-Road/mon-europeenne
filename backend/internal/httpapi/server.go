@@ -19,6 +19,7 @@ import (
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/jobs"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/people"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/plan"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/stream"
 )
 
@@ -55,8 +56,12 @@ type Deps struct {
 	Directory Directory
 	Threads   Threads
 	Plans     Plans
-	Jobs      Jobs
-	Bus       Bus
+	// Requests is the removable requests module; nil (FEATURE_REQUESTS off) answers UNIMPLEMENTED.
+	Requests buddyv1.RequestServiceServer
+	// Blockers add to the "today" blockers beyond the plan, e.g. access requests.
+	Blockers []BlockerSource
+	Jobs     Jobs
+	Bus      Bus
 	// Heartbeat is how often SSE sends a comment so proxies keep the stream open; 15 s if zero.
 	Heartbeat time.Duration
 	// Now is the clock for "today"; time.Now if nil.
@@ -68,6 +73,11 @@ func (d Deps) now() time.Time {
 		return d.Now()
 	}
 	return time.Now()
+}
+
+// BlockerSource tells what else blocks the user today.
+type BlockerSource interface {
+	Blockers(ctx context.Context, p domain.Principal) ([]plan.Blocker, error)
 }
 
 // Bus delivers live turn events of one thread.
@@ -100,6 +110,13 @@ func New(ctx context.Context, d Deps) (http.Handler, error) {
 	}
 	if err := buddyv1.RegisterPeopleServiceHandlerServer(ctx, gw, &peopleService{deps: d}); err != nil {
 		return nil, fmt.Errorf("register people service: %w", err)
+	}
+	var requests buddyv1.RequestServiceServer = buddyv1.UnimplementedRequestServiceServer{}
+	if d.Requests != nil {
+		requests = d.Requests
+	}
+	if err := buddyv1.RegisterRequestServiceHandlerServer(ctx, gw, requests); err != nil {
+		return nil, fmt.Errorf("register request service: %w", err)
 	}
 
 	mux := http.NewServeMux()

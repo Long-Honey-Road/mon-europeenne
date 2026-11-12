@@ -71,6 +71,8 @@ type Block struct {
 	OtherTeam  bool                   `json:"other_team,omitempty"`
 	Topic      string                 `json:"topic,omitempty"`
 	Escalation []tools.EscalationStep `json:"escalation,omitempty"`
+	// Action is a form the user confirms, e.g. {kind: request, type_key, title, fields, approvers}.
+	Action json.RawMessage `json:"action,omitempty"`
 }
 
 type Event struct {

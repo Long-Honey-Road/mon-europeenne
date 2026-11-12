@@ -30,6 +30,7 @@ type turnState struct {
 	refs       []Source
 	people     []tools.PersonHint
 	notFound   *tools.NotFoundReport
+	actions    []json.RawMessage
 	violations []string
 	events     []Event
 }
@@ -58,6 +59,10 @@ func (s *turnState) absorb(tool string, raw []byte) []byte {
 				obj["sources"] = b
 			}
 		}
+	}
+	// Any tool may offer a user action (a form to confirm); the agent does not know what it does.
+	if a, ok := obj["action"]; ok && string(a) != "null" {
+		s.actions = append(s.actions, a)
 	}
 	switch tool {
 	case "who_to_ask":
@@ -158,6 +163,9 @@ func (s *turnState) blocks(cited map[int]bool) []Block {
 			Type: "person", PersonID: p.PersonID, Name: p.Name, RoleTitle: p.RoleTitle,
 			Reason: p.Reason, Contact: p.Contact, OtherTeam: p.OtherTeam,
 		})
+	}
+	for _, a := range s.actions {
+		out = append(out, Block{Type: "action", Action: a})
 	}
 	if s.notFound != nil {
 		out = append(out, Block{Type: "not_found", Topic: s.notFound.Topic, Escalation: s.notFound.Escalation})

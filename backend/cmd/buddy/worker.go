@@ -30,6 +30,16 @@ func runWorker(_ []string, stdout io.Writer) error {
 		return err
 	}
 	defer cleanup()
+	if cfg.FeatureRequests {
+		sched, err := newRequestsScheduler(cfg.RedisAddr)
+		if err != nil {
+			return err
+		}
+		if err := sched.Start(); err != nil {
+			return err
+		}
+		defer sched.Shutdown()
+	}
 	fmt.Fprintf(stdout, "worker started, model provider %s\n", cfg.LLM.Provider)
 	return srv.Run(mux)
 }
@@ -69,5 +79,9 @@ func buildWorker(cfg config.Config) (*asynq.Server, *asynq.ServeMux, func(), err
 		Store: st, Publisher: stream.NewRedisBus(rdb),
 		Agent: agent.New(model, registry, agent.Config{}), Users: seedUsers(data), Directory: data.Directory(),
 	})
-	return jobs.NewServer(cfg.RedisAddr, workerConcurrency), jobs.Mux(h), cleanup, nil
+	mux := jobs.Mux(h)
+	if cfg.FeatureRequests {
+		handleRequestJobs(mux, newDesk(data, st, rdb))
+	}
+	return jobs.NewServer(cfg.RedisAddr, workerConcurrency), mux, cleanup, nil
 }

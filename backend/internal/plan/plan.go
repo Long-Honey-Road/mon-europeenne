@@ -47,6 +47,14 @@ func Build(entries []domain.PlanEntry) View {
 	return v
 }
 
+// Blocker is something that stops the user today: a blocked plan item, a request waiting or rejected.
+type Blocker struct {
+	Kind   string
+	ID     string
+	Title  string
+	Reason string
+}
+
 type Today struct {
 	// Day is the calendar day since the start date, 1-based; 0 before the start or without a start date.
 	Day  int

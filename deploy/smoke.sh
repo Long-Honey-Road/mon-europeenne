@@ -19,6 +19,19 @@ curl -fsS "$BASE/v1/private/plan" -H "Authorization: Bearer $TOKEN" \
 curl -fsS "$BASE/v1/private/people?q=staging" -H "Authorization: Bearer $TOKEN" \
   | python3 -c 'import json,sys; p=json.load(sys.stdin)["people"]; assert p, p; print("smoke ok: people,", p[0]["name"])'
 
+# Access request: submit, then the worker's advance_requests approves it (Mattermost: 15 s plus a 15 s tick).
+REQ=$(curl -fsS -X POST "$BASE/v1/private/requests" -H "Authorization: Bearer $TOKEN" \
+  -d '{"type_key":"access.mattermost_channel","fields":{"channel":"~messenger-team"}}' \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["request"]["id"])')
+for _ in $(seq 1 60); do
+  ST=$(curl -fsS "$BASE/v1/private/requests/$REQ" -H "Authorization: Bearer $TOKEN" \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["request"]["status"])')
+  [ "$ST" = "REQUEST_STATUS_PENDING" ] || break
+  sleep 1
+done
+[ "$ST" = "REQUEST_STATUS_APPROVED" ] || { echo "request $REQ ended as $ST, want approved"; exit 1; }
+echo "smoke ok: request $REQ approved"
+
 STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/v1/private/me")
 [ "$STATUS" = "401" ] || { echo "private path without token returned $STATUS, want 401"; exit 1; }
 

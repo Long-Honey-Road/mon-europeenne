@@ -57,6 +57,12 @@ as it is generated), `reset` (drop the streamed text), `block` (sources, person,
 `message_id` and the final `text` (show it instead of the stream: the server may remove invented links) or
 `error` with `escalation`.
 
+Access requests (`FEATURE_REQUESTS=true` by default): the agent prepares a request with `prepare_request` and
+the answer gets an `action` block with the filled form; the user sends it with `POST /v1/private/requests`.
+Until the corp-requests mock exists, a simulated request system in Redis approves or rejects requests after a
+delay from `backend/seed/request_types.json`; the worker checks every 15 s and sends `request_status` to the
+thread. `GET /v1/private/today` shows missing, waiting and rejected requests as blockers.
+
 The API listens on `http://localhost:8080` (`API_PORT` to change). Paths follow
 `/{version}/{public|private}/{resource}`: `/v1/public/...` needs no session, `/v1/private/...` needs
 `Authorization: Bearer <token>` from `POST /v1/public/auth/login`. Contract: `backend/api/openapi/buddy-api.yaml`.

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/plan"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/store"
 )
 
@@ -178,5 +179,42 @@ func TestToday(t *testing.T) {
 	}
 	if b := blockers[0].(map[string]any); b["kind"] != "plan_item" || b["id"] != "w1-team" || b["reason"] != "наставник в отпуске" {
 		t.Fatalf("blocker = %v", b)
+	}
+}
+
+type fixedBlockers struct {
+	list []plan.Blocker
+	err  error
+}
+
+func (f fixedBlockers) Blockers(context.Context, domain.Principal) ([]plan.Blocker, error) {
+	return f.list, f.err
+}
+
+func TestTodayAddsBlockersFromModules(t *testing.T) {
+	d := deps(t)
+	d.Plans = newMemPlans()
+	d.Blockers = []BlockerSource{fixedBlockers{list: []plan.Blocker{{Kind: "request", ID: "REQ-1", Title: "Доступ к Jira", Reason: "ждёт согласования"}}}}
+	s := newServerWith(t, d)
+	token := login(t, s, "intern", "intern-demo")
+
+	_, body := call(t, s, http.MethodGet, "/v1/private/today", token, "")
+	blockers := body["blockers"].([]any)
+	if len(blockers) != 1 || blockers[0].(map[string]any)["id"] != "REQ-1" {
+		t.Fatalf("blockers = %v", blockers)
+	}
+
+	d.Blockers = []BlockerSource{fixedBlockers{err: errors.New("down")}}
+	s = newServerWith(t, d)
+	if code, _ := call(t, s, http.MethodGet, "/v1/private/today", token, ""); code != http.StatusServiceUnavailable {
+		t.Fatalf("module down: code %d", code)
+	}
+}
+
+func TestRequestsAreUnimplementedWithoutTheModule(t *testing.T) {
+	s := newServer(t)
+	token := login(t, s, "intern", "intern-demo")
+	if code, _ := call(t, s, http.MethodGet, "/v1/private/requests", token, ""); code != http.StatusNotImplemented {
+		t.Fatalf("code %d, want 501", code)
 	}
 }
