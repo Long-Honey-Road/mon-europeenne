@@ -1,7 +1,6 @@
 package seed
 
 import (
-	"slices"
 	"strings"
 	"testing"
 )
@@ -71,16 +70,10 @@ func TestShippedDataSupportsScenarios(t *testing.T) {
 		t.Errorf("%d access types rejected in the demo, want exactly 1", rejected)
 	}
 
-	dayOff := findType(d, "absence.day_off")
-	if dayOff == nil {
-		t.Fatal("absence.day_off is the S2 demo type")
-	}
-	var chain []string
-	for _, a := range dayOff.ApprovalChain {
-		chain = append(chain, a.Resolver)
-	}
-	if !slices.Equal(chain, []string{"manager", "hr_admin"}) {
-		t.Errorf("day off chain = %v, want manager then hr_admin", chain)
+	for _, rt := range d.Requests.Types {
+		if rt.Category != "access" {
+			t.Errorf("request type %q: only access requests are in scope", rt.Key)
+		}
 	}
 
 	periods := map[string]bool{}
@@ -104,13 +97,4 @@ func findPersonByUser(d Data, userID string) string {
 		}
 	}
 	return ""
-}
-
-func findType(d Data, key string) *RequestType {
-	for i := range d.Requests.Types {
-		if d.Requests.Types[i].Key == key {
-			return &d.Requests.Types[i]
-		}
-	}
-	return nil
 }
