@@ -4,6 +4,7 @@ go 1.27.3
 
 require (
 	github.com/golang-migrate/migrate/v4 v4.20.1
+	github.com/google/jsonschema-go v0.4.3
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.33.0
 	github.com/jackc/pgx/v5 v5.13.0
 	github.com/openai/openai-go/v3 v3.98.0
