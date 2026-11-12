@@ -232,3 +232,12 @@ func TestWhoToAskSkipsRelationToUnknownPerson(t *testing.T) {
 		t.Fatalf("escalation = %+v", out.Escalation)
 	}
 }
+
+func TestWhoToAskAcceptsTeamNameInsteadOfID(t *testing.T) {
+	for _, team := range []string{"t-ads", "Ads", "ads"} {
+		out := askWho(t, testDirectory(), intern, `{"topic":"деплой","team_id":"`+team+`"}`)
+		if got := ids(out.People); !slices.Equal(got, []string{"p-gena"}) {
+			t.Errorf("team %q: people = %v, want only Ads", team, got)
+		}
+	}
+}

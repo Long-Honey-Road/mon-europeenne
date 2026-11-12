@@ -12,9 +12,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/auth"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/httpapi"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/jobs"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/store"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/stream"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/seed"
 )
 
@@ -31,10 +36,11 @@ func runAPI(_ []string, stdout io.Writer) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	h, err := buildAPI(ctx, cfg)
+	h, cleanup, err := buildAPI(ctx, cfg)
 	if err != nil {
 		return err
 	}
+	defer cleanup()
 	var lc net.ListenConfig
 	ln, err := lc.Listen(ctx, "tcp", cfg.HTTPAddr)
 	if err != nil {
@@ -44,21 +50,48 @@ func runAPI(_ []string, stdout io.Writer) error {
 	return serve(ctx, ln, h)
 }
 
-// buildAPI wires the API from seed accounts and the seed directory until the mocks take over (A-02).
-func buildAPI(ctx context.Context, cfg config.Config) (http.Handler, error) {
+// buildAPI wires the API: accounts and directory from seed until the mocks take over (A-02), threads in
+// Postgres, jobs and live events in Redis. cleanup closes the connections.
+func buildAPI(ctx context.Context, cfg config.Config) (http.Handler, func(), error) {
 	tokens, err := auth.NewTokens(cfg.SessionSecret, sessionTTL)
 	if err != nil {
-		return nil, fmt.Errorf("SESSION_SECRET: %w", err)
+		return nil, nil, fmt.Errorf("SESSION_SECRET: %w", err)
+	}
+	if err := cfg.RequireDatabase(); err != nil {
+		return nil, nil, err
+	}
+	if err := cfg.RequireRedis(); err != nil {
+		return nil, nil, err
 	}
 	data, err := seed.Load(seed.Files)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	accounts, err := auth.NewAccounts(data.Credentials())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return httpapi.New(ctx, httpapi.Deps{Accounts: accounts, Tokens: tokens, Directory: data.Directory()})
+	pool, err := store.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return nil, nil, err
+	}
+	rdb := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr})
+	queue := jobs.NewClient(cfg.RedisAddr)
+	cleanup := func() {
+		_ = queue.Close()
+		_ = rdb.Close()
+		pool.Close()
+	}
+
+	h, err := httpapi.New(ctx, httpapi.Deps{
+		Accounts: accounts, Tokens: tokens, Directory: data.Directory(),
+		Threads: store.New(pool), Jobs: queue, Bus: stream.NewRedisBus(rdb),
+	})
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	return h, cleanup, nil
 }
 
 // serve runs until ctx is cancelled, then drains in-flight requests.

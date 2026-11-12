@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react'
 import { Link } from '@tanstack/react-router'
 import { intern } from '../../shared/data/demo'
+import { UserMenu } from '../auth/UserMenu'
+import { useCurrentUser } from '../auth/useMe'
 import { sections } from '../nav/sections'
 import type { AppSection } from '../nav/sections'
 import { InfoPanel } from './InfoPanel'
@@ -10,6 +12,7 @@ import './scene.css'
 /** The orb scene. Without `active` the orbs form the logo; with it one orb takes the stage. */
 export function Scene({ active, onAsk }: { active?: AppSection; onAsk: (text: string) => void }) {
   const minis = sections.filter((s) => s !== active)
+  const firstName = useCurrentUser()?.firstName
 
   return (
     <section className="scene" data-accent={active?.accent} aria-label="Сцена разделов">
@@ -26,11 +29,14 @@ export function Scene({ active, onAsk }: { active?: AppSection; onAsk: (text: st
           </span>
           AI-buddy
         </Link>
-        {active && (
-          <Link to="/" className="scene__back">
-            <span aria-hidden="true">←</span> Все разделы
-          </Link>
-        )}
+        <div className="scene__actions">
+          {active && (
+            <Link to="/" className="scene__back">
+              <span aria-hidden="true">←</span> Все разделы
+            </Link>
+          )}
+          <UserMenu />
+        </div>
       </header>
 
       <nav className="scene__orbs" aria-label="Разделы">
@@ -75,7 +81,7 @@ export function Scene({ active, onAsk }: { active?: AppSection; onAsk: (text: st
           <p className="label">
             {intern.team} · день {intern.day} из {intern.totalDays}
           </p>
-          <h1 className="scene__title">Привет, {intern.name}</h1>
+          <h1 className="scene__title">{firstName ? `Привет, ${firstName}` : 'Привет'}</h1>
           <p className="scene__lead">Выбери сферу — покажу, что внутри.</p>
         </div>
       )}

@@ -44,6 +44,8 @@ type Config struct {
 	MockFailRate  float64
 	HTTPAddr      string
 	GRPCAddr      string
+	// FeatureRequests turns on the access requests module.
+	FeatureRequests bool
 }
 
 // Load builds Config from lookup (os.LookupEnv in production).
@@ -90,6 +92,10 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 		return Config{}, fmt.Errorf("EMBEDDINGS_ENABLED: %w", ErrInvalid)
 	}
 
+	if cfg.FeatureRequests, err = strconv.ParseBool(str("FEATURE_REQUESTS", "true")); err != nil {
+		return Config{}, fmt.Errorf("FEATURE_REQUESTS: %w", ErrInvalid)
+	}
+
 	if cfg.MockFailRate, err = strconv.ParseFloat(str("MOCK_FAIL_RATE", "0"), 64); err != nil {
 		return Config{}, fmt.Errorf("MOCK_FAIL_RATE: %w", ErrInvalid)
 	}
@@ -104,6 +110,14 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 func (c Config) RequireDatabase() error {
 	if c.DatabaseURL == "" {
 		return fmt.Errorf("DATABASE_URL: %w", ErrMissing)
+	}
+	return nil
+}
+
+// RequireRedis is called by commands that queue jobs or stream events.
+func (c Config) RequireRedis() error {
+	if c.RedisAddr == "" {
+		return fmt.Errorf("REDIS_ADDR: %w", ErrMissing)
 	}
 	return nil
 }

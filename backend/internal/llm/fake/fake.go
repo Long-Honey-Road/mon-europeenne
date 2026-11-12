@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm"
@@ -108,4 +109,28 @@ func mustMarshal(v any) json.RawMessage {
 		panic(fmt.Sprintf("fake llm: marshal %T: %v", v, err))
 	}
 	return b
+}
+
+// WithText adds text before the tool calls, as models sometimes "think aloud" before calling a tool.
+func (s Step) WithText(text string) Step {
+	s.reply.Message.Content = text
+	return s
+}
+
+// ChatStream answers like Chat and replays the text word by word through onDelta.
+func (c *Client) ChatStream(ctx context.Context, req llm.Request, onDelta func(string)) (llm.Response, error) {
+	resp, err := c.Chat(ctx, req)
+	if err != nil {
+		return resp, err
+	}
+	text := resp.Message.Content
+	for text != "" {
+		i := strings.IndexByte(text, ' ')
+		if i < 0 {
+			i = len(text) - 1
+		}
+		onDelta(text[:i+1])
+		text = text[i+1:]
+	}
+	return resp, nil
 }

@@ -160,12 +160,7 @@ func decodeFile(fsys fs.FS, name string, dst any) error {
 
 // Directory serves the seed people as the in-memory directory used by tools.
 func (d Data) Directory() *people.Memory {
-	teams := make([]domain.Team, 0, len(d.People.Teams))
-	for _, t := range d.People.Teams {
-		teams = append(teams, domain.Team{
-			ID: t.ID, Name: t.Name, Unit: t.Unit, Cluster: t.Cluster, MattermostChannel: t.MattermostChannel,
-		})
-	}
+	teams := d.Teams()
 	persons := make([]domain.Person, 0, len(d.People.People))
 	relations := map[string]people.Relations{}
 	for _, p := range d.People.People {
@@ -203,6 +198,43 @@ func (d Data) Credentials() []auth.Credential {
 			u.StartDate, _ = time.Parse(time.DateOnly, a.StartDate)
 		}
 		out = append(out, auth.Credential{User: u, Password: a.Password})
+	}
+	return out
+}
+
+// Teams returns the seed teams as domain values.
+func (d Data) Teams() []domain.Team {
+	out := make([]domain.Team, 0, len(d.People.Teams))
+	for _, t := range d.People.Teams {
+		out = append(out, domain.Team{ID: t.ID, Name: t.Name, Unit: t.Unit, Cluster: t.Cluster, MattermostChannel: t.MattermostChannel})
+	}
+	return out
+}
+
+// PlanItems returns the checklist as domain values; Load has already validated periods and directions.
+func (d Data) PlanItems() []domain.PlanItem {
+	out := make([]domain.PlanItem, 0, len(d.Plan.Items))
+	for _, it := range d.Plan.Items {
+		period, _ := domain.ParsePlanPeriod(it.Period)
+		item := domain.PlanItem{
+			Key: it.Key, Title: it.Title, Practice: it.Practice, Period: period, TeamID: it.TeamID,
+			DependsOn: it.DependsOn, Sources: it.Sources,
+			Map: domain.MapPosition{X: it.Map.X, Y: it.Map.Y, Group: it.Map.Group},
+		}
+		if it.Direction != "" {
+			item.Direction, _ = domain.ParseDirection(it.Direction)
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
+// PlanStatuses returns the demo progress; ItemID holds the item key.
+func (d Data) PlanStatuses() []domain.PlanStatus {
+	out := make([]domain.PlanStatus, 0, len(d.Plan.Statuses))
+	for _, s := range d.Plan.Statuses {
+		status, _ := domain.ParsePlanItemStatus(s.Status)
+		out = append(out, domain.PlanStatus{UserID: s.UserID, ItemID: s.ItemKey, Status: status, Note: s.Note})
 	}
 	return out
 }

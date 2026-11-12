@@ -33,6 +33,9 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	if cfg.MockFailRate != 0 {
 		t.Errorf("MockFailRate = %v, want 0", cfg.MockFailRate)
 	}
+	if !cfg.FeatureRequests {
+		t.Error("FeatureRequests = false, want on by default")
+	}
 }
 
 func TestLoadReadsEnvironment(t *testing.T) {
@@ -51,6 +54,7 @@ func TestLoadReadsEnvironment(t *testing.T) {
 		"MOCK_FAIL_RATE":       "0.25",
 		"HTTP_ADDR":            ":18080",
 		"GRPC_ADDR":            ":19090",
+		"FEATURE_REQUESTS":     "false",
 	}))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -64,14 +68,15 @@ func TestLoadReadsEnvironment(t *testing.T) {
 			APIKey:          "secret",
 			ReasoningEffort: "none",
 		},
-		Embeddings:    Embeddings{Enabled: true, Model: "bge-m3"},
-		DatabaseURL:   "postgres://buddy:buddy@postgres:5432/buddy",
-		RedisAddr:     "redis:6379",
-		MocksBaseURL:  "http://mocks:8090",
-		SessionSecret: "s3",
-		MockFailRate:  0.25,
-		HTTPAddr:      ":18080",
-		GRPCAddr:      ":19090",
+		Embeddings:      Embeddings{Enabled: true, Model: "bge-m3"},
+		DatabaseURL:     "postgres://buddy:buddy@postgres:5432/buddy",
+		RedisAddr:       "redis:6379",
+		MocksBaseURL:    "http://mocks:8090",
+		SessionSecret:   "s3",
+		MockFailRate:    0.25,
+		HTTPAddr:        ":18080",
+		GRPCAddr:        ":19090",
+		FeatureRequests: false,
 	}
 	if cfg != want {
 		t.Fatalf("Load() =\n%+v\nwant\n%+v", cfg, want)
@@ -87,6 +92,7 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		"negative fail rate":       {"MOCK_FAIL_RATE": "-0.1"},
 		"empty provider value":     {"LLM_PROVIDER": ""},
 		"unknown reasoning effort": {"LLM_REASONING_EFFORT": "max"},
+		"bad feature flag":         {"FEATURE_REQUESTS": "maybe"},
 	}
 	for name, vars := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -104,5 +110,14 @@ func TestRequireDatabase(t *testing.T) {
 	}
 	if err := (Config{DatabaseURL: "postgres://x"}).RequireDatabase(); err != nil {
 		t.Fatalf("RequireDatabase() = %v, want nil", err)
+	}
+}
+
+func TestRequireRedis(t *testing.T) {
+	if err := (Config{}).RequireRedis(); !errors.Is(err, ErrMissing) {
+		t.Fatalf("RequireRedis() on empty config = %v, want ErrMissing", err)
+	}
+	if err := (Config{RedisAddr: "redis:6379"}).RequireRedis(); err != nil {
+		t.Fatalf("RequireRedis() = %v, want nil", err)
 	}
 }

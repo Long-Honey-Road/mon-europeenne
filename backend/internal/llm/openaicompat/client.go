@@ -57,7 +57,10 @@ func (c *Client) Chat(ctx context.Context, req llm.Request) (llm.Response, error
 		return llm.Response{}, fmt.Errorf("%w: no choices", llm.ErrBadResponse)
 	}
 
-	msg := completion.Choices[0].Message
+	return response(completion.Choices[0].Message, completion.Usage)
+}
+
+func response(msg openai.ChatCompletionMessage, usage openai.CompletionUsage) (llm.Response, error) {
 	out := llm.Message{Role: llm.RoleAssistant, Content: msg.Content}
 	for _, tc := range msg.ToolCalls {
 		args := json.RawMessage(tc.Function.Arguments)
@@ -66,12 +69,11 @@ func (c *Client) Chat(ctx context.Context, req llm.Request) (llm.Response, error
 		}
 		out.ToolCalls = append(out.ToolCalls, llm.ToolCall{ID: tc.ID, Name: tc.Function.Name, Arguments: args})
 	}
-
 	return llm.Response{
 		Message: out,
 		Usage: llm.Usage{
-			PromptTokens:     int(completion.Usage.PromptTokens),
-			CompletionTokens: int(completion.Usage.CompletionTokens),
+			PromptTokens:     int(usage.PromptTokens),
+			CompletionTokens: int(usage.CompletionTokens),
 		},
 	}, nil
 }
@@ -156,4 +158,31 @@ func classify(err error) error {
 		return fmt.Errorf("llm request rejected: %w", err)
 	}
 	return fmt.Errorf("%w: %w", llm.ErrUnavailable, err)
+}
+
+// ChatStream streams the answer; text deltas go to onDelta, tool calls arrive assembled in the response.
+func (c *Client) ChatStream(ctx context.Context, req llm.Request, onDelta func(string)) (llm.Response, error) {
+	params, err := c.params(req)
+	if err != nil {
+		return llm.Response{}, err
+	}
+	params.StreamOptions = openai.ChatCompletionStreamOptionsParam{IncludeUsage: openai.Bool(true)}
+
+	stream := c.api.Chat.Completions.NewStreaming(ctx, params)
+	defer stream.Close()
+	var acc openai.ChatCompletionAccumulator
+	for stream.Next() {
+		chunk := stream.Current()
+		acc.AddChunk(chunk)
+		if len(chunk.Choices) > 0 && chunk.Choices[0].Delta.Content != "" {
+			onDelta(chunk.Choices[0].Delta.Content)
+		}
+	}
+	if err := stream.Err(); err != nil {
+		return llm.Response{}, classify(err)
+	}
+	if len(acc.Choices) == 0 {
+		return llm.Response{}, fmt.Errorf("%w: empty stream", llm.ErrBadResponse)
+	}
+	return response(acc.Choices[0].Message, acc.Usage)
 }

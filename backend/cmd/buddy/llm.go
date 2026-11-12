@@ -11,6 +11,7 @@ import (
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm/fake"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm/openaicompat"
 )
 
@@ -28,23 +29,24 @@ func newLLM(cfg config.LLM) (llm.Client, error) {
 			MaxRetries:      1,
 		}), nil
 	case config.ProviderFake:
-		return nil, fmt.Errorf("provider %q needs a script and works only in tests for now", cfg.Provider)
+		return fake.NewEcho(fakeAnswer), nil
 	default:
 		return nil, fmt.Errorf("provider %q: %w", cfg.Provider, errNotImplemented)
 	}
 }
 
 type probe struct {
-	name  string
-	req   llm.Request
-	check func(llm.Message) error
+	name   string
+	req    llm.Request
+	stream bool
+	check  func(msg llm.Message, deltas int) error
 }
 
 var probes = []probe{
 	{
 		name: "text",
 		req:  llm.Request{Messages: []llm.Message{{Role: llm.RoleUser, Content: "Ответь одним словом: столица Франции?"}}},
-		check: func(m llm.Message) error {
+		check: func(m llm.Message, _ int) error {
 			if m.Content == "" {
 				return errors.New("empty answer")
 			}
@@ -64,7 +66,7 @@ var probes = []probe{
 				Parameters:  json.RawMessage(`{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}`),
 			}},
 		},
-		check: func(m llm.Message) error {
+		check: func(m llm.Message, _ int) error {
 			if len(m.ToolCalls) == 0 || m.ToolCalls[0].Name != "search_docs" {
 				return fmt.Errorf("expected a search_docs call, got %q", m.Content)
 			}
@@ -80,12 +82,23 @@ var probes = []probe{
 				Schema: json.RawMessage(`{"type":"object","properties":{"answer":{"type":"string"}},"required":["answer"],"additionalProperties":false}`),
 			},
 		},
-		check: func(m llm.Message) error {
+		check: func(m llm.Message, _ int) error {
 			var out struct {
 				Answer string `json:"answer"`
 			}
 			if err := json.Unmarshal([]byte(m.Content), &out); err != nil || out.Answer == "" {
 				return fmt.Errorf("not the requested JSON: %q", m.Content)
+			}
+			return nil
+		},
+	},
+	{
+		name:   "stream",
+		stream: true,
+		req:    llm.Request{Messages: []llm.Message{{Role: llm.RoleUser, Content: "Перечисли через запятую три столицы Европы."}}},
+		check: func(m llm.Message, deltas int) error {
+			if m.Content == "" || deltas < 2 {
+				return fmt.Errorf("want text in several pieces, got %d pieces", deltas)
 			}
 			return nil
 		},
@@ -108,10 +121,16 @@ func runLLMCheck(_ []string, stdout io.Writer) error {
 	for _, p := range probes {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		start := time.Now()
-		resp, err := client.Chat(ctx, p.req)
+		deltas := 0
+		var resp llm.Response
+		if p.stream {
+			resp, err = client.ChatStream(ctx, p.req, func(string) { deltas++ })
+		} else {
+			resp, err = client.Chat(ctx, p.req)
+		}
 		cancel()
 		if err == nil {
-			err = p.check(resp.Message)
+			err = p.check(resp.Message, deltas)
 		}
 		if err != nil {
 			failed = true

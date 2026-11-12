@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Smoke test of a running API: test login, then the private profile. Usage: deploy/smoke.sh [base-url]
+# Smoke test of a running stack: login, profile, then one chat turn over SSE. Usage: deploy/smoke.sh [base-url]
 set -eu
 BASE="${1:-http://localhost:8080}"
 SEED="$(dirname "$0")/../backend/seed/people.json"
@@ -14,3 +14,26 @@ curl -fsS "$BASE/v1/private/me" -H "Authorization: Bearer $TOKEN" \
 
 STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/v1/private/me")
 [ "$STATUS" = "401" ] || { echo "private path without token returned $STATUS, want 401"; exit 1; }
+
+THREAD=$(curl -fsS -X POST "$BASE/v1/private/threads" -H "Authorization: Bearer $TOKEN" \
+  -d '{"type":"THREAD_TYPE_GENERAL"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["thread"]["id"])')
+
+EVENTS=$(mktemp)
+trap 'rm -f "$EVENTS"' EXIT
+curl -sN --max-time 90 "$BASE/v1/private/threads/$THREAD/events" -H "Authorization: Bearer $TOKEN" > "$EVENTS" &
+SSE=$!
+sleep 1
+
+SENT=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/v1/private/threads/$THREAD/messages" \
+  -H "Authorization: Bearer $TOKEN" -d '{"content":"Кто поможет с деплоем на staging?"}')
+[ "$SENT" = "202" ] || { echo "send message returned $SENT, want 202"; exit 1; }
+
+for _ in $(seq 1 90); do
+  grep -q '^event: done' "$EVENTS" && break
+  grep -q '^event: error' "$EVENTS" && break
+  sleep 1
+done
+kill "$SSE" 2>/dev/null || true
+wait "$SSE" 2>/dev/null || true
+grep -q '^event: done' "$EVENTS" || { echo "no done event:"; cat "$EVENTS"; exit 1; }
+echo "smoke ok: chat turn finished"

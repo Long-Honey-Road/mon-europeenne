@@ -41,3 +41,26 @@ func TestCredentialsFromShippedData(t *testing.T) {
 		t.Errorf("manager = %+v", byLogin["manager"])
 	}
 }
+
+func TestPlanFromShippedData(t *testing.T) {
+	d, err := Load(Files)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	items, statuses := d.PlanItems(), d.PlanStatuses()
+	if len(items) != 17 || len(statuses) != 3 {
+		t.Fatalf("%d items, %d statuses", len(items), len(statuses))
+	}
+	var channels domain.PlanItem
+	for _, it := range items {
+		if it.Key == "w1-channels" {
+			channels = it
+		}
+	}
+	if channels.Period != domain.PeriodWeek1 || len(channels.DependsOn) != 1 || channels.Map.Group != "team" {
+		t.Errorf("w1-channels = %+v", channels)
+	}
+	if statuses[0].UserID != "u-liza" || statuses[0].ItemID != "w1-team" || statuses[0].Status != domain.ItemDone {
+		t.Errorf("first status = %+v", statuses[0])
+	}
+}

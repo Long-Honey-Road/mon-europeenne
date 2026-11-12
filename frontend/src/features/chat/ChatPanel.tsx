@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import type { FormEvent, RefObject } from 'react'
-import { intern } from '../../shared/data/demo'
+import { useCurrentUser } from '../auth/useMe'
 import type { AppSection } from '../nav/sections'
 import './chat.css'
 
 type Message = { id: number; from: 'buddy' | 'user'; text: string }
 
-const WELCOME: Message = {
+const welcome = (name?: string): Message => ({
   id: 0,
   from: 'buddy',
-  text: `Привет, ${intern.name}! Спроси про задачи, доступы или процессы команды.`,
-}
+  text: `Привет${name ? `, ${name}` : ''}! Спроси про задачи, доступы или процессы команды.`,
+})
 // The model is not wired yet: every question gets this honest placeholder.
 const STUB_REPLY = 'Модель ещё не подключена: это каркас интерфейса. Здесь будет ответ с источниками.'
 
@@ -26,7 +26,9 @@ export function ChatPanel({
   onDraftChange: (text: string) => void
   inputRef: RefObject<HTMLInputElement>
 }) {
-  const [messages, setMessages] = useState<Message[]>([WELCOME])
+  const me = useCurrentUser()
+  const [messages, setMessages] = useState<Message[]>([])
+  const shown = [welcome(me?.firstName), ...messages]
 
   const send = (e: FormEvent) => {
     e.preventDefault()
@@ -34,8 +36,8 @@ export function ChatPanel({
     if (!text) return
     setMessages((prev) => [
       ...prev,
-      { id: prev.length, from: 'user', text },
-      { id: prev.length + 1, from: 'buddy', text: STUB_REPLY },
+      { id: prev.length + 1, from: 'user', text },
+      { id: prev.length + 2, from: 'buddy', text: STUB_REPLY },
     ])
     onDraftChange('')
   }
@@ -47,19 +49,21 @@ export function ChatPanel({
           <h2 className="chat__title">buddy</h2>
           <p className="chat__sub">ИИ-наставник · учебные данные</p>
         </div>
-        <div className="chat__user">
-          <span className="chat__avatar" aria-hidden="true">
-            {intern.name[0]}
-          </span>
-          <span className="chat__who">
-            {intern.name}
-            <span className="chat__role">{intern.role}</span>
-          </span>
-        </div>
+        {me && (
+          <div className="chat__user">
+            <span className="chat__avatar" aria-hidden="true">
+              {me.name[0]}
+            </span>
+            <span className="chat__who">
+              {me.name}
+              <span className="chat__role">{me.subtitle}</span>
+            </span>
+          </div>
+        )}
       </header>
 
       <ol className="chat__log" aria-live="polite">
-        {messages.map((m) => (
+        {shown.map((m) => (
           <li key={m.id} className={`msg msg--${m.from}`}>
             {m.text}
           </li>

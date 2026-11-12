@@ -25,6 +25,134 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/private/threads:
+        get:
+            tags:
+                - ThreadService
+            operationId: ThreadService_ListThreads
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListThreadsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        post:
+            tags:
+                - ThreadService
+            description: CreateThread returns the existing thread for types that are one per user (plan).
+            operationId: ThreadService_CreateThread
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateThreadRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CreateThreadResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/private/threads/{thread_id}:
+        get:
+            tags:
+                - ThreadService
+            operationId: ThreadService_GetThread
+            parameters:
+                - name: thread_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetThreadResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/private/threads/{thread_id}/messages:
+        get:
+            tags:
+                - ThreadService
+            operationId: ThreadService_ListMessages
+            parameters:
+                - name: thread_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: limit
+                  in: query
+                  description: Last N messages, oldest first; default 50, at most 200.
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListMessagesResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        post:
+            tags:
+                - ThreadService
+            description: |-
+                SendMessage saves the message and queues the agent turn; answers 202, the reply streams over
+                 GET /v1/private/threads/{thread_id}/events.
+            operationId: ThreadService_SendMessage
+            parameters:
+                - name: thread_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/SendMessageRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SendMessageResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/public/auth/login:
         post:
             tags:
@@ -51,6 +179,27 @@ paths:
                                 $ref: '#/components/schemas/Status'
 components:
     schemas:
+        CreateThreadRequest:
+            type: object
+            properties:
+                type:
+                    enum:
+                        - THREAD_TYPE_UNSPECIFIED
+                        - THREAD_TYPE_GENERAL
+                        - THREAD_TYPE_PLAN
+                        - THREAD_TYPE_REQUEST
+                        - THREAD_TYPE_TASK
+                    type: string
+                    format: enum
+                title:
+                    type: string
+                pin:
+                    type: object
+        CreateThreadResponse:
+            type: object
+            properties:
+                thread:
+                    $ref: '#/components/schemas/Thread'
         GetMeResponse:
             type: object
             properties:
@@ -60,6 +209,11 @@ components:
                     $ref: '#/components/schemas/Team'
                 relations:
                     $ref: '#/components/schemas/Relations'
+        GetThreadResponse:
+            type: object
+            properties:
+                thread:
+                    $ref: '#/components/schemas/Thread'
         GoogleProtobufAny:
             type: object
             properties:
@@ -68,6 +222,20 @@ components:
                     description: The type of the serialized message.
             additionalProperties: true
             description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+        ListMessagesResponse:
+            type: object
+            properties:
+                messages:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Message'
+        ListThreadsResponse:
+            type: object
+            properties:
+                threads:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Thread'
         LoginRequest:
             type: object
             properties:
@@ -83,6 +251,30 @@ components:
                     description: 'Session token for the Authorization: Bearer header.'
                 user:
                     $ref: '#/components/schemas/User'
+        Message:
+            type: object
+            properties:
+                id:
+                    type: string
+                thread_id:
+                    type: string
+                role:
+                    enum:
+                        - MESSAGE_ROLE_UNSPECIFIED
+                        - MESSAGE_ROLE_USER
+                        - MESSAGE_ROLE_ASSISTANT
+                    type: string
+                    format: enum
+                text:
+                    type: string
+                blocks:
+                    type: array
+                    items:
+                        type: object
+                    description: Server-built blocks of an assistant message (sources, person, not_found, ...).
+                created_at:
+                    type: string
+                    description: RFC 3339.
         PersonRef:
             type: object
             properties:
@@ -102,6 +294,27 @@ components:
                     $ref: '#/components/schemas/PersonRef'
                 hr_bp:
                     $ref: '#/components/schemas/PersonRef'
+        SendMessageRequest:
+            type: object
+            properties:
+                thread_id:
+                    type: string
+                content:
+                    type: string
+                mode:
+                    enum:
+                        - ANSWER_MODE_UNSPECIFIED
+                        - ANSWER_MODE_BRIEF
+                        - ANSWER_MODE_DETAILED
+                    type: string
+                    format: enum
+        SendMessageResponse:
+            type: object
+            properties:
+                message_id:
+                    type: string
+                job_id:
+                    type: string
         Status:
             type: object
             properties:
@@ -131,6 +344,28 @@ components:
                     type: string
                 mattermost_channel:
                     type: string
+        Thread:
+            type: object
+            properties:
+                id:
+                    type: string
+                type:
+                    enum:
+                        - THREAD_TYPE_UNSPECIFIED
+                        - THREAD_TYPE_GENERAL
+                        - THREAD_TYPE_PLAN
+                        - THREAD_TYPE_REQUEST
+                        - THREAD_TYPE_TASK
+                    type: string
+                    format: enum
+                title:
+                    type: string
+                pin:
+                    type: object
+                    description: 'Pinned context: {plan_item_id} or {request_id} or {task: {key, title, repo}}.'
+                created_at:
+                    type: string
+                    description: RFC 3339.
         User:
             type: object
             properties:
@@ -177,3 +412,5 @@ tags:
     - name: AuthService
       description: AuthService signs in test accounts; real auth is assumed to exist at Avito.
     - name: ProfileService
+    - name: ThreadService
+      description: ThreadService keeps the caller's conversations with buddy; answers arrive over SSE.
