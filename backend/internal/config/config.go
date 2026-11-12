@@ -107,3 +107,11 @@ func (c Config) RequireDatabase() error {
 	}
 	return nil
 }
+
+// RequireRedis is called by commands that queue jobs or stream events.
+func (c Config) RequireRedis() error {
+	if c.RedisAddr == "" {
+		return fmt.Errorf("REDIS_ADDR: %w", ErrMissing)
+	}
+	return nil
+}

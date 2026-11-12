@@ -106,3 +106,12 @@ func TestRequireDatabase(t *testing.T) {
 		t.Fatalf("RequireDatabase() = %v, want nil", err)
 	}
 }
+
+func TestRequireRedis(t *testing.T) {
+	if err := (Config{}).RequireRedis(); !errors.Is(err, ErrMissing) {
+		t.Fatalf("RequireRedis() on empty config = %v, want ErrMissing", err)
+	}
+	if err := (Config{RedisAddr: "redis:6379"}).RequireRedis(); err != nil {
+		t.Fatalf("RequireRedis() = %v, want nil", err)
+	}
+}

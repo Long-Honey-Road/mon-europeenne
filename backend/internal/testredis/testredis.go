@@ -28,12 +28,17 @@ var (
 // Main wraps m.Run and stops the container, if one was started, after all tests.
 func Main(m *testing.M) int {
 	code := m.Run()
+	Stop()
+	return code
+}
+
+// Stop terminates the container if one was started; for packages that also use testdb.Main.
+func Stop() {
 	if ctr != nil {
 		if err := testcontainers.TerminateContainer(ctr); err != nil {
 			log.Printf("terminate redis container: %v", err)
 		}
 	}
-	return code
 }
 
 // Addr returns host:port of the shared test Redis; the container starts on first use.
