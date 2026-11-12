@@ -21,6 +21,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/private/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ThreadService_ListThreads"];
+        put?: never;
+        /** @description CreateThread returns the existing thread for types that are one per user (plan). */
+        post: operations["ThreadService_CreateThread"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/private/threads/{thread_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ThreadService_GetThread"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/private/threads/{thread_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ThreadService_ListMessages"];
+        put?: never;
+        /**
+         * @description SendMessage saves the message and queues the agent turn; answers 202, the reply streams over
+         *      GET /v1/private/threads/{thread_id}/events.
+         */
+        post: operations["ThreadService_SendMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/auth/login": {
         parameters: {
             query?: never;
@@ -41,10 +94,25 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CreateThreadRequest: {
+            /**
+             * Format: enum
+             * @enum {string}
+             */
+            type?: "THREAD_TYPE_UNSPECIFIED" | "THREAD_TYPE_GENERAL" | "THREAD_TYPE_PLAN" | "THREAD_TYPE_REQUEST" | "THREAD_TYPE_TASK";
+            title?: string;
+            pin?: Record<string, never>;
+        };
+        CreateThreadResponse: {
+            thread?: components["schemas"]["Thread"];
+        };
         GetMeResponse: {
             user?: components["schemas"]["User"];
             team?: components["schemas"]["Team"];
             relations?: components["schemas"]["Relations"];
+        };
+        GetThreadResponse: {
+            thread?: components["schemas"]["Thread"];
         };
         /** @description Contains an arbitrary serialized message along with a @type that describes the type of the serialized message. */
         GoogleProtobufAny: {
@@ -52,6 +120,12 @@ export interface components {
             "@type"?: string;
         } & {
             [key: string]: unknown;
+        };
+        ListMessagesResponse: {
+            messages?: components["schemas"]["Message"][];
+        };
+        ListThreadsResponse: {
+            threads?: components["schemas"]["Thread"][];
         };
         LoginRequest: {
             login?: string;
@@ -61,6 +135,20 @@ export interface components {
             /** @description Session token for the Authorization: Bearer header. */
             token?: string;
             user?: components["schemas"]["User"];
+        };
+        Message: {
+            id?: string;
+            thread_id?: string;
+            /**
+             * Format: enum
+             * @enum {string}
+             */
+            role?: "MESSAGE_ROLE_UNSPECIFIED" | "MESSAGE_ROLE_USER" | "MESSAGE_ROLE_ASSISTANT";
+            text?: string;
+            /** @description Server-built blocks of an assistant message (sources, person, not_found, ...). */
+            blocks?: Record<string, never>[];
+            /** @description RFC 3339. */
+            created_at?: string;
         };
         /** @description Short reference to a person from the directory. */
         PersonRef: {
@@ -72,6 +160,19 @@ export interface components {
             mentor?: components["schemas"]["PersonRef"];
             manager?: components["schemas"]["PersonRef"];
             hr_bp?: components["schemas"]["PersonRef"];
+        };
+        SendMessageRequest: {
+            thread_id?: string;
+            content?: string;
+            /**
+             * Format: enum
+             * @enum {string}
+             */
+            mode?: "ANSWER_MODE_UNSPECIFIED" | "ANSWER_MODE_BRIEF" | "ANSWER_MODE_DETAILED";
+        };
+        SendMessageResponse: {
+            message_id?: string;
+            job_id?: string;
         };
         /** @description The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors). */
         Status: {
@@ -91,6 +192,19 @@ export interface components {
             unit?: string;
             cluster?: string;
             mattermost_channel?: string;
+        };
+        Thread: {
+            id?: string;
+            /**
+             * Format: enum
+             * @enum {string}
+             */
+            type?: "THREAD_TYPE_UNSPECIFIED" | "THREAD_TYPE_GENERAL" | "THREAD_TYPE_PLAN" | "THREAD_TYPE_REQUEST" | "THREAD_TYPE_TASK";
+            title?: string;
+            /** @description Pinned context: {plan_item_id} or {request_id} or {task: {key, title, repo}}. */
+            pin?: Record<string, never>;
+            /** @description RFC 3339. */
+            created_at?: string;
         };
         User: {
             id?: string;
@@ -138,6 +252,168 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GetMeResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    ThreadService_ListThreads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListThreadsResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    ThreadService_CreateThread: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateThreadRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateThreadResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    ThreadService_GetThread: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetThreadResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    ThreadService_ListMessages: {
+        parameters: {
+            query?: {
+                /** @description Last N messages, oldest first; default 50, at most 200. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMessagesResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    ThreadService_SendMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SendMessageResponse"];
                 };
             };
             /** @description Default error response */
