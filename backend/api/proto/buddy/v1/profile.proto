@@ -8,7 +8,7 @@ import "google/api/annotations.proto";
 service ProfileService {
   // GetMe returns the caller's profile resolved from the session.
   rpc GetMe(GetMeRequest) returns (GetMeResponse) {
-    option (google.api.http) = {get: "/v1/me"};
+    option (google.api.http) = {get: "/v1/private/me"};
   }
 }
 

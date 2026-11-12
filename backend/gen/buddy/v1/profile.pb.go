@@ -191,9 +191,9 @@ const file_buddy_v1_profile_proto_rawDesc = "" +
 	"\tRelations\x12+\n" +
 	"\x06mentor\x18\x01 \x01(\v2\x13.buddy.v1.PersonRefR\x06mentor\x12-\n" +
 	"\amanager\x18\x02 \x01(\v2\x13.buddy.v1.PersonRefR\amanager\x12(\n" +
-	"\x05hr_bp\x18\x03 \x01(\v2\x13.buddy.v1.PersonRefR\x04hrBp2Z\n" +
-	"\x0eProfileService\x12H\n" +
-	"\x05GetMe\x12\x16.buddy.v1.GetMeRequest\x1a\x17.buddy.v1.GetMeResponse\"\x0e\x82\xd3\xe4\x93\x02\b\x12\x06/v1/meB\xa5\x01\n" +
+	"\x05hr_bp\x18\x03 \x01(\v2\x13.buddy.v1.PersonRefR\x04hrBp2b\n" +
+	"\x0eProfileService\x12P\n" +
+	"\x05GetMe\x12\x16.buddy.v1.GetMeRequest\x1a\x17.buddy.v1.GetMeResponse\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/v1/private/meB\xa5\x01\n" +
 	"\fcom.buddy.v1B\fProfileProtoP\x01ZFgithub.com/Long-Honey-Road/mon-europeenne/backend/gen/buddy/v1;buddyv1\xa2\x02\x03BXX\xaa\x02\bBuddy.V1\xca\x02\bBuddy\\V1\xe2\x02\x14Buddy\\V1\\GPBMetadata\xea\x02\tBuddy::V1b\x06proto3"
 
 var (

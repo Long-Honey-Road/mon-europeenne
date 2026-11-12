@@ -24,5 +24,6 @@ plugins:
     strategy: all
     opt:
       - naming=json
+      - enum_type=string
       - title=AI-buddy API
       - version=0.1.0
