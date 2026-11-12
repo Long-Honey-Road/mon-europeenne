@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/tools"
@@ -14,10 +15,15 @@ import (
 const maxPersonBlocks = 3
 
 var (
-	markerRe   = regexp.MustCompile(`\[(\d+)\]`)
-	repoLinkRe = regexp.MustCompile(`\[([^\]]+)\]\(/repo/[^)\s]*\)`)
-	repoPathRe = regexp.MustCompile(`/repo/[^\s)\]]*[^\s)\].,;:!?]`)
+	markerRe = regexp.MustCompile(`\[(\d+)\]`)
+	// A line that starts with a marker: the model's own list of sources.
+	footnoteRe = regexp.MustCompile(`(?m)^[ \t]*\[(\d+)\][^\n]*\n?`)
+	// A markdown link, or a bare URL, or a bare repository path; links are matched first so URLs inside them stay whole.
+	linkRe   = regexp.MustCompile(`\[([^\]]+)\]\(([^)\s]+)\)|https?://[^\s)\]]*[^\s)\].,;:!?]|/repo/[^\s)\]]*[^\s)\].,;:!?]`)
+	spacesRe = regexp.MustCompile(`[ \t]+([.,;:!?])`)
 )
+
+const repoPrefix = "/repo/"
 
 // turnState collects what tools returned in this turn; blocks are built only from it.
 type turnState struct {
@@ -72,24 +78,60 @@ func (s *turnState) absorb(tool string, raw []byte) []byte {
 	return out
 }
 
-// finishText drops markers to unknown refs and, outside task threads, links into the team repository.
+// finishText enforces the text invariants: markers only to this turn's refs, links only to URLs that tools
+// returned, and no repository links outside task threads.
 func (s *turnState) finishText(text string, thread domain.ThreadType) (string, map[int]bool) {
 	cited := map[int]bool{}
+	removed := false
+	text = footnoteRe.ReplaceAllStringFunc(text, func(line string) string {
+		n, _ := strconv.Atoi(footnoteRe.FindStringSubmatch(line)[1])
+		if n >= 1 && n <= len(s.refs) {
+			return line
+		}
+		s.violations = append(s.violations, fmt.Sprintf("invented footnote %d", n))
+		return ""
+	})
+	text = strings.TrimRight(text, " \t\n")
 	text = markerRe.ReplaceAllStringFunc(text, func(m string) string {
 		n, _ := strconv.Atoi(m[1 : len(m)-1])
 		if n < 1 || n > len(s.refs) {
 			s.violations = append(s.violations, fmt.Sprintf("unknown ref %d", n))
+			removed = true
 			return ""
 		}
 		cited[n] = true
 		return m
 	})
-	if thread != domain.ThreadTask {
-		if repoLinkRe.MatchString(text) || repoPathRe.MatchString(text) {
-			s.violations = append(s.violations, "repository link outside a task thread")
+
+	allowed := map[string]bool{}
+	for _, src := range s.refs {
+		if src.URL != "" {
+			allowed[src.URL] = true
 		}
-		text = repoLinkRe.ReplaceAllString(text, "$1")
-		text = repoPathRe.ReplaceAllString(text, "")
+	}
+	ok := func(url string) bool {
+		if thread != domain.ThreadTask && strings.HasPrefix(url, repoPrefix) {
+			return false
+		}
+		return allowed[url]
+	}
+	text = linkRe.ReplaceAllStringFunc(text, func(m string) string {
+		if sub := linkRe.FindStringSubmatch(m); sub[1] != "" {
+			if ok(sub[2]) {
+				return m
+			}
+			s.violations = append(s.violations, "link not from tool results: "+sub[2])
+			return sub[1]
+		}
+		if ok(m) {
+			return m
+		}
+		s.violations = append(s.violations, "link not from tool results: "+m)
+		removed = true
+		return ""
+	})
+	if removed {
+		text = spacesRe.ReplaceAllString(text, "$1")
 	}
 	return text, cited
 }

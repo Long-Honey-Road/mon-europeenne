@@ -97,9 +97,12 @@ func registry(t *testing.T, s *stubs) *tools.Registry {
 				return nil, tools.ErrForbidden
 			})),
 		must(tools.Define("read_repo", "Read the team repository", allRoles, []domain.ThreadType{domain.ThreadTask},
-			func(context.Context, domain.Principal, path) (map[string]string, error) {
+			func(context.Context, domain.Principal, path) (searchOut, error) {
 				s.readRepoCalls++
-				return map[string]string{"content": "build:"}, nil
+				return searchOut{Sources: []map[string]string{{
+					"source_id": "repo:Makefile", "title": "Makefile", "url": "/repo/messenger-api/Makefile",
+					"kind": "repo", "text": "build:",
+				}}}, nil
 			})),
 		must(tools.Define("team_absences", "Absences of the team", []domain.Role{domain.RoleManager},
 			[]domain.ThreadType{domain.ThreadGeneral},
@@ -428,8 +431,8 @@ func TestRepoLinksRemovedOutsideTaskThread(t *testing.T) {
 }
 
 func TestRepoLinksKeptInTaskThread(t *testing.T) {
-	text := "Смотри [Makefile](/repo/messenger-api/Makefile)."
-	model := fake.New(fake.Text(text))
+	text := "Смотри [Makefile](/repo/messenger-api/Makefile) [1]."
+	model := fake.New(fake.ToolCall("read_repo", map[string]string{"path": "Makefile"}), fake.Text(text))
 	tr := turn("Где Makefile?")
 	tr.Thread = domain.ThreadTask
 
@@ -495,4 +498,42 @@ func blocksEqual(a, b []Block) bool {
 	ja, _ := json.Marshal(a)
 	jb, _ := json.Marshal(b)
 	return string(ja) == string(jb)
+}
+
+func TestInventedLinksAreRemoved(t *testing.T) {
+	s := &stubs{found: []map[string]string{devChunk}}
+	text := "Запусти make dev [1], подробнее [тут](/docs/dev-setup#local). Спроси [Анну](https://avito.internal/people/p-anna) или глянь https://wiki.example.com/dev."
+	model := fake.New(fake.ToolCall("search_docs", map[string]string{"query": "dev"}), fake.Text(text))
+
+	res, _ := run(t, s, model, turn("Как поднять dev?"))
+
+	want := "Запусти make dev [1], подробнее [тут](/docs/dev-setup#local). Спроси Анну или глянь."
+	if res.Text != want {
+		t.Errorf("text = %q\nwant  %q", res.Text, want)
+	}
+	if !slices.Contains(eventTypes(res), domain.EventInvariantViolation) {
+		t.Errorf("events = %v", eventTypes(res))
+	}
+}
+
+func TestNoSpaceLeftBeforePunctuationAfterDroppedMarker(t *testing.T) {
+	model := fake.New(fake.Text("Обратитесь к Зое [1]. Или к наставнику [2]!"))
+
+	res, _ := run(t, &stubs{}, model, turn("Как оформить ДМС?"))
+
+	if res.Text != "Обратитесь к Зое. Или к наставнику!" {
+		t.Errorf("text = %q", res.Text)
+	}
+}
+
+func TestInventedFootnoteLinesAreDropped(t *testing.T) {
+	s := &stubs{found: []map[string]string{devChunk}}
+	text := "Запусти make dev [1]. Спроси Игоря [2].\n\n[1] Локальный запуск\n[2] Игорь Волков — инфраструктура"
+	model := fake.New(fake.ToolCall("search_docs", map[string]string{"query": "dev"}), fake.Text(text))
+
+	res, _ := run(t, s, model, turn("Как поднять dev?"))
+
+	if res.Text != "Запусти make dev [1]. Спроси Игоря.\n\n[1] Локальный запуск" {
+		t.Errorf("text = %q", res.Text)
+	}
 }
