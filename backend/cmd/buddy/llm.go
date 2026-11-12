@@ -1,0 +1,127 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"time"
+
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm/openaicompat"
+)
+
+var errProbesFailed = errors.New("some probes failed")
+
+// newLLM builds the configured model client.
+func newLLM(cfg config.LLM) (llm.Client, error) {
+	switch cfg.Provider {
+	case config.ProviderOpenAICompat:
+		return openaicompat.New(openaicompat.Config{
+			BaseURL:         cfg.BaseURL,
+			Model:           cfg.Model,
+			APIKey:          cfg.APIKey,
+			ReasoningEffort: cfg.ReasoningEffort,
+			MaxRetries:      1,
+		}), nil
+	case config.ProviderFake:
+		return nil, fmt.Errorf("provider %q needs a script and works only in tests for now", cfg.Provider)
+	default:
+		return nil, fmt.Errorf("provider %q: %w", cfg.Provider, errNotImplemented)
+	}
+}
+
+type probe struct {
+	name  string
+	req   llm.Request
+	check func(llm.Message) error
+}
+
+var probes = []probe{
+	{
+		name: "text",
+		req:  llm.Request{Messages: []llm.Message{{Role: llm.RoleUser, Content: "Ответь одним словом: столица Франции?"}}},
+		check: func(m llm.Message) error {
+			if m.Content == "" {
+				return errors.New("empty answer")
+			}
+			return nil
+		},
+	},
+	{
+		name: "tool call",
+		req: llm.Request{
+			Messages: []llm.Message{
+				{Role: llm.RoleSystem, Content: "Отвечай только по документам команды. Сначала ищи."},
+				{Role: llm.RoleUser, Content: "Как поднять dev-окружение в нашей команде?"},
+			},
+			Tools: []llm.Tool{{
+				Name:        "search_docs",
+				Description: "Search team documents",
+				Parameters:  json.RawMessage(`{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}`),
+			}},
+		},
+		check: func(m llm.Message) error {
+			if len(m.ToolCalls) == 0 || m.ToolCalls[0].Name != "search_docs" {
+				return fmt.Errorf("expected a search_docs call, got %q", m.Content)
+			}
+			return nil
+		},
+	},
+	{
+		name: "json",
+		req: llm.Request{
+			Messages: []llm.Message{{Role: llm.RoleUser, Content: "Столица Франции?"}},
+			Format: &llm.Format{
+				Name:   "reply",
+				Schema: json.RawMessage(`{"type":"object","properties":{"answer":{"type":"string"}},"required":["answer"],"additionalProperties":false}`),
+			},
+		},
+		check: func(m llm.Message) error {
+			var out struct {
+				Answer string `json:"answer"`
+			}
+			if err := json.Unmarshal([]byte(m.Content), &out); err != nil || out.Answer == "" {
+				return fmt.Errorf("not the requested JSON: %q", m.Content)
+			}
+			return nil
+		},
+	},
+}
+
+// runLLMCheck sends one probe per capability the agent relies on to the configured model.
+func runLLMCheck(_ []string, stdout io.Writer) error {
+	cfg, err := config.Load(os.LookupEnv)
+	if err != nil {
+		return err
+	}
+	client, err := newLLM(cfg.LLM)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "model %s at %s, reasoning effort %q\n", cfg.LLM.Model, cfg.LLM.BaseURL, cfg.LLM.ReasoningEffort)
+
+	failed := false
+	for _, p := range probes {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		start := time.Now()
+		resp, err := client.Chat(ctx, p.req)
+		cancel()
+		if err == nil {
+			err = p.check(resp.Message)
+		}
+		if err != nil {
+			failed = true
+			fmt.Fprintf(stdout, "%s: FAIL %v\n", p.name, err)
+			continue
+		}
+		fmt.Fprintf(stdout, "%s: ok %s, %d tokens\n", p.name, time.Since(start).Round(time.Millisecond), resp.Usage.CompletionTokens)
+	}
+	if failed {
+		return errProbesFailed
+	}
+	return nil
+}

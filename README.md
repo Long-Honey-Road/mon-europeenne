@@ -49,6 +49,7 @@ From `backend/`:
 | `make gen` | regenerate Go, gRPC, grpc-gateway and OpenAPI from `api/proto` |
 | `make run CMD=api` | run a `buddy` subcommand |
 | `make run CMD="migrate up"` | apply migrations to `DATABASE_URL` (`down` reverts all) |
+| `make run CMD=llm-check` | probe the model from `LLM_*` env: plain answer, tool call, JSON by schema |
 
 Contracts live in `backend/api/proto` (source of truth). `backend/gen` and
 `backend/api/openapi/buddy-api.yaml` are generated and committed; CI fails if they are stale.
