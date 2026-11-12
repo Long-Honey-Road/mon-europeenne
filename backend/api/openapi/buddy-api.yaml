@@ -90,7 +90,7 @@ components:
                     type: string
                 name:
                     type: string
-                roleTitle:
+                role_title:
                     type: string
             description: Short reference to a person from the directory.
         Relations:
@@ -100,7 +100,7 @@ components:
                     $ref: '#/components/schemas/PersonRef'
                 manager:
                     $ref: '#/components/schemas/PersonRef'
-                hrBp:
+                hr_bp:
                     $ref: '#/components/schemas/PersonRef'
         Status:
             type: object
@@ -129,7 +129,7 @@ components:
                     type: string
                 cluster:
                     type: string
-                mattermostChannel:
+                mattermost_channel:
                     type: string
         User:
             type: object
@@ -138,7 +138,7 @@ components:
                     type: string
                 login:
                     type: string
-                displayName:
+                display_name:
                     type: string
                 role:
                     enum:
@@ -158,19 +158,19 @@ components:
                         - DIRECTION_QA
                     type: string
                     format: enum
-                teamId:
+                team_id:
                     type: string
                 repos:
                     type: array
                     items:
                         type: string
-                jiraProjects:
+                jira_projects:
                     type: array
                     items:
                         type: string
                 location:
                     type: string
-                startDate:
+                start_date:
                     type: string
                     description: ISO 8601 date, e.g. 2026-11-09.
 tags:
