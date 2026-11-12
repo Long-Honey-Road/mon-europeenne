@@ -29,7 +29,7 @@ var commands = []command{
 	{name: "mocks", summary: "serve mock corporate services", run: notImplemented},
 	{name: "migrate", summary: "apply (up) or revert (down) database migrations", run: runMigrate},
 	{name: "seed", summary: "load synthetic data and build the index", run: runSeed},
-	{name: "llm-check", summary: "probe the configured model: text, tool call, JSON", run: runLLMCheck},
+	{name: "llm-check", summary: "probe the configured model: text, tool call, JSON, stream", run: runLLMCheck},
 }
 
 func main() {

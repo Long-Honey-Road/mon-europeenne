@@ -20,6 +20,14 @@ func modelServer(t *testing.T, obedient bool) string {
 		raw, _ := io.ReadAll(r.Body)
 		var body map[string]any
 		_ = json.Unmarshal(raw, &body)
+		if body["stream"] == true {
+			w.Header().Set("Content-Type", "text/event-stream")
+			for _, piece := range []string{"Па", "риж"} {
+				_, _ = io.WriteString(w, `data: {"id":"1","object":"chat.completion.chunk","created":1,"model":"m","choices":[{"index":0,"delta":{"content":"`+piece+`"}}]}`+"\n\n")
+			}
+			_, _ = io.WriteString(w, "data: [DONE]\n\n")
+			return
+		}
 
 		msg := `{"role":"assistant","content":"Париж"}`
 		switch {
@@ -51,7 +59,7 @@ func TestLLMCheckPassesAgainstWorkingModel(t *testing.T) {
 	if code != exitOK {
 		t.Fatalf("exit %d, stdout %q, stderr %q", code, stdout.String(), stderr.String())
 	}
-	for _, probe := range []string{"text", "tool call", "json"} {
+	for _, probe := range []string{"text", "tool call", "json", "stream"} {
 		if !strings.Contains(stdout.String(), probe+": ok") {
 			t.Errorf("stdout misses %q: %q", probe+": ok", stdout.String())
 		}
