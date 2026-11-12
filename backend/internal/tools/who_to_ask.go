@@ -135,12 +135,12 @@ func (w whoToAsk) run(ctx context.Context, p domain.Principal, in whoToAskIn) (w
 	for i := 0; i < len(found) && i < maxHints; i++ {
 		out.People = append(out.People, found[i].hint)
 	}
-	out.Escalation, err = escalationChain(ctx, w.dir, p)
+	out.Escalation, err = EscalationChain(ctx, w.dir, p)
 	return out, err
 }
 
-// escalationChain follows the order agreed at the Q&A: mentor, manager, HR BP, then open sources.
-func escalationChain(ctx context.Context, dir PeopleDirectory, p domain.Principal) ([]EscalationStep, error) {
+// EscalationChain lists whom the user should ask, in the order agreed at the Q&A: mentor, manager, HR BP, then open sources.
+func EscalationChain(ctx context.Context, dir PeopleDirectory, p domain.Principal) ([]EscalationStep, error) {
 	rel, err := dir.Relations(ctx, p.UserID)
 	if err != nil {
 		return nil, err

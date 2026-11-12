@@ -22,7 +22,7 @@ func ReportNotFound(dir PeopleDirectory) (Tool, error) {
 		"Call when the available documents and tools do not answer the question. Shows whom to ask instead.",
 		allRoles, allThreads,
 		func(ctx context.Context, p domain.Principal, in notFoundIn) (NotFoundReport, error) {
-			chain, err := escalationChain(ctx, dir, p)
+			chain, err := EscalationChain(ctx, dir, p)
 			if err != nil {
 				return NotFoundReport{}, err
 			}
