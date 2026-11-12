@@ -1,0 +1,39 @@
+:root {
+  --space: #05060a;
+  --space-raised: #0d0f17;
+  --text: #f4f5f8;
+  --text-soft: #9a9eae;
+  --hairline: rgb(255 255 255 / 0.1);
+  --glass: rgb(255 255 255 / 0.05);
+
+  /* Avito logo colours, one per section */
+  --orb-green: #04e061;
+  --orb-blue: #00aaff;
+  --orb-red: #ff4053;
+  --orb-purple: #965eeb;
+
+  --font: 'Manrope Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --text-body: 1rem;
+  --text-small: 0.875rem;
+  --text-label: 0.72rem;
+
+  --gutter: clamp(16px, 2.4vw, 32px);
+  --radius: 20px;
+
+  --ease-spring: cubic-bezier(0.22, 1.2, 0.36, 1);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+[data-accent='green'] {
+  --accent: var(--orb-green);
+}
+[data-accent='blue'] {
+  --accent: var(--orb-blue);
+}
+[data-accent='red'] {
+  --accent: var(--orb-red);
+}
+[data-accent='purple'] {
+  --accent: var(--orb-purple);
+}
