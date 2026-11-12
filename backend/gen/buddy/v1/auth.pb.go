@@ -137,9 +137,9 @@ const file_buddy_v1_auth_proto_rawDesc = "" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"I\n" +
 	"\rLoginResponse\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\"\n" +
-	"\x04user\x18\x02 \x01(\v2\x0e.buddy.v1.UserR\x04user2b\n" +
-	"\vAuthService\x12S\n" +
-	"\x05Login\x12\x16.buddy.v1.LoginRequest\x1a\x17.buddy.v1.LoginResponse\"\x19\x82\xd3\xe4\x93\x02\x13:\x01*\"\x0e/v1/auth/loginB\xa2\x01\n" +
+	"\x04user\x18\x02 \x01(\v2\x0e.buddy.v1.UserR\x04user2i\n" +
+	"\vAuthService\x12Z\n" +
+	"\x05Login\x12\x16.buddy.v1.LoginRequest\x1a\x17.buddy.v1.LoginResponse\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/v1/public/auth/loginB\xa2\x01\n" +
 	"\fcom.buddy.v1B\tAuthProtoP\x01ZFgithub.com/Long-Honey-Road/mon-europeenne/backend/gen/buddy/v1;buddyv1\xa2\x02\x03BXX\xaa\x02\bBuddy.V1\xca\x02\bBuddy\\V1\xe2\x02\x14Buddy\\V1\\GPBMetadata\xea\x02\tBuddy::V1b\x06proto3"
 
 var (

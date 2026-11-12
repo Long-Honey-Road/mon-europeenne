@@ -23,6 +23,7 @@ plugins:
     out: api/openapi
     strategy: all
     opt:
-      - naming=json
+      - naming=proto
+      - enum_type=string
       - title=AI-buddy API
       - version=0.1.0

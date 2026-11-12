@@ -1,0 +1,13 @@
+.home {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(340px, 30vw, 440px);
+  height: 100dvh;
+}
+
+@media (max-width: 900px) {
+  .home {
+    grid-template-columns: 1fr;
+    grid-template-rows: 88dvh 80dvh;
+    height: auto;
+  }
+}

@@ -36,8 +36,26 @@ Requirements: Go 1.27, Docker (also for tests: they start Postgres via testconta
 
 ```bash
 cp deploy/.env.example deploy/.env
-docker compose -f deploy/docker-compose.yml up -d --wait   # postgres + redis
+docker compose -f deploy/docker-compose.yml up -d --build --wait   # api, postgres, redis
 ```
+
+```bash
+deploy/smoke.sh   # test login, then the private profile
+```
+
+The API listens on `http://localhost:8080` (`API_PORT` to change). Paths follow
+`/{version}/{public|private}/{resource}`: `/v1/public/...` needs no session, `/v1/private/...` needs
+`Authorization: Bearer <token>` from `POST /v1/public/auth/login`. Contract: `backend/api/openapi/buddy-api.yaml`.
+
+Test accounts (synthetic, from `backend/seed/people.json`):
+
+| Login | Password | Role |
+|---|---|---|
+| `intern` | `intern-demo` | intern, backend, team Messenger |
+| `mentor` | `mentor-demo` | mentor |
+| `manager` | `manager-demo` | manager of the team |
+
+Frontend dev server (from `frontend/`): `npm ci && npm run dev`, then http://localhost:5173.
 
 From `backend/`:
 

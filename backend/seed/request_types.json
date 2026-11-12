@@ -99,35 +99,6 @@
       "approval_chain": [{"resolver": "object_owner", "object": "grafana_folder"}],
       "sla_hours": 24,
       "demo": {"outcome": "approve", "after_seconds": 35}
-    },
-    {
-      "key": "absence.day_off", "title": "Отгул", "category": "absence",
-      "fields_schema": {
-        "type": "object", "additionalProperties": false,
-        "required": ["date", "reason"],
-        "properties": {
-          "date": {"type": "string", "format": "date", "title": "Дата"},
-          "reason": {"type": "string", "title": "Причина"}
-        }
-      },
-      "approval_chain": [{"resolver": "manager"}, {"resolver": "hr_admin"}],
-      "sla_hours": 48,
-      "demo": {"outcome": "approve", "after_seconds": 30}
-    },
-    {
-      "key": "absence.vacation", "title": "Отпуск", "category": "absence",
-      "fields_schema": {
-        "type": "object", "additionalProperties": false,
-        "required": ["start_date", "end_date"],
-        "properties": {
-          "start_date": {"type": "string", "format": "date", "title": "Первый день"},
-          "end_date": {"type": "string", "format": "date", "title": "Последний день"},
-          "comment": {"type": "string", "title": "Комментарий"}
-        }
-      },
-      "approval_chain": [{"resolver": "manager"}, {"resolver": "hr_admin"}],
-      "sla_hours": 72,
-      "demo": {"outcome": "approve", "after_seconds": 30}
     }
   ],
   "objects": [
