@@ -25,10 +25,10 @@ func TestReportNotFoundReturnsTopicAndEscalation(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 	want := []EscalationStep{
-		{Level: 1, Role: "mentor", PersonID: "p-anna", Name: "Аня"},
-		{Level: 2, Role: "manager", PersonID: "p-dima", Name: "Дима"},
-		{Level: 3, Role: "hr_bp", PersonID: "p-eva", Name: "Ева"},
-		{Level: 4, Role: "open_sources"},
+		{Level: 1, Role: "mentor", Title: "наставник", PersonID: "p-anna", Name: "Аня"},
+		{Level: 2, Role: "manager", Title: "руководитель", PersonID: "p-dima", Name: "Дима"},
+		{Level: 3, Role: "hr_bp", Title: "HR BP", PersonID: "p-eva", Name: "Ева"},
+		{Level: 4, Role: "open_sources", Title: "база знаний и каналы команды"},
 	}
 	if out.Topic != "ДМС" || !slices.Equal(out.Escalation, want) {
 		t.Fatalf("report = %+v", out)

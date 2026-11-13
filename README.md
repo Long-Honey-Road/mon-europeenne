@@ -98,6 +98,7 @@ From `backend/`:
 | `make run CMD="migrate up"` | apply migrations to `DATABASE_URL` (`down` reverts all) |
 | `make run CMD=llm-check` | probe the model from `LLM_*` env: plain answer, tool call, JSON by schema, stream |
 | `make run CMD='ask -v Кто поможет с деплоем?'` | one agent turn as `intern` (`-as`, `-thread`, `-detailed`); `-v` prints tool calls |
+| `make run CMD='trace -n 5 -as intern'` | the latest saved agent turns: prompt (`-prompt`), tool calls with arguments and results, text before cleanup; in compose `docker compose -f deploy/docker-compose.yml exec api buddy trace` |
 
 The agent's tools over MCP (stdio), as a test user in one thread type; with `DATABASE_URL` the plan and
 request tools are there too. For Claude Code, from the repo root:

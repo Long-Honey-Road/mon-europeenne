@@ -154,6 +154,27 @@ type Request struct {
 	UpdatedAt  time.Time
 }
 
+// TurnTrace is how one agent turn went, kept for debugging. Steps is the agent's JSON as is.
+type TurnTrace struct {
+	ID           string
+	ThreadID     string
+	ThreadType   ThreadType
+	UserID       string
+	QuestionID   string
+	Question     string
+	AnswerID     string
+	JobID        string
+	Mode         string
+	Duration     time.Duration
+	SystemPrompt string
+	Steps        json.RawMessage
+	RawText      string
+	FinalText    string
+	Violations   []string
+	Error        string
+	CreatedAt    time.Time
+}
+
 type Conflict struct {
 	ID         string
 	DocA       string

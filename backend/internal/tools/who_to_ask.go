@@ -43,8 +43,10 @@ type PersonHint struct {
 }
 
 type EscalationStep struct {
-	Level    int    `json:"level"`
-	Role     string `json:"role"`
+	Level int    `json:"level"`
+	Role  string `json:"role"`
+	// Title is the role in words, for the model to use instead of the code.
+	Title    string `json:"title"`
 	PersonID string `json:"person_id,omitempty"`
 	Name     string `json:"name,omitempty"`
 }
@@ -165,16 +167,27 @@ func EscalationChain(ctx context.Context, dir PeopleDirectory, p domain.Principa
 		if err != nil {
 			return nil, err
 		}
-		steps = append(steps, EscalationStep{Level: len(steps) + 1, Role: link.role, PersonID: person.ID, Name: person.Name})
+		steps = append(steps, EscalationStep{Level: len(steps) + 1, Role: link.role, Title: escalationTitles[link.role],
+			PersonID: person.ID, Name: person.Name})
 	}
-	return append(steps, EscalationStep{Level: len(steps) + 1, Role: "open_sources"}), nil
+	return append(steps, EscalationStep{Level: len(steps) + 1, Role: "open_sources", Title: escalationTitles["open_sources"]}), nil
 }
 
-// match counts distinct topic stems found in the person's entries and returns the best entry.
+// escalationTitles are what the model and the user read; Role stays a code for the frontend.
+var escalationTitles = map[string]string{
+	"mentor":       "наставник",
+	"manager":      "руководитель",
+	"hr_bp":        "HR BP",
+	"open_sources": "база знаний и каналы команды",
+}
+
+// match counts distinct topic stems found in the person's entries and returns the best entry. The role title
+// counts too: "инфраструктура" finds the infrastructure engineer even without a matching topic.
 func match(topic map[string]bool, person domain.Person) (int, string) {
 	matched := map[string]bool{}
 	best, bestScore := "", 0
-	for _, entry := range append(append([]string{}, person.AskMeAbout...), person.Responsibilities...) {
+	entries := append(append([]string{}, person.AskMeAbout...), person.Responsibilities...)
+	for _, entry := range append(entries, person.RoleTitle) {
 		score := 0
 		for s := range stems(entry) {
 			if topic[s] {

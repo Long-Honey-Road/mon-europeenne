@@ -21,6 +21,10 @@ var (
 	// A markdown link, or a bare URL, or a bare repository path; links are matched first so URLs inside them stay whole.
 	linkRe   = regexp.MustCompile(`\[([^\]]+)\]\(([^)\s]+)\)|https?://[^\s)\]]*[^\s)\].,;:!?]|/repo/[^\s)\]]*[^\s)\].,;:!?]`)
 	spacesRe = regexp.MustCompile(`[ \t]+([.,;:!?])`)
+	// Two or more spaces inside a line, left where a marker was removed; indentation is kept.
+	doubleSpaceRe = regexp.MustCompile(`(\S)[ \t]{2,}`)
+	// A marker without a number, e.g. [ref] or [источник 2]; a markdown link right after it keeps it.
+	pseudoRefRe = regexp.MustCompile(`(?i)\[(?:ref|refs|source|sources|src|cite|источник|ссылка)[^\]\n]{0,6}\](\()?`)
 )
 
 const repoPrefix = "/repo/"
@@ -103,6 +107,14 @@ func (s *turnState) finishText(text string, thread domain.ThreadType) (string, m
 		return ""
 	})
 	text = strings.TrimRight(text, " \t\n")
+	text = pseudoRefRe.ReplaceAllStringFunc(text, func(m string) string {
+		if strings.HasSuffix(m, "(") {
+			return m
+		}
+		s.violations = append(s.violations, "pseudo marker "+m)
+		removed = true
+		return ""
+	})
 	text = markerRe.ReplaceAllStringFunc(text, func(m string) string {
 		n, _ := strconv.Atoi(m[1 : len(m)-1])
 		if n < 1 || n > len(s.refs) {
@@ -143,6 +155,7 @@ func (s *turnState) finishText(text string, thread domain.ThreadType) (string, m
 	})
 	if removed {
 		text = spacesRe.ReplaceAllString(text, "$1")
+		text = doubleSpaceRe.ReplaceAllString(text, "$1 ")
 	}
 	return text, cited
 }
