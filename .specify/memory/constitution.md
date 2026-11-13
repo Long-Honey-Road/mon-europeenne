@@ -17,8 +17,9 @@ enforced in tools and search, never in prompts. The model never sees data the ca
 call returns `forbidden` with no content and the agent answers with a refusal.
 
 ### III. Actions only through tools
-The agent acts only through registered MCP tools; tools reach corporate systems only through mock services
-with a protobuf contract. Thread type limits the tool set. Submitting a request to a service is a human
+The agent acts only through registered MCP tools; tools reach data through service adapters: real Avito
+sources directly (with a snapshot for offline runs), unavailable systems through mock services with a protobuf
+contract. Thread type limits the tool set. Submitting a request to a service is a human
 click on our API, never a model tool.
 
 ### IV. Test-first (non-negotiable)
@@ -33,7 +34,8 @@ Model and service calls run in background jobs; the UI gets status events. Timeo
 clear message with the escalation chain.
 
 ## Data and Security
-- Synthetic data only. Test instructions are labelled as such and never presented as Avito regulations.
+- No real personal or internal data. Public Avito sources (checklist, Playbook) only with attribution. Test
+  instructions are labelled as such and never presented as Avito regulations.
 - No sensitive personal data and no financial operations.
 - Secrets only in environment variables; `.env.example` in the repository.
 
@@ -48,4 +50,4 @@ clear message with the escalation chain.
 This constitution follows `docs/CLAUDE.md` and `docs/agents/workflow.md`; on conflict those win and this file
 is updated. Changes to contracts go through `docs/design/system-design.md` first.
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-12 | **Last Amended**: 2026-11-12
+**Version**: 1.1.0 | **Ratified**: 2026-11-12 | **Last Amended**: 2026-11-13
