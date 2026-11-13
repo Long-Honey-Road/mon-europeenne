@@ -1,8 +1,12 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll } from 'vitest'
 import { useSession } from '../features/auth/session'
 import { server } from './api'
+import { chat } from './chat'
+
+// The chat loads threads, then history and its stream; coverage runs make that slower than the 1 s default.
+configure({ asyncUtilTimeout: 3000 })
 
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => {
@@ -10,6 +14,7 @@ afterEach(() => {
   server.resetHandlers()
   useSession.getState().signOut()
   localStorage.clear()
+  chat.reset()
 })
 afterAll(() => server.close())
 
