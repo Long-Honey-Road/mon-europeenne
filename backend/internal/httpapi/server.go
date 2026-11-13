@@ -43,6 +43,7 @@ type Threads interface {
 	Threads(ctx context.Context, userID string) ([]domain.Thread, error)
 	AddMessage(ctx context.Context, m domain.Message) (domain.Message, error)
 	Messages(ctx context.Context, threadID string, limit int) ([]domain.Message, error)
+	RateMessage(ctx context.Context, userID, messageID, value, note string) error
 }
 
 // Jobs queues background work.

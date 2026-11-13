@@ -25,6 +25,39 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/private/messages/{message_id}/feedback:
+        post:
+            tags:
+                - ThreadService
+            description: |-
+                RateMessage records a thumbs up or down on one of buddy's answers in the caller's thread; it is an event for
+                 the metrics, the last rating counts.
+            operationId: ThreadService_RateMessage
+            parameters:
+                - name: message_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RateMessageRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RateMessageResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/private/people:
         get:
             tags:
@@ -705,6 +738,23 @@ components:
                         - DIRECTION_QA
                     type: string
                     format: enum
+        RateMessageRequest:
+            type: object
+            properties:
+                message_id:
+                    type: string
+                value:
+                    enum:
+                        - RATING_UNSPECIFIED
+                        - RATING_UP
+                        - RATING_DOWN
+                    type: string
+                    format: enum
+                note:
+                    type: string
+        RateMessageResponse:
+            type: object
+            properties: {}
         Relations:
             type: object
             properties:

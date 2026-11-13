@@ -22,6 +22,7 @@ type memStore struct {
 	seq      int
 	threads  []domain.Thread
 	messages map[string][]domain.Message
+	ratings  []string
 }
 
 func newMemStore() *memStore { return &memStore{messages: map[string][]domain.Message{}} }
@@ -78,6 +79,23 @@ func (m *memStore) Messages(_ context.Context, threadID string, limit int) ([]do
 		all = all[len(all)-limit:]
 	}
 	return append([]domain.Message(nil), all...), nil
+}
+
+func (m *memStore) RateMessage(_ context.Context, userID, messageID, value, note string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, t := range m.threads {
+		if t.UserID != userID {
+			continue
+		}
+		for _, msg := range m.messages[t.ID] {
+			if msg.ID == messageID && msg.Role == domain.MessageAssistant {
+				m.ratings = append(m.ratings, messageID+":"+value+":"+note)
+				return nil
+			}
+		}
+	}
+	return store.ErrNotFound
 }
 
 type memJobs struct {
@@ -256,5 +274,31 @@ func TestListMessagesOldestFirstWithBlocks(t *testing.T) {
 	block := answer["blocks"].([]any)[0].(map[string]any)
 	if answer["role"] != "MESSAGE_ROLE_ASSISTANT" || answer["text"] != "ответ [1]" || block["type"] != "sources" {
 		t.Errorf("answer = %v", answer)
+	}
+}
+
+func TestRateMessage(t *testing.T) {
+	st, _, do := threadServer(t)
+	_, created := do(http.MethodPost, "/v1/private/threads", "intern", `{"type":"THREAD_TYPE_GENERAL"}`)
+	thread := created["thread"].(map[string]any)["id"].(string)
+	answer, _ := st.AddMessage(context.Background(), domain.Message{ThreadID: thread, Role: domain.MessageAssistant, Content: "!"})
+
+	code, body := do(http.MethodPost, "/v1/private/messages/"+answer.ID+"/feedback", "intern", `{"value":"RATING_UP","note":"помогло"}`)
+	if code != http.StatusOK || len(st.ratings) != 1 || st.ratings[0] != answer.ID+":up:помогло" {
+		t.Fatalf("code %d %v, ratings %v", code, body, st.ratings)
+	}
+	for name, tc := range map[string]struct {
+		user, body string
+		want       int
+	}{
+		"no value":       {"intern", `{}`, http.StatusBadRequest},
+		"long note":      {"intern", `{"value":"RATING_DOWN","note":"` + strings.Repeat("я", maxFeedbackNote+1) + `"}`, http.StatusBadRequest},
+		"someone else's": {"manager", `{"value":"RATING_DOWN"}`, http.StatusNotFound},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if code, body := do(http.MethodPost, "/v1/private/messages/"+answer.ID+"/feedback", tc.user, tc.body); code != tc.want {
+				t.Fatalf("code %d, want %d: %v", code, tc.want, body)
+			}
+		})
 	}
 }

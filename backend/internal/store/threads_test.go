@@ -178,3 +178,33 @@ func TestAppendEvents(t *testing.T) {
 		t.Fatalf("events = %d, %v", n, err)
 	}
 }
+
+func TestRateMessage(t *testing.T) {
+	s := seeded(t)
+	ctx := context.Background()
+	th, _ := s.CreateThread(ctx, "u-liza", domain.ThreadGeneral, "", domain.ThreadPin{})
+	question, _ := s.AddMessage(ctx, domain.Message{ThreadID: th.ID, Role: domain.MessageUser, Content: "?"})
+	answer, _ := s.AddMessage(ctx, domain.Message{ThreadID: th.ID, Role: domain.MessageAssistant, Content: "!"})
+
+	if err := s.RateMessage(ctx, "u-liza", answer.ID, "down", "не то"); err != nil {
+		t.Fatalf("RateMessage: %v", err)
+	}
+	var payload map[string]string
+	if err := s.pool.QueryRow(ctx, `SELECT payload FROM buddy.events WHERE type_id = $1`, int16(domain.EventFeedback)).Scan(&payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["message_id"] != answer.ID || payload["value"] != "down" || payload["note"] != "не то" || payload["thread_id"] != th.ID {
+		t.Fatalf("payload = %v", payload)
+	}
+
+	for name, tc := range map[string][2]string{
+		"own question":    {"u-liza", question.ID},
+		"someone else's":  {"u-dmitry", answer.ID},
+		"unknown message": {"u-liza", "00000000-0000-0000-0000-000000000000"},
+		"malformed id":    {"u-liza", "nope"},
+	} {
+		if err := s.RateMessage(ctx, tc[0], tc[1], "up", ""); !errors.Is(err, ErrNotFound) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+}

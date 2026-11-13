@@ -24,6 +24,7 @@ const (
 	ThreadService_GetThread_FullMethodName    = "/buddy.v1.ThreadService/GetThread"
 	ThreadService_ListMessages_FullMethodName = "/buddy.v1.ThreadService/ListMessages"
 	ThreadService_SendMessage_FullMethodName  = "/buddy.v1.ThreadService/SendMessage"
+	ThreadService_RateMessage_FullMethodName  = "/buddy.v1.ThreadService/RateMessage"
 )
 
 // ThreadServiceClient is the client API for ThreadService service.
@@ -40,6 +41,9 @@ type ThreadServiceClient interface {
 	// SendMessage saves the message and queues the agent turn; answers 202, the reply streams over
 	// GET /v1/private/threads/{thread_id}/events.
 	SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
+	// RateMessage records a thumbs up or down on one of buddy's answers in the caller's thread; it is an event for
+	// the metrics, the last rating counts.
+	RateMessage(ctx context.Context, in *RateMessageRequest, opts ...grpc.CallOption) (*RateMessageResponse, error)
 }
 
 type threadServiceClient struct {
@@ -100,6 +104,16 @@ func (c *threadServiceClient) SendMessage(ctx context.Context, in *SendMessageRe
 	return out, nil
 }
 
+func (c *threadServiceClient) RateMessage(ctx context.Context, in *RateMessageRequest, opts ...grpc.CallOption) (*RateMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RateMessageResponse)
+	err := c.cc.Invoke(ctx, ThreadService_RateMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ThreadServiceServer is the server API for ThreadService service.
 // All implementations must embed UnimplementedThreadServiceServer
 // for forward compatibility.
@@ -114,6 +128,9 @@ type ThreadServiceServer interface {
 	// SendMessage saves the message and queues the agent turn; answers 202, the reply streams over
 	// GET /v1/private/threads/{thread_id}/events.
 	SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error)
+	// RateMessage records a thumbs up or down on one of buddy's answers in the caller's thread; it is an event for
+	// the metrics, the last rating counts.
+	RateMessage(context.Context, *RateMessageRequest) (*RateMessageResponse, error)
 	mustEmbedUnimplementedThreadServiceServer()
 }
 
@@ -138,6 +155,9 @@ func (UnimplementedThreadServiceServer) ListMessages(context.Context, *ListMessa
 }
 func (UnimplementedThreadServiceServer) SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SendMessage not implemented")
+}
+func (UnimplementedThreadServiceServer) RateMessage(context.Context, *RateMessageRequest) (*RateMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RateMessage not implemented")
 }
 func (UnimplementedThreadServiceServer) mustEmbedUnimplementedThreadServiceServer() {}
 func (UnimplementedThreadServiceServer) testEmbeddedByValue()                       {}
@@ -250,6 +270,24 @@ func _ThreadService_SendMessage_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ThreadService_RateMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RateMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ThreadServiceServer).RateMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ThreadService_RateMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ThreadServiceServer).RateMessage(ctx, req.(*RateMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ThreadService_ServiceDesc is the grpc.ServiceDesc for ThreadService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -276,6 +314,10 @@ var ThreadService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendMessage",
 			Handler:    _ThreadService_SendMessage_Handler,
+		},
+		{
+			MethodName: "RateMessage",
+			Handler:    _ThreadService_RateMessage_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

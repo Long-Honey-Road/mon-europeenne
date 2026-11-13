@@ -197,6 +197,7 @@ var statusTexts = map[string]string{
 	"get_request_types":  "смотрю виды заявок",
 	"prepare_request":    "готовлю заявку",
 	"get_request_status": "проверяю заявку",
+	"list_my_requests":   "смотрю твои заявки",
 }
 
 func statusText(tool string) string {

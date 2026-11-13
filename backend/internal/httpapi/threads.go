@@ -167,6 +167,32 @@ func (s *threadService) ownThread(ctx context.Context, id string) (domain.Thread
 	return t, nil
 }
 
+// maxFeedbackNote keeps free-text feedback short.
+const maxFeedbackNote = 1000
+
+func (s *threadService) RateMessage(ctx context.Context, req *buddyv1.RateMessageRequest) (*buddyv1.RateMessageResponse, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var value string
+	switch req.GetValue() {
+	case buddyv1.Rating_RATING_UP:
+		value = "up"
+	case buddyv1.Rating_RATING_DOWN:
+		value = "down"
+	default:
+		return nil, status.Error(codes.InvalidArgument, "value must be RATING_UP or RATING_DOWN")
+	}
+	if len([]rune(req.GetNote())) > maxFeedbackNote {
+		return nil, status.Error(codes.InvalidArgument, "note is too long")
+	}
+	if err := s.deps.Threads.RateMessage(ctx, p.UserID, req.GetMessageId(), value, req.GetNote()); err != nil {
+		return nil, storeError(err)
+	}
+	return &buddyv1.RateMessageResponse{}, nil
+}
+
 func principal(ctx context.Context) (domain.Principal, error) {
 	p, ok := auth.PrincipalFrom(ctx)
 	if !ok {

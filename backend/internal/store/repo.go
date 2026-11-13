@@ -147,6 +147,26 @@ func (s *Store) Messages(ctx context.Context, threadID string, limit int) ([]dom
 	return out, rows.Err()
 }
 
+// RateMessage stores a feedback event for an assistant message in the user's own thread, ErrNotFound otherwise.
+func (s *Store) RateMessage(ctx context.Context, userID, messageID, value, note string) error {
+	if uuid.Validate(messageID) != nil {
+		return ErrNotFound
+	}
+	tag, err := s.pool.Exec(ctx, `
+		INSERT INTO buddy.events (actor_id, type_id, payload)
+		SELECT u.id, $3, jsonb_build_object('message_id', m.id, 'thread_id', m.thread_id, 'value', $4::text, 'note', $5::text)
+		FROM buddy.messages m JOIN buddy.threads t ON t.id = m.thread_id JOIN buddy.users u ON u.id = t.user_id
+		WHERE m.id = $2 AND u.external_id = $1 AND m.role_id = $6`,
+		userID, messageID, int16(domain.EventFeedback), value, note, int16(domain.MessageAssistant))
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // AppendEvents writes usage events; an unknown actor is stored as NULL.
 func (s *Store) AppendEvents(ctx context.Context, actorID string, events []domain.Event) error {
 	batch := &pgx.Batch{}
