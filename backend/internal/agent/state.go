@@ -30,6 +30,7 @@ type turnState struct {
 	refs       []Source
 	people     []tools.PersonHint
 	notFound   *tools.NotFoundReport
+	general    *tools.GeneralKnowledgeNote
 	actions    []json.RawMessage
 	violations []string
 	events     []Event
@@ -74,6 +75,11 @@ func (s *turnState) absorb(tool string, raw []byte) []byte {
 		var r tools.NotFoundReport
 		if json.Unmarshal(raw, &r) == nil {
 			s.notFound = &r
+		}
+	case "general_knowledge":
+		var g tools.GeneralKnowledgeNote
+		if json.Unmarshal(raw, &g) == nil {
+			s.general = &g
 		}
 	}
 	out, err := json.Marshal(obj)
@@ -170,6 +176,10 @@ func (s *turnState) blocks(cited map[int]bool) []Block {
 	if s.notFound != nil {
 		out = append(out, Block{Type: "not_found", Topic: s.notFound.Topic, Escalation: s.notFound.Escalation})
 	}
+	// The warning is the server's, not the model's: it is shown whenever the answer used general knowledge.
+	if s.general != nil {
+		out = append(out, Block{Type: "general_knowledge", Topic: s.general.Topic})
+	}
 	return out
 }
 
@@ -183,6 +193,8 @@ func (s *turnState) closingEvents(blocks []Block) {
 			s.event(domain.EventAnswerWithSources, map[string]any{"sources": len(b.Items)})
 		case "not_found":
 			s.event(domain.EventNotFound, map[string]any{"topic": b.Topic})
+		case "general_knowledge":
+			s.event(domain.EventGeneralKnowledge, map[string]any{"topic": b.Topic})
 		}
 	}
 }

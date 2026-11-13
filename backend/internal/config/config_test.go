@@ -92,6 +92,9 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		"negative fail rate":       {"MOCK_FAIL_RATE": "-0.1"},
 		"empty provider value":     {"LLM_PROVIDER": ""},
 		"unknown reasoning effort": {"LLM_REASONING_EFFORT": "max"},
+		"unknown detailed effort":  {"LLM_REASONING_EFFORT_DETAILED": "max"},
+		"temperature not a number": {"LLM_TEMPERATURE": "hot"},
+		"temperature too high":     {"LLM_TEMPERATURE": "2.5"},
 		"bad feature flag":         {"FEATURE_REQUESTS": "maybe"},
 	}
 	for name, vars := range cases {
@@ -119,5 +122,15 @@ func TestRequireRedis(t *testing.T) {
 	}
 	if err := (Config{RedisAddr: "redis:6379"}).RequireRedis(); err != nil {
 		t.Fatalf("RequireRedis() = %v, want nil", err)
+	}
+}
+
+func TestLoadReadsModelTuning(t *testing.T) {
+	cfg, err := Load(envOf(map[string]string{"LLM_TEMPERATURE": "0.3", "LLM_REASONING_EFFORT_DETAILED": "low"}))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.LLM.Temperature == nil || *cfg.LLM.Temperature != 0.3 || cfg.LLM.DetailedReasoningEffort != "low" {
+		t.Fatalf("LLM = %+v", cfg.LLM)
 	}
 }

@@ -80,6 +80,8 @@ services:
       LLM_MODEL: ${LLM_MODEL:-qwen3.6:35b-a3b}
       LLM_API_KEY: ${LLM_API_KEY:-ollama}
       LLM_REASONING_EFFORT: ${LLM_REASONING_EFFORT:-none}
+      LLM_REASONING_EFFORT_DETAILED: ${LLM_REASONING_EFFORT_DETAILED:-low}
+      LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0.3}
     # Lets the container reach Ollama on the host on Linux too.
     extra_hosts:
       - "host.docker.internal:host-gateway"

@@ -77,7 +77,7 @@ func buildWorker(cfg config.Config) (*asynq.Server, *asynq.ServeMux, func(), err
 
 	h := jobs.NewHandler(jobs.Deps{
 		Store: st, Publisher: stream.NewRedisBus(rdb),
-		Agent: agent.New(model, registry, agent.Config{}), Users: seedUsers(data), Directory: data.Directory(),
+		Agent: agent.New(model, registry, agent.Config{DetailedEffort: cfg.LLM.DetailedReasoningEffort}), Users: seedUsers(data), Directory: data.Directory(),
 	})
 	mux := jobs.Mux(h)
 	if cfg.FeatureRequests {

@@ -37,8 +37,8 @@ func TestMCPServesToolsOverStdio(t *testing.T) {
 	for _, tool := range list.Tools {
 		names = append(names, tool.Name)
 	}
-	// Without a database only the directory tools exist.
-	if len(names) != 2 || names[0] != "report_not_found" || names[1] != "who_to_ask" {
+	// Without a database only the tools that need no storage exist.
+	if len(names) != 3 || names[0] != "general_knowledge" || names[1] != "report_not_found" || names[2] != "who_to_ask" {
 		t.Fatalf("tools = %v", names)
 	}
 	res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "who_to_ask", Arguments: map[string]any{"topic": "доступ к jira"}})

@@ -27,6 +27,10 @@ type LLM struct {
 	APIKey   string
 	// ReasoningEffort is passed to the provider as is; empty keeps the model default.
 	ReasoningEffort string
+	// DetailedReasoningEffort replaces ReasoningEffort for detailed answers; empty keeps ReasoningEffort.
+	DetailedReasoningEffort string
+	// Temperature is nil when LLM_TEMPERATURE is empty: the model default.
+	Temperature *float64
 }
 
 type Embeddings struct {
@@ -65,6 +69,8 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			Model:           str("LLM_MODEL", ""),
 			APIKey:          str("LLM_API_KEY", ""),
 			ReasoningEffort: str("LLM_REASONING_EFFORT", ""),
+
+			DetailedReasoningEffort: str("LLM_REASONING_EFFORT_DETAILED", ""),
 		},
 		Embeddings:    Embeddings{Model: str("EMBEDDINGS_MODEL", "")},
 		DatabaseURL:   str("DATABASE_URL", ""),
@@ -81,13 +87,26 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 		return Config{}, fmt.Errorf("LLM_PROVIDER=%q: %w", cfg.LLM.Provider, ErrInvalid)
 	}
 
-	switch cfg.LLM.ReasoningEffort {
-	case "", "none", "minimal", "low", "medium", "high":
-	default:
-		return Config{}, fmt.Errorf("LLM_REASONING_EFFORT=%q: %w", cfg.LLM.ReasoningEffort, ErrInvalid)
+	for key, v := range map[string]string{
+		"LLM_REASONING_EFFORT":          cfg.LLM.ReasoningEffort,
+		"LLM_REASONING_EFFORT_DETAILED": cfg.LLM.DetailedReasoningEffort,
+	} {
+		switch v {
+		case "", "none", "minimal", "low", "medium", "high":
+		default:
+			return Config{}, fmt.Errorf("%s=%q: %w", key, v, ErrInvalid)
+		}
 	}
 
 	var err error
+	if t := str("LLM_TEMPERATURE", ""); t != "" {
+		v, perr := strconv.ParseFloat(t, 64)
+		if perr != nil || v < 0 || v > 2 {
+			return Config{}, fmt.Errorf("LLM_TEMPERATURE=%q outside [0, 2]: %w", t, ErrInvalid)
+		}
+		cfg.LLM.Temperature = &v
+	}
+
 	if cfg.Embeddings.Enabled, err = strconv.ParseBool(str("EMBEDDINGS_ENABLED", "false")); err != nil {
 		return Config{}, fmt.Errorf("EMBEDDINGS_ENABLED: %w", ErrInvalid)
 	}

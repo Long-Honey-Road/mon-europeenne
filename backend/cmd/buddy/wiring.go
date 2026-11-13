@@ -32,6 +32,9 @@ func agentTools(data seed.Data, st *store.Store, requestsOn bool) (*tools.Regist
 	if err := add(tools.ReportNotFound(data.Directory())); err != nil {
 		return nil, err
 	}
+	if err := add(tools.GeneralKnowledge()); err != nil {
+		return nil, err
+	}
 	if st != nil {
 		if err := add(tools.GetPlan(st)); err != nil {
 			return nil, err

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/hibiken/asynq"
 
@@ -95,7 +96,7 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	}
 
 	res, err := h.d.Agent.Run(ctx, agent.Turn{
-		Principal: p, Thread: thread.Type, Mode: agent.Mode(turn.Mode), Profile: prof,
+		Principal: p, Thread: thread.Type, Mode: agent.Mode(turn.Mode), Profile: prof, Today: agent.TodayLine(time.Now(), user.StartDate),
 		Pinned: pinText(thread.Pin), Summary: thread.Summary, History: history(msgs[:idx]), Message: msgs[idx].Content,
 	}, emit)
 	if err != nil {

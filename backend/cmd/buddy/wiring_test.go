@@ -36,14 +36,14 @@ func TestAgentToolsDependOnDatabaseAndFlag(t *testing.T) {
 	defer pool.Close()
 	st := store.New(pool)
 
-	if got := toolNames(t, nil, true, domain.ThreadGeneral); !slices.Equal(got, []string{"report_not_found", "who_to_ask"}) {
+	if got := toolNames(t, nil, true, domain.ThreadGeneral); !slices.Equal(got, []string{"general_knowledge", "report_not_found", "who_to_ask"}) {
 		t.Errorf("without a database: %v", got)
 	}
-	want := []string{"get_plan", "get_request_status", "get_request_types", "list_my_requests", "prepare_request", "report_not_found", "who_to_ask"}
+	want := []string{"general_knowledge", "get_plan", "get_request_status", "get_request_types", "list_my_requests", "prepare_request", "report_not_found", "who_to_ask"}
 	if got := toolNames(t, st, true, domain.ThreadGeneral); !slices.Equal(got, want) {
 		t.Errorf("with requests: %v", got)
 	}
-	if got := toolNames(t, st, false, domain.ThreadGeneral); !slices.Equal(got, []string{"get_plan", "report_not_found", "who_to_ask"}) {
+	if got := toolNames(t, st, false, domain.ThreadGeneral); !slices.Equal(got, []string{"general_knowledge", "get_plan", "report_not_found", "who_to_ask"}) {
 		t.Errorf("FEATURE_REQUESTS off: %v", got)
 	}
 	if got := toolNames(t, st, true, domain.ThreadPlan); !slices.Contains(got, "update_item_status") {

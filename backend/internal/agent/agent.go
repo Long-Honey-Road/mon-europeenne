@@ -44,6 +44,8 @@ type Turn struct {
 	Mode      Mode
 	// Profile is the caller's compact JSON profile.
 	Profile string
+	// Today is the date line for the prompt, e.g. from TodayLine.
+	Today   string
 	Pinned  string
 	Summary string
 	// History is the thread so far, oldest first; the agent keeps the tail.
@@ -75,6 +77,27 @@ type Block struct {
 	Action json.RawMessage `json:"action,omitempty"`
 }
 
+var weekdays = [...]string{"воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"}
+
+// companyZone is where the day changes for the company: Moscow time.
+var companyZone = time.FixedZone("MSK", 3*60*60)
+
+// TodayLine tells the model the date and the day of onboarding, counted from the start date (1-based).
+func TodayLine(now, start time.Time) string {
+	now = now.In(companyZone)
+	line := fmt.Sprintf("%s, %s", now.Format(time.DateOnly), weekdays[now.Weekday()])
+	if start.IsZero() {
+		return line
+	}
+	y, m, d := start.Date()
+	ny, nm, nd := now.Date()
+	days := int(time.Date(ny, nm, nd, 0, 0, 0, 0, time.UTC).Sub(time.Date(y, m, d, 0, 0, 0, 0, time.UTC)).Hours() / 24)
+	if days < 0 {
+		return fmt.Sprintf("%s; стажировка начнётся %s", line, start.Format(time.DateOnly))
+	}
+	return fmt.Sprintf("%s; день стажировки %d", line, days+1)
+}
+
 type Event struct {
 	Type    domain.EventType
 	Payload map[string]any
@@ -92,6 +115,8 @@ type Config struct {
 	MaxToolSteps int
 	Timeout      time.Duration
 	HistoryLimit int
+	// DetailedEffort is the reasoning effort for detailed answers; empty keeps the client default.
+	DetailedEffort string
 }
 
 type Agent struct {
@@ -139,6 +164,9 @@ func (a *Agent) Run(ctx context.Context, t Turn, emit Emitter) (Result, error) {
 	var text string
 	for step := 0; ; step++ {
 		req := llm.Request{Messages: msgs}
+		if t.Mode == ModeDetailed {
+			req.ReasoningEffort = a.cfg.DetailedEffort
+		}
 		if step < a.cfg.MaxToolSteps {
 			req.Tools = offered
 		}
@@ -192,6 +220,7 @@ var statusTexts = map[string]string{
 	"get_team_process":   "смотрю процессы команды",
 	"who_to_ask":         "ищу, к кому обратиться",
 	"report_not_found":   "собираю, к кому обратиться",
+	"general_knowledge":  "вспоминаю общие знания",
 	"get_plan":           "смотрю план адаптации",
 	"update_item_status": "обновляю план",
 	"get_request_types":  "смотрю виды заявок",

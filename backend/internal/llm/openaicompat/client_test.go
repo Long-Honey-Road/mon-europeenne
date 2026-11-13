@@ -272,3 +272,26 @@ func TestChatRejectsUnknownRole(t *testing.T) {
 		t.Fatal("Chat accepted an unknown role")
 	}
 }
+
+func TestTemperatureAndPerRequestEffort(t *testing.T) {
+	s := newServer(t, 200, textReply)
+	temp := 0.3
+	c := New(Config{BaseURL: s.URL + "/v1", Model: "m", APIKey: "test-key", ReasoningEffort: "none", Temperature: &temp})
+
+	if _, err := c.Chat(context.Background(), llm.Request{
+		Messages:        []llm.Message{{Role: llm.RoleUser, Content: "?"}},
+		ReasoningEffort: "low",
+	}); err != nil {
+		t.Fatalf("Chat: %v", err)
+	}
+	if s.lastBody["temperature"] != 0.3 || s.lastBody["reasoning_effort"] != "low" {
+		t.Fatalf("body = %v", s.lastBody)
+	}
+
+	if _, err := c.Chat(context.Background(), llm.Request{Messages: []llm.Message{{Role: llm.RoleUser, Content: "?"}}}); err != nil {
+		t.Fatalf("Chat: %v", err)
+	}
+	if s.lastBody["reasoning_effort"] != "none" {
+		t.Fatalf("default effort = %v", s.lastBody["reasoning_effort"])
+	}
+}
