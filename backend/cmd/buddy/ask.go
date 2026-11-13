@@ -66,7 +66,7 @@ func runAsk(args []string, stdout io.Writer) error {
 	if *detailed {
 		mode = agent.ModeDetailed
 	}
-	user, err := seedUsers(data).User(principal.UserID)
+	user, err := seedUsers(data).User(context.Background(), principal.UserID)
 	if err != nil {
 		return err
 	}

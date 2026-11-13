@@ -39,7 +39,7 @@ type Runner interface {
 }
 
 type Users interface {
-	User(id string) (domain.User, error)
+	User(ctx context.Context, id string) (domain.User, error)
 }
 
 type Deps struct {
@@ -71,7 +71,7 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	if err != nil {
 		return err
 	}
-	user, err := h.d.Users.User(turn.UserID)
+	user, err := h.d.Users.User(ctx, turn.UserID)
 	if err != nil {
 		return err
 	}

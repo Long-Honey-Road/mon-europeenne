@@ -36,7 +36,15 @@ type account struct {
 	hash []byte
 }
 
-// Accounts keeps test accounts in memory, as the auth-roles mock will.
+// Directory checks credentials and looks accounts up: Accounts in memory, or Remote over the auth-roles service.
+type Directory interface {
+	// Authenticate returns ErrInvalidCredentials for both unknown login and wrong password.
+	Authenticate(ctx context.Context, login, password string) (domain.User, error)
+	// User returns ErrUnknownUser for an unknown id.
+	User(ctx context.Context, id string) (domain.User, error)
+}
+
+// Accounts keeps test accounts in memory; the auth-roles mock serves them, and buddy uses it without MOCKS_ADDR.
 type Accounts struct {
 	byLogin map[string]account
 	byID    map[string]domain.User
@@ -69,7 +77,7 @@ func NewAccounts(creds []Credential) (*Accounts, error) {
 }
 
 // Authenticate returns ErrInvalidCredentials for both unknown login and wrong password.
-func (a *Accounts) Authenticate(login, password string) (domain.User, error) {
+func (a *Accounts) Authenticate(_ context.Context, login, password string) (domain.User, error) {
 	acc, ok := a.byLogin[login]
 	hash := acc.hash
 	if !ok {
@@ -81,7 +89,7 @@ func (a *Accounts) Authenticate(login, password string) (domain.User, error) {
 	return acc.user, nil
 }
 
-func (a *Accounts) User(id string) (domain.User, error) {
+func (a *Accounts) User(_ context.Context, id string) (domain.User, error) {
 	u, ok := a.byID[id]
 	if !ok {
 		return domain.User{}, fmt.Errorf("%w: %q", ErrUnknownUser, id)

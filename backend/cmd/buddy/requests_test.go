@@ -17,6 +17,7 @@ import (
 func TestRequestSubmissionEndToEnd(t *testing.T) {
 	cfg := stackConfig(t)
 	cfg.FeatureRequests = true
+	cfg.MocksAddr = startMocks(t)
 	ctx := context.Background()
 
 	h, cleanAPI, err := buildAPI(ctx, cfg)

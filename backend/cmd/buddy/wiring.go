@@ -6,6 +6,7 @@ import (
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/people"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/requests"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/store"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/tools"
@@ -17,7 +18,7 @@ const fakeAnswer = "Тестовый режим: модель не подклю�
 
 // agentTools builds the tool set; without a store (buddy ask without DATABASE_URL) only directory tools exist.
 // The requests module is added only when FEATURE_REQUESTS is on.
-func agentTools(data seed.Data, st *store.Store, requestsOn bool) (*tools.Registry, error) {
+func agentTools(data seed.Data, dir people.Directory, st *store.Store, requestsOn bool) (*tools.Registry, error) {
 	var list []tools.Tool
 	add := func(t tools.Tool, err error) error {
 		if err != nil {
@@ -26,16 +27,16 @@ func agentTools(data seed.Data, st *store.Store, requestsOn bool) (*tools.Regist
 		list = append(list, t)
 		return nil
 	}
-	if err := add(tools.WhoToAsk(data.Directory())); err != nil {
+	if err := add(tools.WhoToAsk(dir)); err != nil {
 		return nil, err
 	}
-	if err := add(tools.ReportNotFound(data.Directory())); err != nil {
+	if err := add(tools.ReportNotFound(dir)); err != nil {
 		return nil, err
 	}
 	if err := add(tools.GeneralKnowledge()); err != nil {
 		return nil, err
 	}
-	if err := add(tools.TeamMembers(data.Directory())); err != nil {
+	if err := add(tools.TeamMembers(dir)); err != nil {
 		return nil, err
 	}
 	if st != nil {
@@ -46,7 +47,7 @@ func agentTools(data seed.Data, st *store.Store, requestsOn bool) (*tools.Regist
 			return nil, err
 		}
 		if requestsOn {
-			reqTools, err := requests.Tools(requests.CatalogFromSeed(data), st, data.Directory())
+			reqTools, err := requests.Tools(requests.CatalogFromSeed(data), st, dir)
 			if err != nil {
 				return nil, err
 			}
@@ -68,7 +69,7 @@ func localTools(ctx context.Context, cfg config.Config, data seed.Data) (*tools.
 		}
 		st, closeFn = store.New(pool), pool.Close
 	}
-	reg, err := agentTools(data, st, cfg.FeatureRequests)
+	reg, err := agentTools(data, data.Directory(), st, cfg.FeatureRequests)
 	if err != nil {
 		closeFn()
 		return nil, nil, err
@@ -79,7 +80,7 @@ func localTools(ctx context.Context, cfg config.Config, data seed.Data) (*tools.
 // seedUsers looks up test users by id without hashing passwords.
 type seedUsers seed.Data
 
-func (s seedUsers) User(id string) (domain.User, error) {
+func (s seedUsers) User(_ context.Context, id string) (domain.User, error) {
 	for _, c := range seed.Data(s).Credentials() {
 		if c.User.ID == id {
 			return c.User, nil

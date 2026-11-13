@@ -119,9 +119,9 @@ func (d *Desk) Submit(ctx context.Context, p domain.Principal, threadID, typeKey
 	return v, nil
 }
 
-// Sync asks the service to move due requests, updates the mirror and notifies threads; returns how many changed.
-func (d *Desk) Sync(ctx context.Context, now time.Time) (int, error) {
-	changed, err := d.svc.Advance(ctx, now)
+// Sync pulls changed requests from the service, updates the mirror and notifies threads; returns how many changed.
+func (d *Desk) Sync(ctx context.Context) (int, error) {
+	changed, err := d.svc.Updates(ctx)
 	n := 0
 	for _, tk := range changed {
 		threadID := ""

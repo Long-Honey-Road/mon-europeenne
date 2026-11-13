@@ -16,7 +16,7 @@ func toolNames(t *testing.T, st *store.Store, requestsOn bool, thread domain.Thr
 	if err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	reg, err := agentTools(data, st, requestsOn)
+	reg, err := agentTools(data, data.Directory(), st, requestsOn)
 	if err != nil {
 		t.Fatalf("agentTools: %v", err)
 	}

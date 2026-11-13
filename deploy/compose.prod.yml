@@ -17,6 +17,11 @@ services:
   seed:
     image: ${BACKEND_IMAGE:-buddy-backend:staging}
 
+  mocks:
+    image: ${BACKEND_IMAGE:-buddy-backend:staging}
+    ports: !reset []
+    restart: unless-stopped
+
   api:
     image: ${BACKEND_IMAGE:-buddy-backend:staging}
     ports: !reset []

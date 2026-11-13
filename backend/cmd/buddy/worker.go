@@ -59,29 +59,40 @@ func buildWorker(cfg config.Config) (*asynq.Server, *asynq.ServeMux, func(), err
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	src, closeSrc, err := openSources(cfg, data)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	pool, err := store.Open(context.Background(), cfg.DatabaseURL)
 	if err != nil {
+		closeSrc()
 		return nil, nil, nil, err
 	}
 	st := store.New(pool)
-	registry, err := agentTools(data, st, cfg.FeatureRequests)
-	if err != nil {
-		pool.Close()
-		return nil, nil, nil, err
-	}
 	rdb := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr})
 	cleanup := func() {
 		_ = rdb.Close()
 		pool.Close()
+		closeSrc()
+	}
+	registry, err := agentTools(data, src.directory, st, cfg.FeatureRequests)
+	if err != nil {
+		cleanup()
+		return nil, nil, nil, err
 	}
 
 	h := jobs.NewHandler(jobs.Deps{
 		Store: st, Publisher: stream.NewRedisBus(rdb),
-		Agent: agent.New(model, registry, agent.Config{DetailedEffort: cfg.LLM.DetailedReasoningEffort}), Users: seedUsers(data), Directory: data.Directory(),
+		Agent: agent.New(model, registry, agent.Config{DetailedEffort: cfg.LLM.DetailedReasoningEffort}), Users: src.accounts, Directory: src.directory,
 	})
 	mux := jobs.Mux(h)
 	if cfg.FeatureRequests {
-		handleRequestJobs(mux, newDesk(data, st, rdb))
+		desk, err := newDesk(data, src, st, rdb)
+		if err != nil {
+			cleanup()
+			return nil, nil, nil, err
+		}
+		handleRequestJobs(mux, desk)
 	}
 	return jobs.NewServer(cfg.RedisAddr, workerConcurrency), mux, cleanup, nil
 }

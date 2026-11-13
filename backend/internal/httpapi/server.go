@@ -4,6 +4,7 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -52,7 +53,7 @@ type Jobs interface {
 }
 
 type Deps struct {
-	Accounts  *auth.Accounts
+	Accounts  auth.Directory
 	Tokens    *auth.Tokens
 	Directory Directory
 	Threads   Threads
@@ -145,9 +146,14 @@ func requireSession(d Deps, next http.Handler) http.Handler {
 			writeStatus(w, http.StatusUnauthorized, codes.Unauthenticated, "authentication required")
 			return
 		}
-		user, err := d.Accounts.User(userID)
-		if err != nil {
+		user, err := d.Accounts.User(r.Context(), userID)
+		if errors.Is(err, auth.ErrUnknownUser) {
 			writeStatus(w, http.StatusUnauthorized, codes.Unauthenticated, "authentication required")
+			return
+		}
+		if err != nil {
+			// The account service is down: the session is still valid, so no 401 that would sign the user out.
+			writeStatus(w, http.StatusServiceUnavailable, codes.Unavailable, "account service is unavailable, try again")
 			return
 		}
 		p := domain.Principal{UserID: user.ID, Role: user.Role, TeamID: user.TeamID}

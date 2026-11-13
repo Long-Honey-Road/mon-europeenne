@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 )
 
 var (
@@ -38,14 +39,24 @@ type Embeddings struct {
 	Model   string
 }
 
+// Mocks configures the buddy mocks process.
+type Mocks struct {
+	GRPCAddr string
+	HTTPAddr string
+	// FailRate is the share of calls that fail; MaxLatency is a random delay added to every call.
+	FailRate   float64
+	MaxLatency time.Duration
+}
+
 type Config struct {
-	LLM           LLM
-	Embeddings    Embeddings
-	DatabaseURL   string
-	RedisAddr     string
-	MocksBaseURL  string
+	LLM         LLM
+	Embeddings  Embeddings
+	DatabaseURL string
+	RedisAddr   string
+	// MocksAddr is the gRPC address of the corporate services (buddy mocks); empty serves seed in memory.
+	MocksAddr     string
 	SessionSecret string
-	MockFailRate  float64
+	Mocks         Mocks
 	HTTPAddr      string
 	GRPCAddr      string
 	// FeatureRequests turns on the access requests module.
@@ -75,7 +86,8 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 		Embeddings:    Embeddings{Model: str("EMBEDDINGS_MODEL", "")},
 		DatabaseURL:   str("DATABASE_URL", ""),
 		RedisAddr:     str("REDIS_ADDR", ""),
-		MocksBaseURL:  str("MOCKS_BASE_URL", ""),
+		MocksAddr:     str("MOCKS_ADDR", ""),
+		Mocks:         Mocks{GRPCAddr: str("MOCKS_GRPC_ADDR", ":9091"), HTTPAddr: str("MOCKS_HTTP_ADDR", ":8090")},
 		SessionSecret: str("SESSION_SECRET", ""),
 		HTTPAddr:      str("HTTP_ADDR", ":8080"),
 		GRPCAddr:      str("GRPC_ADDR", ":9090"),
@@ -115,11 +127,14 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 		return Config{}, fmt.Errorf("FEATURE_REQUESTS: %w", ErrInvalid)
 	}
 
-	if cfg.MockFailRate, err = strconv.ParseFloat(str("MOCK_FAIL_RATE", "0"), 64); err != nil {
+	if cfg.Mocks.FailRate, err = strconv.ParseFloat(str("MOCK_FAIL_RATE", "0"), 64); err != nil {
 		return Config{}, fmt.Errorf("MOCK_FAIL_RATE: %w", ErrInvalid)
 	}
-	if cfg.MockFailRate < 0 || cfg.MockFailRate > 1 {
-		return Config{}, fmt.Errorf("MOCK_FAIL_RATE=%v outside [0, 1]: %w", cfg.MockFailRate, ErrInvalid)
+	if cfg.Mocks.FailRate < 0 || cfg.Mocks.FailRate > 1 {
+		return Config{}, fmt.Errorf("MOCK_FAIL_RATE=%v outside [0, 1]: %w", cfg.Mocks.FailRate, ErrInvalid)
+	}
+	if cfg.Mocks.MaxLatency, err = time.ParseDuration(str("MOCK_MAX_LATENCY", "0s")); err != nil || cfg.Mocks.MaxLatency < 0 {
+		return Config{}, fmt.Errorf("MOCK_MAX_LATENCY: %w", ErrInvalid)
 	}
 
 	return cfg, nil

@@ -27,7 +27,7 @@ var liza = domain.User{ID: "u-liza", Login: "intern", DisplayName: "Лиза", R
 
 type users map[string]domain.User
 
-func (u users) User(id string) (domain.User, error) {
+func (u users) User(_ context.Context, id string) (domain.User, error) {
 	if v, ok := u[id]; ok {
 		return v, nil
 	}

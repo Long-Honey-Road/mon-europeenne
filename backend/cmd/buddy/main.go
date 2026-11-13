@@ -26,7 +26,7 @@ var commands = []command{
 	{name: "api", summary: "serve the HTTP API and SSE", run: runAPI},
 	{name: "worker", summary: "run background jobs and the scheduler", run: runWorker},
 	{name: "mcp", summary: "expose agent tools over MCP (stdio) as a test user", run: runMCP},
-	{name: "mocks", summary: "serve mock corporate services", run: notImplemented},
+	{name: "mocks", summary: "serve mock corporate services: auth-roles, people, corp-requests", run: runMocks},
 	{name: "migrate", summary: "apply (up) or revert (down) database migrations", run: runMigrate},
 	{name: "seed", summary: "load synthetic data and build the index", run: runSeed},
 	{name: "ask", summary: "run one agent turn against the configured model", run: runAsk},
@@ -73,8 +73,4 @@ func printUsage(w io.Writer) {
 	for _, cmd := range commands {
 		fmt.Fprintf(w, "  %-10s %s\n", cmd.name, cmd.summary)
 	}
-}
-
-func notImplemented([]string, io.Writer) error {
-	return errNotImplemented
 }

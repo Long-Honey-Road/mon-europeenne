@@ -19,10 +19,13 @@ type authService struct {
 	deps Deps
 }
 
-func (s *authService) Login(_ context.Context, req *buddyv1.LoginRequest) (*buddyv1.LoginResponse, error) {
-	user, err := s.deps.Accounts.Authenticate(req.GetLogin(), req.GetPassword())
-	if err != nil {
+func (s *authService) Login(ctx context.Context, req *buddyv1.LoginRequest) (*buddyv1.LoginResponse, error) {
+	user, err := s.deps.Accounts.Authenticate(ctx, req.GetLogin(), req.GetPassword())
+	if errors.Is(err, auth.ErrInvalidCredentials) {
 		return nil, status.Error(codes.Unauthenticated, "invalid login or password")
+	}
+	if err != nil {
+		return nil, status.Error(codes.Unavailable, "sign-in service is unavailable, try again")
 	}
 	return &buddyv1.LoginResponse{Token: s.deps.Tokens.Issue(user.ID), User: userProto(user)}, nil
 }
@@ -37,7 +40,7 @@ func (s *profileService) GetMe(ctx context.Context, _ *buddyv1.GetMeRequest) (*b
 	if !ok {
 		return nil, status.Error(codes.Unauthenticated, "authentication required")
 	}
-	user, err := s.deps.Accounts.User(p.UserID)
+	user, err := s.deps.Accounts.User(ctx, p.UserID)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "authentication required")
 	}

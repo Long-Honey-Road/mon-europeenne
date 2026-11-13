@@ -46,20 +46,3 @@ func TestRunUnknownCommandFails(t *testing.T) {
 		t.Fatalf("stderr = %q, want unknown command error", stderr.String())
 	}
 }
-
-func TestRunStubCommandsReportNotImplemented(t *testing.T) {
-	for _, name := range []string{"mocks"} {
-		t.Run(name, func(t *testing.T) {
-			var stdout, stderr bytes.Buffer
-
-			code := run([]string{name}, &stdout, &stderr)
-
-			if code != exitError {
-				t.Fatalf("exit code = %d, want %d", code, exitError)
-			}
-			if !strings.Contains(stderr.String(), "not implemented") {
-				t.Fatalf("stderr = %q, want not implemented", stderr.String())
-			}
-		})
-	}
-}
