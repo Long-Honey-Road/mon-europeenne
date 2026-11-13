@@ -4,6 +4,16 @@ set -eu
 BASE="${1:-http://localhost:8080}"
 SEED="$(dirname "$0")/../backend/seed/people.json"
 
+# Behind Cloudflare Access: every request carries the service token when it is set.
+# Headers go through a curl config file, so the secret does not show up in ps.
+CURLRC=$(mktemp)
+trap 'rm -f "$CURLRC"' EXIT
+if [ -n "${CF_ACCESS_CLIENT_ID:-}" ]; then
+  printf 'header = "CF-Access-Client-Id: %s"\nheader = "CF-Access-Client-Secret: %s"\n' \
+    "$CF_ACCESS_CLIENT_ID" "${CF_ACCESS_CLIENT_SECRET:-}" > "$CURLRC"
+fi
+curl() { command curl -K "$CURLRC" "$@"; }
+
 PASSWORD=$(python3 -c 'import json,sys; print(next(p["account"]["password"] for p in json.load(open(sys.argv[1]))["people"] if p.get("account", {}).get("login") == "intern"))' "$SEED")
 
 TOKEN=$(curl -fsS -X POST "$BASE/v1/public/auth/login" -H 'Content-Type: application/json' \
@@ -39,7 +49,7 @@ THREAD=$(curl -fsS -X POST "$BASE/v1/private/threads" -H "Authorization: Bearer 
   -d '{"type":"THREAD_TYPE_GENERAL"}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["thread"]["id"])')
 
 EVENTS=$(mktemp)
-trap 'rm -f "$EVENTS"' EXIT
+trap 'rm -f "$EVENTS" "$CURLRC"' EXIT
 curl -sN --max-time 90 "$BASE/v1/private/threads/$THREAD/events" -H "Authorization: Bearer $TOKEN" > "$EVENTS" &
 SSE=$!
 sleep 1
