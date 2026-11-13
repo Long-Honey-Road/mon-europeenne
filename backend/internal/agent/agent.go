@@ -174,7 +174,7 @@ func New(model llm.Client, t Tools, cfg Config) *Agent {
 		cfg.MaxToolSteps = 6
 	}
 	if cfg.Timeout == 0 {
-		cfg.Timeout = 60 * time.Second
+		cfg.Timeout = 80 * time.Second
 	}
 	if cfg.HistoryLimit == 0 {
 		cfg.HistoryLimit = 12
@@ -184,6 +184,11 @@ func New(model llm.Client, t Tools, cfg Config) *Agent {
 
 // Run executes one turn: tool calls until the model answers with text, then server-side blocks.
 func (a *Agent) Run(ctx context.Context, t Turn, emit Emitter) (Result, error) {
+	return a.RunWith(ctx, a.model, t, emit)
+}
+
+// RunWith is Run on a model held for this turn, e.g. a pool endpoint; the timeout starts here.
+func (a *Agent) RunWith(ctx context.Context, model llm.Client, t Turn, emit Emitter) (Result, error) {
 	if strings.TrimSpace(t.Message) == "" {
 		return Result{}, ErrEmptyMessage
 	}
@@ -222,7 +227,7 @@ func (a *Agent) Run(ctx context.Context, t Turn, emit Emitter) (Result, error) {
 		}
 		streamed := false
 		callStart := time.Now()
-		resp, err := a.model.ChatStream(ctx, req, func(d string) {
+		resp, err := model.ChatStream(ctx, req, func(d string) {
 			streamed = true
 			emit.Delta(d)
 		})

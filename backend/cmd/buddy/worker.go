@@ -17,8 +17,6 @@ import (
 	"github.com/Long-Honey-Road/mon-europeenne/backend/seed"
 )
 
-const workerConcurrency = 4
-
 // runWorker processes queued agent turns until SIGINT or SIGTERM.
 func runWorker(_ []string, stdout io.Writer) error {
 	cfg, err := config.Load(os.LookupEnv)
@@ -77,11 +75,14 @@ func buildWorker(cfg config.Config) (*asynq.Server, *asynq.ServeMux, func(), err
 
 	h := jobs.NewHandler(jobs.Deps{
 		Store: st, Publisher: stream.NewRedisBus(rdb),
-		Agent: agent.New(model, registry, agent.Config{DetailedEffort: cfg.LLM.DetailedReasoningEffort}), Users: seedUsers(data), Directory: data.Directory(),
+		Agent: agent.New(model, registry, agent.Config{DetailedEffort: cfg.LLM.DetailedReasoningEffort, Timeout: cfg.TurnTimeout}),
+		Users: seedUsers(data), Directory: data.Directory(),
+		Models: model, Turns: jobs.NewActiveTurns(rdb, jobs.TaskTimeout(cfg.LLM.QueueTimeout, cfg.TurnTimeout)),
+		QueueTimeout: cfg.LLM.QueueTimeout,
 	})
 	mux := jobs.Mux(h)
 	if cfg.FeatureRequests {
 		handleRequestJobs(mux, newDesk(data, st, rdb))
 	}
-	return jobs.NewServer(cfg.RedisAddr, workerConcurrency), mux, cleanup, nil
+	return jobs.NewServer(cfg.RedisAddr, cfg.WorkerConcurrency), mux, cleanup, nil
 }

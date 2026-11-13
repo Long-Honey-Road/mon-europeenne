@@ -17,6 +17,7 @@ import (
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm/fake"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm/pool"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/people"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/store"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/stream"
@@ -56,6 +57,8 @@ type memStore struct {
 }
 
 func (s *memStore) SaveTrace(_ context.Context, t domain.TurnTrace) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.traces = append(s.traces, t)
 	return s.traceErr
 }
@@ -74,6 +77,8 @@ func newStore(msgs ...string) (*memStore, string) {
 }
 
 func (s *memStore) Thread(_ context.Context, userID, id string) (domain.Thread, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	t, ok := s.threads[id]
 	if !ok || t.UserID != userID {
 		return domain.Thread{}, store.ErrNotFound
@@ -82,6 +87,8 @@ func (s *memStore) Thread(_ context.Context, userID, id string) (domain.Thread, 
 }
 
 func (s *memStore) Messages(_ context.Context, threadID string, limit int) ([]domain.Message, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	all := s.messages[threadID]
 	if len(all) > limit {
 		all = all[len(all)-limit:]
@@ -98,6 +105,8 @@ func (s *memStore) AddMessage(_ context.Context, m domain.Message) (domain.Messa
 }
 
 func (s *memStore) AppendEvents(_ context.Context, _ string, events []domain.Event) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.events = append(s.events, events...)
 	return nil
 }
@@ -125,7 +134,42 @@ func (r *recorder) types() []string {
 	return out
 }
 
+// memTurns records when the thread was freed, counted in published events.
+type memTurns struct {
+	rec      *recorder
+	mu       sync.Mutex
+	released map[string]int
+}
+
+func (m *memTurns) Release(_ context.Context, threadID, jobID string) error {
+	m.rec.mu.Lock()
+	n := len(m.rec.events)
+	m.rec.mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.released[threadID+"/"+jobID]; !ok {
+		m.released[threadID+"/"+jobID] = n
+	}
+	return nil
+}
+
+// modelPool serves one turn at a time, like the local Ollama.
+func modelPool(t *testing.T, model llm.Client) *pool.Pool {
+	t.Helper()
+	p, err := pool.New([]pool.Endpoint{{Name: "test", Client: model, MaxConcurrency: 1}}, pool.Config{Poll: 5 * time.Millisecond})
+	if err != nil {
+		t.Fatalf("pool: %v", err)
+	}
+	return p
+}
+
 func handler(t *testing.T, st *memStore, model llm.Client) (*Handler, *recorder) {
+	t.Helper()
+	h, rec, _ := handlerWith(t, st, modelPool(t, model))
+	return h, rec
+}
+
+func handlerWith(t *testing.T, st *memStore, models *pool.Pool) (*Handler, *recorder, *memTurns) {
 	t.Helper()
 	who, err := tools.WhoToAsk(directory())
 	if err != nil {
@@ -136,10 +180,11 @@ func handler(t *testing.T, st *memStore, model llm.Client) (*Handler, *recorder)
 		t.Fatalf("registry: %v", err)
 	}
 	rec := &recorder{}
+	turns := &memTurns{rec: rec, released: map[string]int{}}
 	return NewHandler(Deps{
-		Store: st, Publisher: rec, Agent: agent.New(model, reg, agent.Config{}),
+		Store: st, Publisher: rec, Agent: agent.New(nil, reg, agent.Config{}), Models: models, Turns: turns,
 		Users: users{"u-liza": liza}, Directory: directory(),
-	}), rec
+	}), rec, turns
 }
 
 func task(t *testing.T, turn ChatTurn) *asynq.Task {
@@ -306,5 +351,128 @@ func TestBadPayloadIsAnError(t *testing.T) {
 	h, _ := handler(t, st, fake.New())
 	if err := h.ProcessTask(context.Background(), asynq.NewTask(TypeChatTurn, []byte("{"))); err == nil {
 		t.Fatal("bad payload accepted")
+	}
+}
+
+// slow answers after a pause, like a local model under load.
+type slow struct{ text string }
+
+func (s slow) Chat(ctx context.Context, req llm.Request) (llm.Response, error) {
+	return s.ChatStream(ctx, req, func(string) {})
+}
+
+func (s slow) ChatStream(ctx context.Context, _ llm.Request, onDelta func(string)) (llm.Response, error) {
+	select {
+	case <-time.After(5 * time.Millisecond):
+	case <-ctx.Done():
+		return llm.Response{}, ctx.Err()
+	}
+	onDelta(s.text)
+	return llm.Response{Message: llm.Message{Role: llm.RoleAssistant, Content: s.text}}, nil
+}
+
+func TestSixTurnsQueueForOneSlot(t *testing.T) {
+	st, _ := newStore()
+	for i := range 6 {
+		id := fmt.Sprint("t", i)
+		st.threads[id] = domain.Thread{ID: id, UserID: "u-liza", Type: domain.ThreadGeneral}
+		st.messages[id] = []domain.Message{{ID: "q" + id, ThreadID: id, Role: domain.MessageUser, Content: "Привет"}}
+	}
+	h, rec, _ := handlerWith(t, st, modelPool(t, slow{text: "Привет!"}))
+
+	var wg sync.WaitGroup
+	for i := range 6 {
+		wg.Go(func() {
+			id := fmt.Sprint("t", i)
+			if err := h.ProcessTask(context.Background(), task(t, ChatTurn{ThreadID: id, UserID: "u-liza", MessageID: "q" + id})); err != nil {
+				t.Errorf("turn %s: %v", id, err)
+			}
+		})
+	}
+	wg.Wait()
+
+	done, queued := 0, 0
+	for _, e := range rec.events {
+		switch {
+		case e.Type == "done":
+			done++
+		case e.Type == "status" && e.Data["text"] == queuedStatus:
+			queued++
+		case e.Type == "error":
+			t.Errorf("turn failed: %v", e.Data)
+		}
+	}
+	if done != 6 || queued == 0 {
+		t.Errorf("done %d of 6, queued %d", done, queued)
+	}
+}
+
+func TestTurnWaitsForABusyModel(t *testing.T) {
+	st, msgID := newStore("Привет")
+	models := modelPool(t, fake.New(fake.Text("Привет!")))
+	h, rec, _ := handlerWith(t, st, models)
+	_, release, err := models.Acquire(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("Acquire: %v", err)
+	}
+	go func() {
+		time.Sleep(30 * time.Millisecond)
+		release()
+	}()
+
+	if err := h.ProcessTask(context.Background(), task(t, ChatTurn{ThreadID: "t1", UserID: "u-liza", MessageID: msgID})); err != nil {
+		t.Fatalf("ProcessTask: %v", err)
+	}
+	if got := rec.types(); !slices.Equal(got, []string{"status", "delta", "done"}) || rec.events[0].Data["text"] != queuedStatus {
+		t.Fatalf("published %+v", rec.events)
+	}
+}
+
+func TestQueueTimeoutFailsTheTurn(t *testing.T) {
+	st, msgID := newStore("Привет")
+	models := modelPool(t, fake.New())
+	h, rec, turns := handlerWith(t, st, models)
+	h.d.QueueTimeout = 20 * time.Millisecond
+	_, release, err := models.Acquire(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("Acquire: %v", err)
+	}
+	defer release()
+
+	if err := h.ProcessTask(context.Background(), task(t, ChatTurn{ThreadID: "t1", UserID: "u-liza", MessageID: msgID})); err != nil {
+		t.Fatalf("ProcessTask: %v", err)
+	}
+	last := rec.events[len(rec.events)-1]
+	if last.Type != "error" || last.Data["code"] != "model_busy" || !strings.Contains(last.Data["message"].(string), "занят") {
+		t.Fatalf("last event = %+v", last)
+	}
+	if len(st.traces) != 1 || !strings.Contains(st.traces[0].Error, "queue") {
+		t.Errorf("traces = %+v", st.traces)
+	}
+	if n, ok := turns.released["t1/"]; !ok || n != len(rec.events)-1 {
+		t.Errorf("thread freed at event %d (%v), want before the error", n, ok)
+	}
+}
+
+func TestThreadIsFreedBeforeDone(t *testing.T) {
+	st, msgID := newStore("Привет")
+	h, rec, turns := handlerWith(t, st, modelPool(t, fake.New(fake.Text("Привет!"))))
+
+	if err := h.ProcessTask(context.Background(), task(t, ChatTurn{ThreadID: "t1", UserID: "u-liza", MessageID: msgID})); err != nil {
+		t.Fatalf("ProcessTask: %v", err)
+	}
+	if n, ok := turns.released["t1/"]; !ok || n != len(rec.events)-1 || rec.events[n].Type != "done" {
+		t.Errorf("thread freed at event %d (%v) of %v", n, ok, rec.types())
+	}
+}
+
+func TestSkippedTurnFreesTheThread(t *testing.T) {
+	st, msgID := newStore("Привет")
+	h, _, turns := handlerWith(t, st, modelPool(t, fake.New()))
+	if err := h.ProcessTask(context.Background(), task(t, ChatTurn{ThreadID: "t-none", UserID: "u-liza", MessageID: msgID})); err != nil {
+		t.Fatalf("ProcessTask: %v", err)
+	}
+	if _, ok := turns.released["t-none/"]; !ok {
+		t.Error("thread of a skipped turn stays locked")
 	}
 }

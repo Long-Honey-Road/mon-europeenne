@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -139,16 +140,29 @@ func (s *threadService) SendMessage(ctx context.Context, req *buddyv1.SendMessag
 	if err != nil {
 		return nil, err
 	}
+	jobID, err := s.deps.Jobs.ReserveChatTurn(ctx, t.ID)
+	if errors.Is(err, jobs.ErrTurnRunning) {
+		return nil, status.Error(codes.FailedPrecondition, "the previous answer is still being prepared")
+	}
+	if err != nil {
+		return nil, status.Error(codes.Unavailable, "could not queue the answer, try again")
+	}
+	unreserve := func() {
+		if err := s.deps.Jobs.ReleaseChatTurn(context.WithoutCancel(ctx), t.ID, jobID); err != nil {
+			slog.Error("free thread after a failed send", "thread", t.ID, "err", err)
+		}
+	}
 	msg, err := s.deps.Threads.AddMessage(ctx, domain.Message{ThreadID: t.ID, Role: domain.MessageUser, Content: content})
 	if err != nil {
+		unreserve()
 		return nil, storeError(err)
 	}
 	mode := "brief"
 	if req.GetMode() == buddyv1.AnswerMode_ANSWER_MODE_DETAILED {
 		mode = "detailed"
 	}
-	jobID, err := s.deps.Jobs.EnqueueChatTurn(ctx, jobs.ChatTurn{ThreadID: t.ID, UserID: t.UserID, MessageID: msg.ID, Mode: mode})
-	if err != nil {
+	if err := s.deps.Jobs.EnqueueChatTurn(ctx, jobID, jobs.ChatTurn{ThreadID: t.ID, UserID: t.UserID, MessageID: msg.ID, Mode: mode}); err != nil {
+		unreserve()
 		return nil, status.Error(codes.Unavailable, "could not queue the answer, try again")
 	}
 	return &buddyv1.SendMessageResponse{MessageId: msg.ID, JobId: jobID}, nil

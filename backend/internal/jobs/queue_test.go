@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -25,6 +26,7 @@ func TestQueuedTurnReachesSubscriber(t *testing.T) {
 	st, msgID := newStore("Привет")
 	h, _ := handler(t, st, fake.New(fake.Text("Привет! Я buddy.")))
 	h.d.Publisher = bus
+	h.d.Turns = NewActiveTurns(rdb, time.Minute)
 
 	srv := NewServer(addr, 2)
 	if err := srv.Start(Mux(h)); err != nil {
@@ -38,11 +40,17 @@ func TestQueuedTurnReachesSubscriber(t *testing.T) {
 	}
 	defer stop()
 
-	client := NewClient(addr)
+	client := NewClient(addr, time.Minute)
 	defer client.Close()
-	jobID, err := client.EnqueueChatTurn(context.Background(), ChatTurn{ThreadID: "t1", UserID: "u-liza", MessageID: msgID, Mode: "brief"})
+	jobID, err := client.ReserveChatTurn(context.Background(), "t1")
 	if err != nil || jobID == "" {
-		t.Fatalf("EnqueueChatTurn = %q, %v", jobID, err)
+		t.Fatalf("ReserveChatTurn = %q, %v", jobID, err)
+	}
+	if _, err := client.ReserveChatTurn(context.Background(), "t1"); !errors.Is(err, ErrTurnRunning) {
+		t.Fatalf("second turn in the thread: %v", err)
+	}
+	if err := client.EnqueueChatTurn(context.Background(), jobID, ChatTurn{ThreadID: "t1", UserID: "u-liza", MessageID: msgID, Mode: "brief"}); err != nil {
+		t.Fatalf("EnqueueChatTurn: %v", err)
 	}
 
 	deadline := time.After(15 * time.Second)
@@ -56,6 +64,13 @@ func TestQueuedTurnReachesSubscriber(t *testing.T) {
 				if e.Data["text"] != "Привет! Я buddy." {
 					t.Errorf("done = %v", e.Data)
 				}
+				next, err := client.ReserveChatTurn(context.Background(), "t1")
+				if err != nil {
+					t.Fatalf("thread still busy after done: %v", err)
+				}
+				if err := client.ReleaseChatTurn(context.Background(), "t1", next); err != nil {
+					t.Errorf("ReleaseChatTurn: %v", err)
+				}
 				return
 			}
 		case <-deadline:
@@ -65,11 +80,11 @@ func TestQueuedTurnReachesSubscriber(t *testing.T) {
 }
 
 func TestEnqueueFailsWithoutRedis(t *testing.T) {
-	client := NewClient("127.0.0.1:1")
+	client := NewClient("127.0.0.1:1", time.Minute)
 	defer client.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	if _, err := client.EnqueueChatTurn(ctx, ChatTurn{ThreadID: "t1"}); err == nil {
+	if err := client.EnqueueChatTurn(ctx, "job-1", ChatTurn{ThreadID: "t1"}); err == nil {
 		t.Fatal("enqueue without Redis succeeded")
 	}
 }
