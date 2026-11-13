@@ -24,7 +24,8 @@ var (
 	spacesRe = regexp.MustCompile(`[ \t]+([.,;:!?])`)
 	// Two or more spaces inside a line, left where a marker was removed; indentation is kept.
 	doubleSpaceRe = regexp.MustCompile(`(\S)[ \t]{2,}`)
-	// A marker without a number, e.g. [ref] or [источник 2]; a markdown link right after it keeps it.
+	// A marker in the model's own style, e.g. [ref], [ref1] or [источник 2]; a markdown link right after it keeps it.
+	digitsRe    = regexp.MustCompile(`\d+`)
 	pseudoRefRe = regexp.MustCompile(`(?i)\[(?:ref|refs|source|sources|src|cite|источник|ссылка)[^\]\n]{0,6}\](\()?`)
 )
 
@@ -114,6 +115,10 @@ func (s *turnState) finishText(text string, thread domain.ThreadType) (string, m
 	text = pseudoRefRe.ReplaceAllStringFunc(text, func(m string) string {
 		if strings.HasSuffix(m, "(") {
 			return m
+		}
+		// [ref1] means [1]: keep the citation, the marker check below validates the number.
+		if n := digitsRe.FindString(m); n != "" {
+			return "[" + n + "]"
 		}
 		s.violations = append(s.violations, "pseudo marker "+m)
 		removed = true

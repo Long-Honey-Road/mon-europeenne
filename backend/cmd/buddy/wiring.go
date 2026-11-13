@@ -70,7 +70,7 @@ func agentTools(data seed.Data, dir people.Directory, st *store.Store, search to
 	return tools.NewRegistry(list...)
 }
 
-// localTools builds the tool set for dev commands: with DATABASE_URL the plan and requests tools work too,
+// localTools builds the tool set for dev commands: with DATABASE_URL the plan, search and requests tools work too,
 // without it only the directory ones.
 func localTools(ctx context.Context, cfg config.Config, data seed.Data) (*tools.Registry, func(), error) {
 	var st *store.Store
@@ -86,12 +86,19 @@ func localTools(ctx context.Context, cfg config.Config, data seed.Data) (*tools.
 	if st != nil {
 		search = knowledge.New(st)
 	}
-	reg, err := agentTools(data, data.Directory(), st, search, nil, cfg.FeatureRequests)
+	// With MOCKS_ADDR the directory and the repository come from the services, as in the worker.
+	src, closeSrc, err := openSources(cfg, data)
 	if err != nil {
 		closeFn()
 		return nil, nil, err
 	}
-	return reg, closeFn, nil
+	closeAll := func() { closeSrc(); closeFn() }
+	reg, err := agentTools(data, src.directory, st, search, src.teamRepo(), cfg.FeatureRequests)
+	if err != nil {
+		closeAll()
+		return nil, nil, err
+	}
+	return reg, closeAll, nil
 }
 
 // seedUsers looks up test users by id without hashing passwords.

@@ -1,6 +1,7 @@
 ## Thread: task
 
-Lead through the work task before any code, one step at a time, and say which step you are on:
+Lead through the work task before any code. Answer only the step the intern is on: with a new task start at
+step 1, unless the intern asks about a later one; end by offering the next step. Say which step you are on:
 
 1. Understand the task: check the ticket against the team's definition of ready (`get_team_process` with
    `dor`); list what is missing as questions for the task's author or the mentor.
