@@ -116,6 +116,20 @@ describe('chat turn', () => {
     expect(screen.getByRole('region', { name: 'Блок mystery' })).toBeInTheDocument()
   })
 
+  it('warns when the answer used general knowledge', async () => {
+    addThread()
+    chat.script = [
+      { event: 'block', data: { block: { type: 'general_knowledge', topic: 'SSH' } } },
+      { event: 'done', data: { text: 'В документах нет. В общем случае ssh user@host.' } },
+    ]
+    renderApp('/')
+
+    await ask('Как подключиться по ssh?')
+    const warn = await screen.findByRole('region', { name: 'Общие знания' })
+    expect(warn).toHaveTextContent('Это общие знания модели: SSH')
+    expect(warn).toHaveTextContent('проверь у наставника')
+  })
+
   it('shows a prepared request as a card', async () => {
     addThread('THREAD_TYPE_REQUEST')
     chat.script = [

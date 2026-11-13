@@ -109,6 +109,19 @@ function Action({ block }: { block: Block }) {
   )
 }
 
+// The server adds this block whenever the answer used the model's own knowledge instead of company data.
+function GeneralKnowledge({ block }: { block: Block }) {
+  return (
+    <section className="block block--caution" aria-label="Общие знания">
+      <p className="block__title">Это общие знания модели{block.topic ? `: ${block.topic}` : ''}</p>
+      <p className="block__meta">
+        В документах Авито этого нет. Ответ может быть неточным или устаревшим: проверь у наставника, прежде чем
+        делать.
+      </p>
+    </section>
+  )
+}
+
 function Unknown({ block }: { block: Block }) {
   return (
     <section className="block" aria-label={`Блок ${block.type}`}>
@@ -132,6 +145,8 @@ export function Blocks({ blocks }: { blocks: Block[] }) {
             return <NotFound key={key} block={b} />
           case 'action':
             return <Action key={key} block={b} />
+          case 'general_knowledge':
+            return <GeneralKnowledge key={key} block={b} />
           default:
             return <Unknown key={key} block={b} />
         }
