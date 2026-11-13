@@ -130,6 +130,45 @@ describe('chat turn', () => {
     expect(warn).toHaveTextContent('проверь у наставника')
   })
 
+  it('shows two disagreeing documents and marks the Playbook', async () => {
+    addThread()
+    chat.script = [
+      {
+        event: 'block',
+        data: {
+          block: {
+            type: 'sources',
+            items: [{ ref: 1, source_id: 'c1', title: 'Ценности', url: 'https://github.com/avito-tech/playbook', kind: 'playbook' }],
+          },
+        },
+      },
+      {
+        event: 'block',
+        data: {
+          block: {
+            type: 'conflict',
+            topic: 'code-review',
+            items: [
+              { ref: 2, source_id: 'c2', title: 'Код-ревью / Аппрувы', kind: 'doc' },
+              { ref: 3, source_id: 'c3', title: 'Ревью в Messenger / Аппрувы', kind: 'doc' },
+            ],
+          },
+        },
+      },
+      { event: 'block', data: { block: { type: 'conflict', items: [] } } },
+      { event: 'done', data: { text: 'Нужен один аппрув [3], общий документ говорит о двух [2].' } },
+    ]
+    renderApp('/')
+
+    await ask('Сколько аппрувов?')
+    const conflict = await screen.findByRole('region', { name: 'Документы расходятся' })
+    expect(conflict).toHaveTextContent('Документы расходятся: code-review')
+    expect(conflict).toHaveTextContent('Общее правило Код-ревью / Аппрувы')
+    expect(conflict).toHaveTextContent('Правило команды Ревью в Messenger / Аппрувы')
+    expect(screen.getAllByRole('region', { name: 'Документы расходятся' })).toHaveLength(1)
+    expect(within(screen.getByRole('list', { name: 'Источники' })).getByText('открытый Playbook')).toBeInTheDocument()
+  })
+
   it('shows a prepared request as a form', async () => {
     addThread('THREAD_TYPE_REQUEST')
     chat.script = [

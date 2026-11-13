@@ -297,6 +297,13 @@
   border-color: rgb(255 196 0 / 0.5);
   background: rgb(255 196 0 / 0.06);
 }
+.block__pair {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+.block__pair li + li {
+  margin-top: 4px;
+}
 .block--action {
   border-color: rgb(4 224 97 / 0.45);
 }
