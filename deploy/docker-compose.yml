@@ -90,6 +90,10 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      # Only with the ollama profile: wait until the models are pulled.
+      ollama-pull:
+        condition: service_completed_successfully
+        required: false
 
   frontend:
     build: ../frontend
@@ -105,6 +109,38 @@ services:
       timeout: 3s
       retries: 10
 
+  # Profile `ollama`: the model runs in compose, no Ollama on the host needed.
+  # Enable with COMPOSE_PROFILES=ollama and LLM_BASE_URL=http://ollama:11434/v1 in deploy/.env.
+  ollama:
+    profiles: [ollama]
+    image: ollama/ollama:0.40.13
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ollama-pull:
+    profiles: [ollama]
+    image: ollama/ollama:0.40.13
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      LLM_MODEL: ${LLM_MODEL:-qwen3.6:35b-a3b}
+      EMBEDDINGS_ENABLED: ${EMBEDDINGS_ENABLED:-false}
+      EMBEDDINGS_MODEL: ${EMBEDDINGS_MODEL:-bge-m3}
+    entrypoint: ["/bin/sh", "-c"]
+    # Pulls are cached in the volume: only the first start downloads.
+    command:
+      - ollama pull "$$LLM_MODEL" && if [ "$$EMBEDDINGS_ENABLED" = true ]; then ollama pull "$$EMBEDDINGS_MODEL"; fi
+    depends_on:
+      ollama:
+        condition: service_healthy
+
 volumes:
   postgres-data:
   redis-data:
+  ollama-data:

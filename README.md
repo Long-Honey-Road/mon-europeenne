@@ -1,55 +1,150 @@
-# mon-europeenne
+# AI-buddy
 
-AI-buddy: ИИ-наставник для стажёров Авито. Прототип для хакатона Hack&Change 2026.
+An AI mentor for Avito interns: it answers work questions with sources, leads through the onboarding plan, and
+does routine actions through the company's services (simulated here). Prototype for the Hack&Change 2026 case.
+All data is synthetic; instructions in the data are training ones, not Avito regulations.
 
-## Документация
+## Quick start
 
-Требования кейса, продуктовые решения, архитектура и правила работы лежат в сабмодуле [`docs/`](docs/)
-(репозиторий `Long-Honey-Road/ochre-stonecrop`). Начало: [docs/README.md](docs/README.md).
-
-```bash
-git clone --recurse-submodules git@github.com:Long-Honey-Road/mon-europeenne.git
-```
-
-Если репозиторий уже склонирован без сабмодулей:
+Requirements: Docker with Compose, and a model (see below). Everything else runs in containers.
 
 ```bash
-git submodule update --init
-```
-
-Обновить документацию до последней версии (делать перед началом любой работы):
-
-```bash
-git submodule update --init --remote docs
-```
-
-`docs/` это ochre-репо: приватный репозиторий с документацией, подключённый сабмодулем.
-
-## Для ИИ-агентов
-
-Правила в [CLAUDE.md](docs/CLAUDE.md) (дубликат в `docs/AGENTS.md`) и в [docs/agents/workflow.md](docs/agents/workflow.md).
-
-## Development
-
-Requirements: Go 1.27, Docker (also for tests: they start Postgres via testcontainers). Dev tools (golangci-lint, buf, protoc plugins) are pinned in
-`backend/tools.mod` and run via `go tool`, nothing to install.
-
-```bash
+git clone https://github.com/Long-Honey-Road/mon-europeenne.git
+cd mon-europeenne
 cp deploy/.env.example deploy/.env
 docker compose -f deploy/docker-compose.yml up -d --build --wait
 ```
 
-```bash
-deploy/smoke.sh   # login, profile, then one chat turn over SSE
+Open http://localhost:3000 and sign in with a test account. `deploy/smoke.sh` checks the running stack: login,
+profile, one chat turn over SSE.
+
+The `docs/` submodule is a private repository with the product and design documents (in Russian); the app and
+this README work without it. With access to it, clone with `--recurse-submodules`.
+
+## Model providers
+
+The worker calls any OpenAI-compatible chat API, set in `deploy/.env`:
+
+| Provider | `deploy/.env` |
+|---|---|
+| Ollama on the host (default) | `LLM_BASE_URL=http://host.docker.internal:11434/v1`, `LLM_MODEL=qwen3.6:35b-a3b`, `LLM_API_KEY=ollama` |
+| Ollama inside compose | `COMPOSE_PROFILES=ollama`, `LLM_BASE_URL=http://ollama:11434/v1`; the first start pulls `LLM_MODEL` into a volume |
+| External provider | its OpenAI-compatible base URL in `LLM_BASE_URL`, model in `LLM_MODEL`, key in `LLM_API_KEY` |
+| No model | `LLM_PROVIDER=fake`: every question gets a fixed text; enough for the UI and CI, not for the scenarios |
+
+`qwen3.6:35b-a3b` needs about 24 GB of RAM or VRAM; on a smaller machine use a smaller model of the same family
+or an external provider. `LLM_REASONING_EFFORT=none` turns Qwen thinking off, which keeps tool calls fast. Secrets
+are read from the environment only; `deploy/.env` is not committed.
+
+## Test accounts
+
+Synthetic, from `backend/seed/people.json`; the login page has buttons that fill them in.
+
+| Login | Password | Role |
+|---|---|---|
+| `intern` | `intern-demo` | intern, backend, team Messenger |
+| `mentor` | `mentor-demo` | mentor |
+| `manager` | `manager-demo` | manager of the team |
+
+## How to check the scenarios
+
+Sign in as `intern`. The screen is four orbs and the buddy chat on the right.
+
+1. **Today.** Click «Сегодня»: day and stage of onboarding, next steps, blockers. A step puts a question about
+   it into the chat.
+2. **Who to ask.** In the chat: «Кто поможет с деплоем?». The answer names a person with a card (role, why,
+   contact) and the escalation chain: mentor, manager, HR BP.
+3. **Access request (action through a company service).** In the chat: «Нужен доступ к VPN, работаю со стендами из
+   дома». Buddy prepares the request; the answer has a form with the fields filled in and who approves it. Check or
+   edit the fields and press «Отправить заявку». The card shows the request id and «Ждёт согласования»; about a
+   minute later it turns «Одобрено» without a reload. A Sentry request is rejected with a reason, to show the other
+   path. Requests also appear in «Задачи» and as blockers in «Сегодня».
+4. **Plan.** Click «План»: items by stage, an item card with status buttons. «Открыть карту» shows the plan as
+   constellations of spheres with dependencies; «Обсудить в треде плана» moves the chat into the plan thread.
+5. **Work task.** «Разобрать рабочую задачу» in «Сегодня» or «Задачи»: a task key opens the task screen with four
+   steps (understand, the service, team conventions, check and hand off). Buddy explains each step; it never writes
+   the code for the intern.
+6. **Team.** Click «Команда»: the directory, own team first, and «Спросить buddy» about a person.
+
+Permissions are checked in the tools and the API, not in prompts: what a role may not see is neither shown nor done.
+
+## Architecture
+
+C4, container level:
+
+```mermaid
+flowchart LR
+  intern([Intern]) -->|HTTPS| web["frontend<br/>React SPA on nginx"]
+  web -->|"/v1 JSON, SSE"| api["api<br/>Go: REST via grpc-gateway, SSE, auth by path prefix"]
+  api -->|enqueue turn| redis[("Redis<br/>asynq queue, pub/sub")]
+  worker["worker<br/>Go: agent loop, tools, schedulers"] -->|take turn| redis
+  worker -->|thread events| redis
+  redis -->|events| api
+  api --> pg[("PostgreSQL<br/>threads, plan, requests, events")]
+  worker --> pg
+  worker -->|OpenAI-compatible API| llm["LLM<br/>Ollama or external"]
+  worker --> corp["request system<br/>simulated, behind requests.Service"]
+  mcp["buddy mcp<br/>the same tools over MCP"] -.-> pg
 ```
 
-The stack: `postgres`, `redis`, one-shot `migrate` and `seed`, `api` (HTTP and SSE), `worker` (agent turns
-from the queue) and `frontend`. The worker calls the model from `LLM_*` in `deploy/.env`: by default Ollama on the host
-(`http://host.docker.internal:11434/v1`, model `qwen3.6:35b-a3b`). With `LLM_PROVIDER=fake` it answers every
-question with a fixed text: for CI and frontend work without a model.
+- **frontend**: one screen with four orbs and a permanent chat, the plan map, the task screen. TanStack Query and
+  Router, Zustand, Zod for every response; the client is generated from `backend/api/openapi/buddy-api.yaml`.
+- **api**: contracts in protobuf (`backend/api/proto`), REST through grpc-gateway, paths
+  `/{version}/{public|private}/{resource}`, private ones need a session token.
+- **worker**: one agent turn per message as an asynq job. The model answers in plain text with `[n]` citations;
+  blocks (sources, person, action form) are built by the server from this turn's tool results.
+- **Tools** are the agent's only way to act, each with a JSON Schema, roles and thread types; `buddy mcp` serves
+  the same registry over MCP. Sending a request is never a model action: the user confirms the form.
+- **Company services** sit behind interfaces, so a real system replaces the simulation without touching the agent.
 
-`frontend` serves the built app on http://localhost:3000 (`WEB_PORT` to change) and proxies `/v1` and `/healthz`
-to the API, so the browser talks to one origin; SSE goes through unbuffered.
+## Intern journey
+
+```mermaid
+journey
+  title First weeks with buddy
+  section Day 1
+    Sign in, see today's steps: 4: Intern
+    Ask who helps with what: 4: Intern, buddy
+  section Week 1
+    Request accesses through the chat form: 5: Intern, buddy
+    Watch statuses, see the rejected one and why: 4: Intern
+  section Week 2
+    Follow the plan on the map: 4: Intern
+    Take the first task, go through four steps: 5: Intern, buddy
+    Ask the mentor only what buddy cannot answer: 3: Intern, Mentor
+```
+
+## Tests and coverage
+
+```bash
+make cover
+```
+
+Runs the Go tests (Docker needed: they start Postgres and Redis) and the frontend tests, then merges both into one
+line figure with a threshold of 80% (`COVERAGE_MIN` to change). The report is `coverage/summary.md`, the merged lcov
+`coverage/lcov.info`, the frontend HTML `coverage/frontend/index.html`. Generated code, mock services, test fakes and
+the entry point are excluded, and the summary lists every exclusion. CI runs the same command on every push to
+`main` and `develop` and on demand (`gh workflow run ci.yml --ref <branch>`), and keeps `coverage/` as an artifact.
+
+Agent behaviour is specified with spec-kit before code: `specs/`; golden dialogs from the specs are test cases with a
+scripted model.
+
+## Decisions where the case was silent
+
+- Interface: a web app with a permanent chat beside the data, not a bare chat.
+- Requests are limited to accesses and live in one removable module behind `FEATURE_REQUESTS`.
+- A local model through Ollama is the default; any OpenAI-compatible provider is one variable away.
+- The full log with reasons is `docs/product/decisions.md`.
+
+## Development
+
+Requirements: Go 1.27, Node 26, Docker (also for tests: they start Postgres via testcontainers). Dev tools
+(golangci-lint, buf, protoc plugins) are pinned in `backend/tools.mod` and run via `go tool`, nothing to install.
+
+The stack: `postgres`, `redis`, one-shot `migrate` and `seed`, `api` (HTTP and SSE), `worker` (agent turns from the
+queue) and `frontend`, plus `ollama` and `ollama-pull` with the `ollama` profile. `frontend` serves the built app on
+http://localhost:3000 (`WEB_PORT`) and proxies `/v1` and `/healthz` to the API, so the browser talks to one origin;
+SSE goes through unbuffered. The API itself is on http://localhost:8080 (`API_PORT`).
 
 Chat flow for clients: create a thread, open `GET /v1/private/threads/{id}/events` (SSE) first, then
 `POST /v1/private/threads/{id}/messages` (202). Events: `status` (what the agent is doing), `delta` (answer text
@@ -63,17 +158,8 @@ Until the corp-requests mock exists, a simulated request system in Redis approve
 delay from `backend/seed/request_types.json`; the worker checks every 15 s and sends `request_status` to the
 thread. `GET /v1/private/today` shows missing, waiting and rejected requests as blockers.
 
-The API listens on `http://localhost:8080` (`API_PORT` to change). Paths follow
-`/{version}/{public|private}/{resource}`: `/v1/public/...` needs no session, `/v1/private/...` needs
-`Authorization: Bearer <token>` from `POST /v1/public/auth/login`. Contract: `backend/api/openapi/buddy-api.yaml`.
-
-Test accounts (synthetic, from `backend/seed/people.json`):
-
-| Login | Password | Role |
-|---|---|---|
-| `intern` | `intern-demo` | intern, backend, team Messenger |
-| `mentor` | `mentor-demo` | mentor |
-| `manager` | `manager-demo` | manager of the team |
+Paths follow `/{version}/{public|private}/{resource}`: `/v1/public/...` needs no session, `/v1/private/...`
+needs `Authorization: Bearer <token>` from `POST /v1/public/auth/login`. Contract: `backend/api/openapi/buddy-api.yaml`.
 
 Frontend (from `frontend/`):
 
@@ -84,8 +170,6 @@ Frontend (from `frontend/`):
 | `npm run typecheck` | TypeScript check |
 | `npm run dev:mock` | dev server on the fake API from the tests (msw in the browser), no backend needed |
 | `npm run gen:api` | regenerate `src/api/schema.gen.ts` from `backend/api/openapi/buddy-api.yaml` |
-
-Sign in with a test account below; the login page also has buttons that fill them in.
 
 From `backend/`:
 
@@ -110,17 +194,12 @@ claude mcp add buddy -- go -C backend run ./cmd/buddy mcp -as intern -thread pla
 
 Or MCP Inspector: `npx @modelcontextprotocol/inspector go -C backend run ./cmd/buddy mcp`.
 
-## Coverage
-
-```bash
-make cover
-```
-
-Runs the Go tests (Docker needed: they start Postgres and Redis) and the frontend tests, then merges both into one
-line figure with a threshold of 80% (`COVERAGE_MIN` to change). The report is `coverage/summary.md`, the merged lcov
-`coverage/lcov.info`, the frontend HTML `coverage/frontend/index.html`. Generated code, mock services, test fakes and
-the entry point are excluded, and the summary lists every exclusion. CI runs the same command and keeps
-`coverage/` as an artifact.
-
 Contracts live in `backend/api/proto` (source of truth). `backend/gen` and
 `backend/api/openapi/buddy-api.yaml` are generated and committed; CI fails if they are stale.
+
+## Documentation and agent rules
+
+Requirements of the case, product decisions, design and the plan are in the `docs/` submodule
+(`Long-Honey-Road/ochre-stonecrop`, private, in Russian): start at `docs/README.md`. Update it before work with
+`git submodule update --init --remote docs`. Rules for AI agents: `docs/CLAUDE.md` (copy in `docs/AGENTS.md`) and
+`docs/agents/workflow.md`.
