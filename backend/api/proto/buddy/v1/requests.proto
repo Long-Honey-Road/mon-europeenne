@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package buddy.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+
+// RequestService sends access requests the user confirmed to the company's request system and shows their
+// status. A removable module behind FEATURE_REQUESTS: when it is off every method is UNIMPLEMENTED.
+service RequestService {
+  // ListRequestTypes is the catalog for forms: fields as JSON Schema and the approval chain.
+  rpc ListRequestTypes(ListRequestTypesRequest) returns (ListRequestTypesResponse) {
+    option (google.api.http) = {get: "/v1/private/request-types"};
+  }
+  // SubmitRequest is called by the form after the user confirms; invalid fields are INVALID_ARGUMENT.
+  rpc SubmitRequest(SubmitRequestRequest) returns (SubmitRequestResponse) {
+    option (google.api.http) = {
+      post: "/v1/private/requests"
+      body: "*"
+    };
+  }
+  // ListRequests returns the caller's own requests, last updated first.
+  rpc ListRequests(ListRequestsRequest) returns (ListRequestsResponse) {
+    option (google.api.http) = {get: "/v1/private/requests"};
+  }
+  // GetRequest is for the author and for a manager of the author's team.
+  rpc GetRequest(GetRequestRequest) returns (GetRequestResponse) {
+    option (google.api.http) = {get: "/v1/private/requests/{request_id}"};
+  }
+}
+
+enum RequestStatus {
+  REQUEST_STATUS_UNSPECIFIED = 0;
+  REQUEST_STATUS_PENDING = 1;
+  REQUEST_STATUS_APPROVED = 2;
+  REQUEST_STATUS_REJECTED = 3;
+}
+
+message ApprovalStep {
+  // object_owner, manager, devops or hr_admin.
+  string resolver = 1;
+  // Object kind for object_owner, e.g. jira_project.
+  string object = 2;
+}
+
+message RequestType {
+  string key = 1;
+  string title = 2;
+  string category = 3;
+  google.protobuf.Struct fields_schema = 4;
+  repeated ApprovalStep approval_chain = 5;
+  int32 sla_hours = 6;
+}
+
+message Approver {
+  string role = 1;
+  string person_id = 2;
+  string name = 3;
+}
+
+message StatusChange {
+  // RFC 3339.
+  string at = 1;
+  RequestStatus status = 2;
+  string by = 3;
+  string note = 4;
+}
+
+message Request {
+  // Id in the company's system, e.g. REQ-12.
+  string id = 1;
+  string type_key = 2;
+  string title = 3;
+  RequestStatus status = 4;
+  // Who decides now, or who decided last.
+  Approver approver = 5;
+  // What happens next, for the user.
+  string next_step = 6;
+  // Why it was rejected.
+  string reason = 7;
+  google.protobuf.Struct fields = 8;
+  repeated StatusChange history = 9;
+  string thread_id = 10;
+  // RFC 3339.
+  string updated_at = 11;
+}
+
+message ListRequestTypesRequest {
+  string category = 1;
+}
+
+message ListRequestTypesResponse {
+  repeated RequestType types = 1;
+}
+
+message SubmitRequestRequest {
+  // Thread the request came from; its status changes arrive there as request_status events.
+  string thread_id = 1;
+  string type_key = 2;
+  google.protobuf.Struct fields = 3;
+}
+
+message SubmitRequestResponse {
+  Request request = 1;
+}
+
+message ListRequestsRequest {}
+
+message ListRequestsResponse {
+  repeated Request requests = 1;
+}
+
+message GetRequestRequest {
+  string request_id = 1;
+}
+
+message GetRequestResponse {
+  Request request = 1;
+}

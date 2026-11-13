@@ -26,6 +26,7 @@ func newLLM(cfg config.LLM) (llm.Client, error) {
 			Model:           cfg.Model,
 			APIKey:          cfg.APIKey,
 			ReasoningEffort: cfg.ReasoningEffort,
+			Temperature:     cfg.Temperature,
 			MaxRetries:      1,
 		}), nil
 	case config.ProviderFake:

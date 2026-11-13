@@ -55,6 +55,8 @@ type Request struct {
 	Messages []Message
 	Tools    []Tool
 	Format   *Format
+	// ReasoningEffort overrides the client's default for this call, e.g. more thinking for detailed answers.
+	ReasoningEffort string
 }
 
 type Usage struct {

@@ -19,6 +19,7 @@ import (
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/jobs"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/people"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/plan"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/stream"
 )
 
@@ -32,6 +33,7 @@ type Directory interface {
 	Person(ctx context.Context, id string) (domain.Person, error)
 	Team(ctx context.Context, id string) (domain.Team, error)
 	Relations(ctx context.Context, userID string) (people.Relations, error)
+	People(ctx context.Context) ([]domain.Person, error)
 }
 
 // Threads is the storage the thread API needs.
@@ -41,6 +43,7 @@ type Threads interface {
 	Threads(ctx context.Context, userID string) ([]domain.Thread, error)
 	AddMessage(ctx context.Context, m domain.Message) (domain.Message, error)
 	Messages(ctx context.Context, threadID string, limit int) ([]domain.Message, error)
+	RateMessage(ctx context.Context, userID, messageID, value, note string) error
 }
 
 // Jobs queues background work.
@@ -53,10 +56,29 @@ type Deps struct {
 	Tokens    *auth.Tokens
 	Directory Directory
 	Threads   Threads
-	Jobs      Jobs
-	Bus       Bus
+	Plans     Plans
+	// Requests is the removable requests module; nil (FEATURE_REQUESTS off) answers UNIMPLEMENTED.
+	Requests buddyv1.RequestServiceServer
+	// Blockers add to the "today" blockers beyond the plan, e.g. access requests.
+	Blockers []BlockerSource
+	Jobs     Jobs
+	Bus      Bus
 	// Heartbeat is how often SSE sends a comment so proxies keep the stream open; 15 s if zero.
 	Heartbeat time.Duration
+	// Now is the clock for "today"; time.Now if nil.
+	Now func() time.Time
+}
+
+func (d Deps) now() time.Time {
+	if d.Now != nil {
+		return d.Now()
+	}
+	return time.Now()
+}
+
+// BlockerSource tells what else blocks the user today.
+type BlockerSource interface {
+	Blockers(ctx context.Context, p domain.Principal) ([]plan.Blocker, error)
 }
 
 // Bus delivers live turn events of one thread.
@@ -83,6 +105,19 @@ func New(ctx context.Context, d Deps) (http.Handler, error) {
 	}
 	if err := buddyv1.RegisterThreadServiceHandlerServer(ctx, gw, &threadService{deps: d}); err != nil {
 		return nil, fmt.Errorf("register thread service: %w", err)
+	}
+	if err := buddyv1.RegisterPlanServiceHandlerServer(ctx, gw, &planService{deps: d}); err != nil {
+		return nil, fmt.Errorf("register plan service: %w", err)
+	}
+	if err := buddyv1.RegisterPeopleServiceHandlerServer(ctx, gw, &peopleService{deps: d}); err != nil {
+		return nil, fmt.Errorf("register people service: %w", err)
+	}
+	var requests buddyv1.RequestServiceServer = buddyv1.UnimplementedRequestServiceServer{}
+	if d.Requests != nil {
+		requests = d.Requests
+	}
+	if err := buddyv1.RegisterRequestServiceHandlerServer(ctx, gw, requests); err != nil {
+		return nil, fmt.Errorf("register request service: %w", err)
 	}
 
 	mux := http.NewServeMux()

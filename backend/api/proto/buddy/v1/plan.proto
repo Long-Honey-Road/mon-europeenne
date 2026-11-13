@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package buddy.v1;
+
+import "buddy/v1/user.proto";
+import "google/api/annotations.proto";
+
+// PlanService shows and updates the caller's own adaptation plan.
+service PlanService {
+  rpc GetPlan(GetPlanRequest) returns (GetPlanResponse) {
+    option (google.api.http) = {get: "/v1/private/plan"};
+  }
+  // UpdatePlanItem sets the status of one item; items outside the caller's plan are NOT_FOUND.
+  rpc UpdatePlanItem(UpdatePlanItemRequest) returns (UpdatePlanItemResponse) {
+    option (google.api.http) = {
+      patch: "/v1/private/plan/items/{item_id}"
+      body: "*"
+    };
+  }
+  // GetToday is the "today" panel: day of onboarding, current stage, next steps and blockers.
+  rpc GetToday(GetTodayRequest) returns (GetTodayResponse) {
+    option (google.api.http) = {get: "/v1/private/today"};
+  }
+}
+
+enum PlanPeriod {
+  PLAN_PERIOD_UNSPECIFIED = 0;
+  PLAN_PERIOD_W1 = 1;
+  PLAN_PERIOD_W2 = 2;
+  PLAN_PERIOD_M1 = 3;
+  PLAN_PERIOD_M2 = 4;
+  PLAN_PERIOD_EQUATOR = 5;
+  PLAN_PERIOD_FINAL = 6;
+}
+
+enum PlanItemStatus {
+  PLAN_ITEM_STATUS_UNSPECIFIED = 0;
+  PLAN_ITEM_STATUS_TODO = 1;
+  PLAN_ITEM_STATUS_DOING = 2;
+  PLAN_ITEM_STATUS_BLOCKED = 3;
+  PLAN_ITEM_STATUS_DONE = 4;
+}
+
+// Position of an item on the plan map.
+message MapPosition {
+  double x = 1;
+  double y = 2;
+  string group = 3;
+}
+
+message PlanItem {
+  // Stable key, e.g. "w1-access".
+  string id = 1;
+  string title = 2;
+  string practice = 3;
+  PlanPeriod period = 4;
+  PlanItemStatus status = 5;
+  string note = 6;
+  repeated string depends_on = 7;
+  // Dependencies that are not done yet.
+  repeated string blocked_by = 8;
+  repeated string sources = 9;
+  MapPosition map = 10;
+  // Empty when the item is for everyone.
+  string team_id = 11;
+  Direction direction = 12;
+}
+
+message GetPlanRequest {}
+
+message GetPlanResponse {
+  // In period order, then by map position.
+  repeated PlanItem items = 1;
+  int32 done = 2;
+  int32 total = 3;
+}
+
+message UpdatePlanItemRequest {
+  string item_id = 1;
+  PlanItemStatus status = 2;
+  string note = 3;
+}
+
+message UpdatePlanItemResponse {
+  PlanItem item = 1;
+}
+
+message GetTodayRequest {}
+
+message Blocker {
+  // plan_item, request (waiting or rejected) or access_missing (interns who have not requested every access).
+  string kind = 1;
+  string id = 2;
+  string title = 3;
+  string reason = 4;
+}
+
+message GetTodayResponse {
+  // Calendar day since the start date, 1-based; 0 before the start.
+  int32 day = 1;
+  int32 week = 2;
+  // Earliest period with unfinished items.
+  PlanPeriod period = 3;
+  // Up to three items to do now, in progress first.
+  repeated PlanItem next_steps = 4;
+  repeated Blocker blockers = 5;
+  int32 done = 6;
+  int32 total = 7;
+}

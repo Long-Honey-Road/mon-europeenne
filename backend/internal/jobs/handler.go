@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/hibiken/asynq"
 
@@ -26,6 +27,7 @@ type Store interface {
 	Messages(ctx context.Context, threadID string, limit int) ([]domain.Message, error)
 	AddMessage(ctx context.Context, m domain.Message) (domain.Message, error)
 	AppendEvents(ctx context.Context, actorID string, events []domain.Event) error
+	SaveTrace(ctx context.Context, t domain.TurnTrace) error
 }
 
 type Publisher interface {
@@ -95,10 +97,22 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	}
 
 	res, err := h.d.Agent.Run(ctx, agent.Turn{
-		Principal: p, Thread: thread.Type, Mode: agent.Mode(turn.Mode), Profile: prof,
+		Principal: p, Thread: thread.Type, Mode: agent.Mode(turn.Mode), Profile: prof, Today: agent.TodayLine(time.Now(), user.StartDate),
 		Pinned: pinText(thread.Pin), Summary: thread.Summary, History: history(msgs[:idx]), Message: msgs[idx].Content,
 	}, emit)
+	trace := domain.TurnTrace{
+		ThreadID: thread.ID, QuestionID: turn.MessageID, JobID: jobID, Mode: string(res.Mode), Duration: res.Trace.Duration,
+		SystemPrompt: res.Trace.SystemPrompt, RawText: res.Trace.RawText, FinalText: res.Text, Violations: res.Trace.Violations,
+	}
+	if trace.Mode == "" {
+		trace.Mode = turn.Mode
+	}
+	if steps, merr := json.Marshal(res.Trace.Steps); merr == nil {
+		trace.Steps = steps
+	}
 	if err != nil {
+		trace.Error = err.Error()
+		h.saveTrace(ctx, trace)
 		slog.Error("agent turn failed", "thread", thread.ID, "err", err)
 		if errors.Is(err, llm.ErrUnavailable) || errors.Is(err, context.DeadlineExceeded) {
 			h.fail(emit, p, "model_unavailable", "Модель сейчас не отвечает. Попробуй ещё раз или спроси у людей ниже.")
@@ -121,9 +135,18 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	if err := h.d.Store.AppendEvents(ctx, user.ID, domainEvents(res.Events)); err != nil {
 		slog.Error("append events", "thread", thread.ID, "err", err)
 	}
+	trace.AnswerID = saved.ID
+	h.saveTrace(ctx, trace)
 	// The saved text may differ from the stream: invariants remove invented links and markers.
 	emit.publish("done", map[string]any{"message_id": saved.ID, "text": saved.Content})
 	return nil
+}
+
+// saveTrace keeps the turn for debugging; losing a trace never fails the turn.
+func (h *Handler) saveTrace(ctx context.Context, t domain.TurnTrace) {
+	if err := h.d.Store.SaveTrace(ctx, t); err != nil {
+		slog.Error("save turn trace", "thread", t.ThreadID, "err", err)
+	}
 }
 
 // fail tells the client the turn failed and whom to ask instead.

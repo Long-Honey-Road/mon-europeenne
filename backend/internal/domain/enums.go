@@ -92,6 +92,7 @@ const (
 	EventConflictReported
 	EventFeedback
 	EventInvariantViolation
+	EventGeneralKnowledge
 )
 
 var (
@@ -134,6 +135,7 @@ var (
 		EventConflictReported:     "conflict_reported",
 		EventFeedback:             "feedback",
 		EventInvariantViolation:   "invariant_violation",
+		EventGeneralKnowledge:     "general_knowledge",
 	}
 )
 

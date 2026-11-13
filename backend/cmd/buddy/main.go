@@ -31,6 +31,7 @@ var commands = []command{
 	{name: "seed", summary: "load synthetic data and build the index", run: runSeed},
 	{name: "ask", summary: "run one agent turn against the configured model", run: runAsk},
 	{name: "llm-check", summary: "probe the configured model: text, tool call, JSON, stream", run: runLLMCheck},
+	{name: "trace", summary: "print the latest agent turns with tool calls (-n, -as, -thread, -prompt, -json)", run: runTrace},
 }
 
 func main() {

@@ -23,12 +23,15 @@ type Config struct {
 	ReasoningEffort string
 	// MaxRetries is the SDK retry budget for 429 and 5xx; zero means a single attempt.
 	MaxRetries int
+	// Temperature is sent when set; nil keeps the model default.
+	Temperature *float64
 }
 
 type Client struct {
-	api    openai.Client
-	model  string
-	effort string
+	api         openai.Client
+	model       string
+	effort      string
+	temperature *float64
 }
 
 func New(cfg Config) *Client {
@@ -38,8 +41,9 @@ func New(cfg Config) *Client {
 			option.WithAPIKey(cfg.APIKey),
 			option.WithMaxRetries(cfg.MaxRetries),
 		),
-		model:  cfg.Model,
-		effort: cfg.ReasoningEffort,
+		model:       cfg.Model,
+		effort:      cfg.ReasoningEffort,
+		temperature: cfg.Temperature,
 	}
 }
 
@@ -80,8 +84,15 @@ func response(msg openai.ChatCompletionMessage, usage openai.CompletionUsage) (l
 
 func (c *Client) params(req llm.Request) (openai.ChatCompletionNewParams, error) {
 	p := openai.ChatCompletionNewParams{Model: c.model}
-	if c.effort != "" {
-		p.ReasoningEffort = shared.ReasoningEffort(c.effort)
+	effort := c.effort
+	if req.ReasoningEffort != "" {
+		effort = req.ReasoningEffort
+	}
+	if effort != "" {
+		p.ReasoningEffort = shared.ReasoningEffort(effort)
+	}
+	if c.temperature != nil {
+		p.Temperature = openai.Float(*c.temperature)
 	}
 
 	for _, m := range req.Messages {

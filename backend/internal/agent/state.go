@@ -21,6 +21,10 @@ var (
 	// A markdown link, or a bare URL, or a bare repository path; links are matched first so URLs inside them stay whole.
 	linkRe   = regexp.MustCompile(`\[([^\]]+)\]\(([^)\s]+)\)|https?://[^\s)\]]*[^\s)\].,;:!?]|/repo/[^\s)\]]*[^\s)\].,;:!?]`)
 	spacesRe = regexp.MustCompile(`[ \t]+([.,;:!?])`)
+	// Two or more spaces inside a line, left where a marker was removed; indentation is kept.
+	doubleSpaceRe = regexp.MustCompile(`(\S)[ \t]{2,}`)
+	// A marker without a number, e.g. [ref] or [источник 2]; a markdown link right after it keeps it.
+	pseudoRefRe = regexp.MustCompile(`(?i)\[(?:ref|refs|source|sources|src|cite|источник|ссылка)[^\]\n]{0,6}\](\()?`)
 )
 
 const repoPrefix = "/repo/"
@@ -30,6 +34,8 @@ type turnState struct {
 	refs       []Source
 	people     []tools.PersonHint
 	notFound   *tools.NotFoundReport
+	general    *tools.GeneralKnowledgeNote
+	actions    []json.RawMessage
 	violations []string
 	events     []Event
 }
@@ -59,6 +65,10 @@ func (s *turnState) absorb(tool string, raw []byte) []byte {
 			}
 		}
 	}
+	// Any tool may offer a user action (a form to confirm); the agent does not know what it does.
+	if a, ok := obj["action"]; ok && string(a) != "null" {
+		s.actions = append(s.actions, a)
+	}
 	switch tool {
 	case "who_to_ask":
 		var people []tools.PersonHint
@@ -69,6 +79,11 @@ func (s *turnState) absorb(tool string, raw []byte) []byte {
 		var r tools.NotFoundReport
 		if json.Unmarshal(raw, &r) == nil {
 			s.notFound = &r
+		}
+	case "general_knowledge":
+		var g tools.GeneralKnowledgeNote
+		if json.Unmarshal(raw, &g) == nil {
+			s.general = &g
 		}
 	}
 	out, err := json.Marshal(obj)
@@ -92,6 +107,14 @@ func (s *turnState) finishText(text string, thread domain.ThreadType) (string, m
 		return ""
 	})
 	text = strings.TrimRight(text, " \t\n")
+	text = pseudoRefRe.ReplaceAllStringFunc(text, func(m string) string {
+		if strings.HasSuffix(m, "(") {
+			return m
+		}
+		s.violations = append(s.violations, "pseudo marker "+m)
+		removed = true
+		return ""
+	})
 	text = markerRe.ReplaceAllStringFunc(text, func(m string) string {
 		n, _ := strconv.Atoi(m[1 : len(m)-1])
 		if n < 1 || n > len(s.refs) {
@@ -132,6 +155,7 @@ func (s *turnState) finishText(text string, thread domain.ThreadType) (string, m
 	})
 	if removed {
 		text = spacesRe.ReplaceAllString(text, "$1")
+		text = doubleSpaceRe.ReplaceAllString(text, "$1 ")
 	}
 	return text, cited
 }
@@ -159,8 +183,15 @@ func (s *turnState) blocks(cited map[int]bool) []Block {
 			Reason: p.Reason, Contact: p.Contact, OtherTeam: p.OtherTeam,
 		})
 	}
+	for _, a := range s.actions {
+		out = append(out, Block{Type: "action", Action: a})
+	}
 	if s.notFound != nil {
 		out = append(out, Block{Type: "not_found", Topic: s.notFound.Topic, Escalation: s.notFound.Escalation})
+	}
+	// The warning is the server's, not the model's: it is shown whenever the answer used general knowledge.
+	if s.general != nil {
+		out = append(out, Block{Type: "general_knowledge", Topic: s.general.Topic})
 	}
 	return out
 }
@@ -175,6 +206,8 @@ func (s *turnState) closingEvents(blocks []Block) {
 			s.event(domain.EventAnswerWithSources, map[string]any{"sources": len(b.Items)})
 		case "not_found":
 			s.event(domain.EventNotFound, map[string]any{"topic": b.Topic})
+		case "general_knowledge":
+			s.event(domain.EventGeneralKnowledge, map[string]any{"topic": b.Topic})
 		}
 	}
 }

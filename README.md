@@ -57,6 +57,12 @@ as it is generated), `reset` (drop the streamed text), `block` (sources, person,
 `message_id` and the final `text` (show it instead of the stream: the server may remove invented links) or
 `error` with `escalation`.
 
+Access requests (`FEATURE_REQUESTS=true` by default): the agent prepares a request with `prepare_request` and
+the answer gets an `action` block with the filled form; the user sends it with `POST /v1/private/requests`.
+Until the corp-requests mock exists, a simulated request system in Redis approves or rejects requests after a
+delay from `backend/seed/request_types.json`; the worker checks every 15 s and sends `request_status` to the
+thread. `GET /v1/private/today` shows missing, waiting and rejected requests as blockers.
+
 The API listens on `http://localhost:8080` (`API_PORT` to change). Paths follow
 `/{version}/{public|private}/{resource}`: `/v1/public/...` needs no session, `/v1/private/...` needs
 `Authorization: Bearer <token>` from `POST /v1/public/auth/login`. Contract: `backend/api/openapi/buddy-api.yaml`.
@@ -92,6 +98,7 @@ From `backend/`:
 | `make run CMD="migrate up"` | apply migrations to `DATABASE_URL` (`down` reverts all) |
 | `make run CMD=llm-check` | probe the model from `LLM_*` env: plain answer, tool call, JSON by schema, stream |
 | `make run CMD='ask -v Кто поможет с деплоем?'` | one agent turn as `intern` (`-as`, `-thread`, `-detailed`); `-v` prints tool calls |
+| `make run CMD='trace -n 5 -as intern'` | the latest saved agent turns: prompt (`-prompt`), tool calls with arguments and results, text before cleanup; in compose `docker compose -f deploy/docker-compose.yml exec api buddy trace` |
 
 The agent's tools over MCP (stdio), as a test user in one thread type; with `DATABASE_URL` the plan and
 request tools are there too. For Claude Code, from the repo root:

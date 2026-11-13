@@ -25,6 +25,232 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/private/messages/{message_id}/feedback:
+        post:
+            tags:
+                - ThreadService
+            description: |-
+                RateMessage records a thumbs up or down on one of buddy's answers in the caller's thread; it is an event for
+                 the metrics, the last rating counts.
+            operationId: ThreadService_RateMessage
+            parameters:
+                - name: message_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RateMessageRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RateMessageResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/private/people:
+        get:
+            tags:
+                - PeopleService
+            operationId: PeopleService_ListPeople
+            parameters:
+                - name: q
+                  in: query
+                  description: Words to match in name, role, responsibilities and topics; empty lists everyone.
+                  schema:
+                    type: string
+                - name: team_id
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListPeopleResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/private/people/{person_id}:
+        get:
+            tags:
+                - PeopleService
+            operationId: PeopleService_GetPerson
+            parameters:
+                - name: person_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetPersonResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/private/plan:
+        get:
+            tags:
+                - PlanService
+            operationId: PlanService_GetPlan
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetPlanResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/private/plan/items/{item_id}:
+        patch:
+            tags:
+                - PlanService
+            description: UpdatePlanItem sets the status of one item; items outside the caller's plan are NOT_FOUND.
+            operationId: PlanService_UpdatePlanItem
+            parameters:
+                - name: item_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UpdatePlanItemRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UpdatePlanItemResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/private/request-types:
+        get:
+            tags:
+                - RequestService
+            description: 'ListRequestTypes is the catalog for forms: fields as JSON Schema and the approval chain.'
+            operationId: RequestService_ListRequestTypes
+            parameters:
+                - name: category
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListRequestTypesResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/private/requests:
+        get:
+            tags:
+                - RequestService
+            description: ListRequests returns the caller's own requests, last updated first.
+            operationId: RequestService_ListRequests
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListRequestsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        post:
+            tags:
+                - RequestService
+            description: SubmitRequest is called by the form after the user confirms; invalid fields are INVALID_ARGUMENT.
+            operationId: RequestService_SubmitRequest
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/SubmitRequestRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SubmitRequestResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/private/requests/{request_id}:
+        get:
+            tags:
+                - RequestService
+            description: GetRequest is for the author and for a manager of the author's team.
+            operationId: RequestService_GetRequest
+            parameters:
+                - name: request_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetRequestResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/private/threads:
         get:
             tags:
@@ -153,6 +379,25 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/private/today:
+        get:
+            tags:
+                - PlanService
+            description: 'GetToday is the "today" panel: day of onboarding, current stage, next steps and blockers.'
+            operationId: PlanService_GetToday
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetTodayResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/public/auth/login:
         post:
             tags:
@@ -179,6 +424,36 @@ paths:
                                 $ref: '#/components/schemas/Status'
 components:
     schemas:
+        ApprovalStep:
+            type: object
+            properties:
+                resolver:
+                    type: string
+                    description: object_owner, manager, devops or hr_admin.
+                object:
+                    type: string
+                    description: Object kind for object_owner, e.g. jira_project.
+        Approver:
+            type: object
+            properties:
+                role:
+                    type: string
+                person_id:
+                    type: string
+                name:
+                    type: string
+        Blocker:
+            type: object
+            properties:
+                kind:
+                    type: string
+                    description: plan_item, request (waiting or rejected) or access_missing (interns who have not requested every access).
+                id:
+                    type: string
+                title:
+                    type: string
+                reason:
+                    type: string
         CreateThreadRequest:
             type: object
             properties:
@@ -209,11 +484,72 @@ components:
                     $ref: '#/components/schemas/Team'
                 relations:
                     $ref: '#/components/schemas/Relations'
+        GetPersonResponse:
+            type: object
+            properties:
+                person:
+                    $ref: '#/components/schemas/Person'
+        GetPlanResponse:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/PlanItem'
+                    description: In period order, then by map position.
+                done:
+                    type: integer
+                    format: int32
+                total:
+                    type: integer
+                    format: int32
+        GetRequestResponse:
+            type: object
+            properties:
+                request:
+                    $ref: '#/components/schemas/Request'
         GetThreadResponse:
             type: object
             properties:
                 thread:
                     $ref: '#/components/schemas/Thread'
+        GetTodayResponse:
+            type: object
+            properties:
+                day:
+                    type: integer
+                    description: Calendar day since the start date, 1-based; 0 before the start.
+                    format: int32
+                week:
+                    type: integer
+                    format: int32
+                period:
+                    enum:
+                        - PLAN_PERIOD_UNSPECIFIED
+                        - PLAN_PERIOD_W1
+                        - PLAN_PERIOD_W2
+                        - PLAN_PERIOD_M1
+                        - PLAN_PERIOD_M2
+                        - PLAN_PERIOD_EQUATOR
+                        - PLAN_PERIOD_FINAL
+                    type: string
+                    description: Earliest period with unfinished items.
+                    format: enum
+                next_steps:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/PlanItem'
+                    description: Up to three items to do now, in progress first.
+                blockers:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Blocker'
+                done:
+                    type: integer
+                    format: int32
+                total:
+                    type: integer
+                    format: int32
         GoogleProtobufAny:
             type: object
             properties:
@@ -229,6 +565,28 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Message'
+        ListPeopleResponse:
+            type: object
+            properties:
+                people:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Person'
+                    description: The caller's team first, then by name.
+        ListRequestTypesResponse:
+            type: object
+            properties:
+                types:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/RequestType'
+        ListRequestsResponse:
+            type: object
+            properties:
+                requests:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Request'
         ListThreadsResponse:
             type: object
             properties:
@@ -251,6 +609,18 @@ components:
                     description: 'Session token for the Authorization: Bearer header.'
                 user:
                     $ref: '#/components/schemas/User'
+        MapPosition:
+            type: object
+            properties:
+                x:
+                    type: number
+                    format: double
+                y:
+                    type: number
+                    format: double
+                group:
+                    type: string
+            description: Position of an item on the plan map.
         Message:
             type: object
             properties:
@@ -275,6 +645,31 @@ components:
                 created_at:
                     type: string
                     description: RFC 3339.
+        Person:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                role_title:
+                    type: string
+                team_id:
+                    type: string
+                responsibilities:
+                    type: array
+                    items:
+                        type: string
+                ask_me_about:
+                    type: array
+                    items:
+                        type: string
+                contact:
+                    type: string
+                    description: Only for people in the caller's cluster.
+                other_team:
+                    type: boolean
+                    description: True when the person is outside the caller's team.
         PersonRef:
             type: object
             properties:
@@ -285,6 +680,81 @@ components:
                 role_title:
                     type: string
             description: Short reference to a person from the directory.
+        PlanItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Stable key, e.g. "w1-access".
+                title:
+                    type: string
+                practice:
+                    type: string
+                period:
+                    enum:
+                        - PLAN_PERIOD_UNSPECIFIED
+                        - PLAN_PERIOD_W1
+                        - PLAN_PERIOD_W2
+                        - PLAN_PERIOD_M1
+                        - PLAN_PERIOD_M2
+                        - PLAN_PERIOD_EQUATOR
+                        - PLAN_PERIOD_FINAL
+                    type: string
+                    format: enum
+                status:
+                    enum:
+                        - PLAN_ITEM_STATUS_UNSPECIFIED
+                        - PLAN_ITEM_STATUS_TODO
+                        - PLAN_ITEM_STATUS_DOING
+                        - PLAN_ITEM_STATUS_BLOCKED
+                        - PLAN_ITEM_STATUS_DONE
+                    type: string
+                    format: enum
+                note:
+                    type: string
+                depends_on:
+                    type: array
+                    items:
+                        type: string
+                blocked_by:
+                    type: array
+                    items:
+                        type: string
+                    description: Dependencies that are not done yet.
+                sources:
+                    type: array
+                    items:
+                        type: string
+                map:
+                    $ref: '#/components/schemas/MapPosition'
+                team_id:
+                    type: string
+                    description: Empty when the item is for everyone.
+                direction:
+                    enum:
+                        - DIRECTION_UNSPECIFIED
+                        - DIRECTION_BACKEND
+                        - DIRECTION_FRONTEND
+                        - DIRECTION_QA
+                    type: string
+                    format: enum
+        RateMessageRequest:
+            type: object
+            properties:
+                message_id:
+                    type: string
+                value:
+                    enum:
+                        - RATING_UNSPECIFIED
+                        - RATING_UP
+                        - RATING_DOWN
+                    type: string
+                    format: enum
+                note:
+                    type: string
+        RateMessageResponse:
+            type: object
+            properties: {}
         Relations:
             type: object
             properties:
@@ -294,6 +764,63 @@ components:
                     $ref: '#/components/schemas/PersonRef'
                 hr_bp:
                     $ref: '#/components/schemas/PersonRef'
+        Request:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Id in the company's system, e.g. REQ-12.
+                type_key:
+                    type: string
+                title:
+                    type: string
+                status:
+                    enum:
+                        - REQUEST_STATUS_UNSPECIFIED
+                        - REQUEST_STATUS_PENDING
+                        - REQUEST_STATUS_APPROVED
+                        - REQUEST_STATUS_REJECTED
+                    type: string
+                    format: enum
+                approver:
+                    allOf:
+                        - $ref: '#/components/schemas/Approver'
+                    description: Who decides now, or who decided last.
+                next_step:
+                    type: string
+                    description: What happens next, for the user.
+                reason:
+                    type: string
+                    description: Why it was rejected.
+                fields:
+                    type: object
+                history:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/StatusChange'
+                thread_id:
+                    type: string
+                updated_at:
+                    type: string
+                    description: RFC 3339.
+        RequestType:
+            type: object
+            properties:
+                key:
+                    type: string
+                title:
+                    type: string
+                category:
+                    type: string
+                fields_schema:
+                    type: object
+                approval_chain:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/ApprovalStep'
+                sla_hours:
+                    type: integer
+                    format: int32
         SendMessageRequest:
             type: object
             properties:
@@ -331,6 +858,39 @@ components:
                         $ref: '#/components/schemas/GoogleProtobufAny'
                     description: A list of messages that carry the error details.  There is a common set of message types for APIs to use.
             description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
+        StatusChange:
+            type: object
+            properties:
+                at:
+                    type: string
+                    description: RFC 3339.
+                status:
+                    enum:
+                        - REQUEST_STATUS_UNSPECIFIED
+                        - REQUEST_STATUS_PENDING
+                        - REQUEST_STATUS_APPROVED
+                        - REQUEST_STATUS_REJECTED
+                    type: string
+                    format: enum
+                by:
+                    type: string
+                note:
+                    type: string
+        SubmitRequestRequest:
+            type: object
+            properties:
+                thread_id:
+                    type: string
+                    description: Thread the request came from; its status changes arrive there as request_status events.
+                type_key:
+                    type: string
+                fields:
+                    type: object
+        SubmitRequestResponse:
+            type: object
+            properties:
+                request:
+                    $ref: '#/components/schemas/Request'
         Team:
             type: object
             properties:
@@ -366,6 +926,27 @@ components:
                 created_at:
                     type: string
                     description: RFC 3339.
+        UpdatePlanItemRequest:
+            type: object
+            properties:
+                item_id:
+                    type: string
+                status:
+                    enum:
+                        - PLAN_ITEM_STATUS_UNSPECIFIED
+                        - PLAN_ITEM_STATUS_TODO
+                        - PLAN_ITEM_STATUS_DOING
+                        - PLAN_ITEM_STATUS_BLOCKED
+                        - PLAN_ITEM_STATUS_DONE
+                    type: string
+                    format: enum
+                note:
+                    type: string
+        UpdatePlanItemResponse:
+            type: object
+            properties:
+                item:
+                    $ref: '#/components/schemas/PlanItem'
         User:
             type: object
             properties:
@@ -411,6 +992,14 @@ components:
 tags:
     - name: AuthService
       description: AuthService signs in test accounts; real auth is assumed to exist at Avito.
+    - name: PeopleService
+      description: PeopleService is the company directory as the caller may see it.
+    - name: PlanService
+      description: PlanService shows and updates the caller's own adaptation plan.
     - name: ProfileService
+    - name: RequestService
+      description: |-
+        RequestService sends access requests the user confirmed to the company's request system and shows their
+         status. A removable module behind FEATURE_REQUESTS: when it is off every method is UNIMPLEMENTED.
     - name: ThreadService
       description: ThreadService keeps the caller's conversations with buddy; answers arrive over SSE.

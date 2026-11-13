@@ -104,8 +104,10 @@ type module struct {
 	dir   tools.PeopleDirectory
 }
 
-func (m module) typeByKey(key string) (Type, bool) {
-	for _, t := range m.cat.Types {
+func (m module) typeByKey(key string) (Type, bool) { return m.cat.TypeByKey(key) }
+
+func (c Catalog) TypeByKey(key string) (Type, bool) {
+	for _, t := range c.Types {
 		if t.Key == key {
 			return t, true
 		}
@@ -152,12 +154,24 @@ type prepareOut struct {
 	Missing []string `json:"missing"`
 	Errors  []string `json:"errors"`
 	Preview preview  `json:"preview"`
+	// Action becomes the "action" block: a form the user confirms and sends; only for a valid request.
+	Action *Action `json:"action,omitempty"`
+}
+
+// Action is what the frontend needs to show the form and call POST /v1/private/requests.
+type Action struct {
+	Kind      string         `json:"kind"`
+	TypeKey   string         `json:"type_key"`
+	Title     string         `json:"title"`
+	Fields    map[string]any `json:"fields"`
+	Approvers []Approver     `json:"approvers"`
 }
 
 // prepare checks the fields and shows who approves; it never sends anything.
 func (m module) prepare() (tools.Tool, error) {
 	return tools.Define("prepare_request",
-		"Check a request before the user sends it: missing fields, invalid values and who will approve it. Does not send.",
+		"Check a request and show the user a form to send it: missing fields, invalid values and who will approve it. "+
+			"Sends nothing, so call it as soon as the required fields are known, without asking the user first.",
 		allRoles, prepareThreads,
 		func(ctx context.Context, p domain.Principal, in prepareIn) (prepareOut, error) {
 			typ, ok := m.typeByKey(in.TypeKey)
@@ -176,10 +190,14 @@ func (m module) prepare() (tools.Tool, error) {
 			if err != nil {
 				return prepareOut{}, err
 			}
-			return prepareOut{
+			out := prepareOut{
 				Valid: len(missing) == 0 && len(problems) == 0, Missing: missing, Errors: problems,
 				Preview: preview{Title: typ.Title, Fields: fields, Approvers: approvers},
-			}, nil
+			}
+			if out.Valid {
+				out.Action = &Action{Kind: "request", TypeKey: typ.Key, Title: typ.Title, Fields: fields, Approvers: approvers}
+			}
+			return out, nil
 		})
 }
 
@@ -210,24 +228,31 @@ func check(schemaJSON json.RawMessage, fields map[string]any) (missing, problems
 }
 
 func (m module) approvers(ctx context.Context, p domain.Principal, typ Type, fields map[string]any) ([]Approver, error) {
-	var out []Approver
+	return ResolveApprovers(ctx, m.cat, m.dir, p.UserID, typ, fields)
+}
+
+// ResolveApprovers names who approves each step of the type's chain for this requester and these fields.
+func ResolveApprovers(ctx context.Context, cat Catalog, dir tools.PeopleDirectory, userID string, typ Type,
+	fields map[string]any,
+) ([]Approver, error) {
+	out := []Approver{}
 	for _, step := range typ.ApprovalChain {
 		var personID string
 		switch step.Resolver {
 		case "object_owner":
-			personID = m.objectOwner(step.Object, fields)
+			personID = cat.objectOwner(step.Object, fields)
 		case "manager":
-			rel, err := m.dir.Relations(ctx, p.UserID)
+			rel, err := dir.Relations(ctx, userID)
 			if err != nil {
 				return nil, err
 			}
 			personID = rel.ManagerID
 		default:
-			personID = m.cat.RoleApprovers[step.Resolver]
+			personID = cat.RoleApprovers[step.Resolver]
 		}
 		a := Approver{Role: step.Resolver}
 		if personID != "" {
-			person, err := m.dir.Person(ctx, personID)
+			person, err := dir.Person(ctx, personID)
 			if err != nil && !errors.Is(err, people.ErrNotFound) {
 				return nil, err
 			}
@@ -239,14 +264,14 @@ func (m module) approvers(ctx context.Context, p domain.Principal, typ Type, fie
 }
 
 // objectOwner finds the object of the kind whose key is one of the field values ("~messenger-team" matches too).
-func (m module) objectOwner(kind string, fields map[string]any) string {
+func (c Catalog) objectOwner(kind string, fields map[string]any) string {
 	for _, v := range fields {
 		s, ok := v.(string)
 		if !ok {
 			continue
 		}
 		s = strings.TrimPrefix(strings.TrimSpace(s), "~")
-		for _, o := range m.cat.Objects {
+		for _, o := range c.Objects {
 			if o.Kind == kind && strings.EqualFold(o.Key, s) {
 				return o.OwnerID
 			}

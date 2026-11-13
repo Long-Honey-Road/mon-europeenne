@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"slices"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -37,8 +38,8 @@ func TestMCPServesToolsOverStdio(t *testing.T) {
 	for _, tool := range list.Tools {
 		names = append(names, tool.Name)
 	}
-	// Without a database only the directory tools exist.
-	if len(names) != 2 || names[0] != "report_not_found" || names[1] != "who_to_ask" {
+	// Without a database only the tools that need no storage exist.
+	if !slices.Equal(names, []string{"general_knowledge", "report_not_found", "team_members", "who_to_ask"}) {
 		t.Fatalf("tools = %v", names)
 	}
 	res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "who_to_ask", Arguments: map[string]any{"topic": "доступ к jira"}})

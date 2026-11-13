@@ -21,6 +21,143 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/private/messages/{message_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description RateMessage records a thumbs up or down on one of buddy's answers in the caller's thread; it is an event for
+         *      the metrics, the last rating counts.
+         */
+        post: operations["ThreadService_RateMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/private/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PeopleService_ListPeople"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/private/people/{person_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PeopleService_GetPerson"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/private/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PlanService_GetPlan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/private/plan/items/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description UpdatePlanItem sets the status of one item; items outside the caller's plan are NOT_FOUND. */
+        patch: operations["PlanService_UpdatePlanItem"];
+        trace?: never;
+    };
+    "/v1/private/request-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description ListRequestTypes is the catalog for forms: fields as JSON Schema and the approval chain. */
+        get: operations["RequestService_ListRequestTypes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/private/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description ListRequests returns the caller's own requests, last updated first. */
+        get: operations["RequestService_ListRequests"];
+        put?: never;
+        /** @description SubmitRequest is called by the form after the user confirms; invalid fields are INVALID_ARGUMENT. */
+        post: operations["RequestService_SubmitRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/private/requests/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GetRequest is for the author and for a manager of the author's team. */
+        get: operations["RequestService_GetRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/private/threads": {
         parameters: {
             query?: never;
@@ -74,6 +211,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/private/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GetToday is the "today" panel: day of onboarding, current stage, next steps and blockers. */
+        get: operations["PlanService_GetToday"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/auth/login": {
         parameters: {
             query?: never;
@@ -94,6 +248,24 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ApprovalStep: {
+            /** @description object_owner, manager, devops or hr_admin. */
+            resolver?: string;
+            /** @description Object kind for object_owner, e.g. jira_project. */
+            object?: string;
+        };
+        Approver: {
+            role?: string;
+            person_id?: string;
+            name?: string;
+        };
+        Blocker: {
+            /** @description plan_item, request (waiting or rejected) or access_missing (interns who have not requested every access). */
+            kind?: string;
+            id?: string;
+            title?: string;
+            reason?: string;
+        };
         CreateThreadRequest: {
             /**
              * Format: enum
@@ -111,8 +283,44 @@ export interface components {
             team?: components["schemas"]["Team"];
             relations?: components["schemas"]["Relations"];
         };
+        GetPersonResponse: {
+            person?: components["schemas"]["Person"];
+        };
+        GetPlanResponse: {
+            /** @description In period order, then by map position. */
+            items?: components["schemas"]["PlanItem"][];
+            /** Format: int32 */
+            done?: number;
+            /** Format: int32 */
+            total?: number;
+        };
+        GetRequestResponse: {
+            request?: components["schemas"]["Request"];
+        };
         GetThreadResponse: {
             thread?: components["schemas"]["Thread"];
+        };
+        GetTodayResponse: {
+            /**
+             * Format: int32
+             * @description Calendar day since the start date, 1-based; 0 before the start.
+             */
+            day?: number;
+            /** Format: int32 */
+            week?: number;
+            /**
+             * Format: enum
+             * @description Earliest period with unfinished items.
+             * @enum {string}
+             */
+            period?: "PLAN_PERIOD_UNSPECIFIED" | "PLAN_PERIOD_W1" | "PLAN_PERIOD_W2" | "PLAN_PERIOD_M1" | "PLAN_PERIOD_M2" | "PLAN_PERIOD_EQUATOR" | "PLAN_PERIOD_FINAL";
+            /** @description Up to three items to do now, in progress first. */
+            next_steps?: components["schemas"]["PlanItem"][];
+            blockers?: components["schemas"]["Blocker"][];
+            /** Format: int32 */
+            done?: number;
+            /** Format: int32 */
+            total?: number;
         };
         /** @description Contains an arbitrary serialized message along with a @type that describes the type of the serialized message. */
         GoogleProtobufAny: {
@@ -123,6 +331,16 @@ export interface components {
         };
         ListMessagesResponse: {
             messages?: components["schemas"]["Message"][];
+        };
+        ListPeopleResponse: {
+            /** @description The caller's team first, then by name. */
+            people?: components["schemas"]["Person"][];
+        };
+        ListRequestTypesResponse: {
+            types?: components["schemas"]["RequestType"][];
+        };
+        ListRequestsResponse: {
+            requests?: components["schemas"]["Request"][];
         };
         ListThreadsResponse: {
             threads?: components["schemas"]["Thread"][];
@@ -135,6 +353,14 @@ export interface components {
             /** @description Session token for the Authorization: Bearer header. */
             token?: string;
             user?: components["schemas"]["User"];
+        };
+        /** @description Position of an item on the plan map. */
+        MapPosition: {
+            /** Format: double */
+            x?: number;
+            /** Format: double */
+            y?: number;
+            group?: string;
         };
         Message: {
             id?: string;
@@ -150,16 +376,98 @@ export interface components {
             /** @description RFC 3339. */
             created_at?: string;
         };
+        Person: {
+            id?: string;
+            name?: string;
+            role_title?: string;
+            team_id?: string;
+            responsibilities?: string[];
+            ask_me_about?: string[];
+            /** @description Only for people in the caller's cluster. */
+            contact?: string;
+            /** @description True when the person is outside the caller's team. */
+            other_team?: boolean;
+        };
         /** @description Short reference to a person from the directory. */
         PersonRef: {
             id?: string;
             name?: string;
             role_title?: string;
         };
+        PlanItem: {
+            /** @description Stable key, e.g. "w1-access". */
+            id?: string;
+            title?: string;
+            practice?: string;
+            /**
+             * Format: enum
+             * @enum {string}
+             */
+            period?: "PLAN_PERIOD_UNSPECIFIED" | "PLAN_PERIOD_W1" | "PLAN_PERIOD_W2" | "PLAN_PERIOD_M1" | "PLAN_PERIOD_M2" | "PLAN_PERIOD_EQUATOR" | "PLAN_PERIOD_FINAL";
+            /**
+             * Format: enum
+             * @enum {string}
+             */
+            status?: "PLAN_ITEM_STATUS_UNSPECIFIED" | "PLAN_ITEM_STATUS_TODO" | "PLAN_ITEM_STATUS_DOING" | "PLAN_ITEM_STATUS_BLOCKED" | "PLAN_ITEM_STATUS_DONE";
+            note?: string;
+            depends_on?: string[];
+            /** @description Dependencies that are not done yet. */
+            blocked_by?: string[];
+            sources?: string[];
+            map?: components["schemas"]["MapPosition"];
+            /** @description Empty when the item is for everyone. */
+            team_id?: string;
+            /**
+             * Format: enum
+             * @enum {string}
+             */
+            direction?: "DIRECTION_UNSPECIFIED" | "DIRECTION_BACKEND" | "DIRECTION_FRONTEND" | "DIRECTION_QA";
+        };
+        RateMessageRequest: {
+            message_id?: string;
+            /**
+             * Format: enum
+             * @enum {string}
+             */
+            value?: "RATING_UNSPECIFIED" | "RATING_UP" | "RATING_DOWN";
+            note?: string;
+        };
+        RateMessageResponse: Record<string, never>;
         Relations: {
             mentor?: components["schemas"]["PersonRef"];
             manager?: components["schemas"]["PersonRef"];
             hr_bp?: components["schemas"]["PersonRef"];
+        };
+        Request: {
+            /** @description Id in the company's system, e.g. REQ-12. */
+            id?: string;
+            type_key?: string;
+            title?: string;
+            /**
+             * Format: enum
+             * @enum {string}
+             */
+            status?: "REQUEST_STATUS_UNSPECIFIED" | "REQUEST_STATUS_PENDING" | "REQUEST_STATUS_APPROVED" | "REQUEST_STATUS_REJECTED";
+            /** @description Who decides now, or who decided last. */
+            approver?: components["schemas"]["Approver"];
+            /** @description What happens next, for the user. */
+            next_step?: string;
+            /** @description Why it was rejected. */
+            reason?: string;
+            fields?: Record<string, never>;
+            history?: components["schemas"]["StatusChange"][];
+            thread_id?: string;
+            /** @description RFC 3339. */
+            updated_at?: string;
+        };
+        RequestType: {
+            key?: string;
+            title?: string;
+            category?: string;
+            fields_schema?: Record<string, never>;
+            approval_chain?: components["schemas"]["ApprovalStep"][];
+            /** Format: int32 */
+            sla_hours?: number;
         };
         SendMessageRequest: {
             thread_id?: string;
@@ -186,6 +494,26 @@ export interface components {
             /** @description A list of messages that carry the error details.  There is a common set of message types for APIs to use. */
             details?: components["schemas"]["GoogleProtobufAny"][];
         };
+        StatusChange: {
+            /** @description RFC 3339. */
+            at?: string;
+            /**
+             * Format: enum
+             * @enum {string}
+             */
+            status?: "REQUEST_STATUS_UNSPECIFIED" | "REQUEST_STATUS_PENDING" | "REQUEST_STATUS_APPROVED" | "REQUEST_STATUS_REJECTED";
+            by?: string;
+            note?: string;
+        };
+        SubmitRequestRequest: {
+            /** @description Thread the request came from; its status changes arrive there as request_status events. */
+            thread_id?: string;
+            type_key?: string;
+            fields?: Record<string, never>;
+        };
+        SubmitRequestResponse: {
+            request?: components["schemas"]["Request"];
+        };
         Team: {
             id?: string;
             name?: string;
@@ -205,6 +533,18 @@ export interface components {
             pin?: Record<string, never>;
             /** @description RFC 3339. */
             created_at?: string;
+        };
+        UpdatePlanItemRequest: {
+            item_id?: string;
+            /**
+             * Format: enum
+             * @enum {string}
+             */
+            status?: "PLAN_ITEM_STATUS_UNSPECIFIED" | "PLAN_ITEM_STATUS_TODO" | "PLAN_ITEM_STATUS_DOING" | "PLAN_ITEM_STATUS_BLOCKED" | "PLAN_ITEM_STATUS_DONE";
+            note?: string;
+        };
+        UpdatePlanItemResponse: {
+            item?: components["schemas"]["PlanItem"];
         };
         User: {
             id?: string;
@@ -252,6 +592,293 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GetMeResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    ThreadService_RateMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RateMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateMessageResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    PeopleService_ListPeople: {
+        parameters: {
+            query?: {
+                /** @description Words to match in name, role, responsibilities and topics; empty lists everyone. */
+                q?: string;
+                team_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListPeopleResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    PeopleService_GetPerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetPersonResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    PlanService_GetPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetPlanResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    PlanService_UpdatePlanItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlanItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdatePlanItemResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    RequestService_ListRequestTypes: {
+        parameters: {
+            query?: {
+                category?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListRequestTypesResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    RequestService_ListRequests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListRequestsResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    RequestService_SubmitRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitRequestRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmitRequestResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    RequestService_GetRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetRequestResponse"];
                 };
             };
             /** @description Default error response */
@@ -414,6 +1041,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SendMessageResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    PlanService_GetToday: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetTodayResponse"];
                 };
             };
             /** @description Default error response */

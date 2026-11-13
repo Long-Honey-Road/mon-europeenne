@@ -1,6 +1,7 @@
 import { HttpResponse, http } from 'msw'
 import { setupServer } from 'msw/node'
 import type { LoginResponse, Me, User } from '../api/schemas'
+import { chatHandlers } from './chat'
 
 // Mirrors the backend contract in buddy-api.yaml with synthetic data.
 export const API = 'http://api.test'
@@ -44,6 +45,7 @@ export const handlers = [
     // protojson sends unset messages as null.
     return HttpResponse.json({ ...me, relations: { ...me.relations, hr_bp: null } })
   }),
+  ...chatHandlers,
 ]
 
 export const server = setupServer(...handlers)

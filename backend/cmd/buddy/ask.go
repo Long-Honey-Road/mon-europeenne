@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/agent"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
@@ -73,12 +74,15 @@ func runAsk(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	turn := agent.Turn{Principal: principal, Thread: thread, Mode: mode, Profile: prof, Message: question}
+	turn := agent.Turn{
+		Principal: principal, Thread: thread, Mode: mode, Profile: prof, Message: question,
+		Today: agent.TodayLine(time.Now(), user.StartDate),
+	}
 	var toolset agent.Tools = registry
 	if *verbose {
 		toolset = loggingTools{Tools: registry, w: stdout}
 	}
-	res, err := agent.New(model, toolset, agent.Config{}).Run(context.Background(), turn, printer{w: stdout})
+	res, err := agent.New(model, toolset, agent.Config{DetailedEffort: cfg.LLM.DetailedReasoningEffort}).Run(context.Background(), turn, printer{w: stdout})
 	if err != nil {
 		return err
 	}

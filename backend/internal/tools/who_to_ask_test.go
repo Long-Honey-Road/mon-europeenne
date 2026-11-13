@@ -132,10 +132,10 @@ func TestWhoToAskAlwaysReturnsEscalationChain(t *testing.T) {
 		t.Fatalf("people = %v, want none for an unknown topic", ids(out.People))
 	}
 	want := []EscalationStep{
-		{Level: 1, Role: "mentor", PersonID: "p-anna", Name: "Аня"},
-		{Level: 2, Role: "manager", PersonID: "p-dima", Name: "Дима"},
-		{Level: 3, Role: "hr_bp", PersonID: "p-eva", Name: "Ева"},
-		{Level: 4, Role: "open_sources"},
+		{Level: 1, Role: "mentor", Title: "наставник", PersonID: "p-anna", Name: "Аня"},
+		{Level: 2, Role: "manager", Title: "руководитель", PersonID: "p-dima", Name: "Дима"},
+		{Level: 3, Role: "hr_bp", Title: "HR BP", PersonID: "p-eva", Name: "Ева"},
+		{Level: 4, Role: "open_sources", Title: "база знаний и каналы команды"},
 	}
 	if !slices.Equal(out.Escalation, want) {
 		t.Fatalf("escalation = %+v", out.Escalation)
@@ -147,8 +147,8 @@ func TestWhoToAskSkipsMissingRelations(t *testing.T) {
 	out := askWho(t, testDirectory(), orphan, `{"topic":"ревью"}`)
 
 	want := []EscalationStep{
-		{Level: 1, Role: "mentor", PersonID: "p-anna", Name: "Аня"},
-		{Level: 2, Role: "open_sources"},
+		{Level: 1, Role: "mentor", Title: "наставник", PersonID: "p-anna", Name: "Аня"},
+		{Level: 2, Role: "open_sources", Title: "база знаний и каналы команды"},
 	}
 	if !slices.Equal(out.Escalation, want) {
 		t.Fatalf("escalation = %+v", out.Escalation)
@@ -227,7 +227,7 @@ func TestWhoToAskSkipsRelationToUnknownPerson(t *testing.T) {
 	dir := people.NewMemory(nil, nil, map[string]people.Relations{"u-intern": {MentorID: "p-gone"}})
 	out := askWho(t, dir, intern, `{"topic":"ревью"}`)
 
-	want := []EscalationStep{{Level: 1, Role: "open_sources"}}
+	want := []EscalationStep{{Level: 1, Role: "open_sources", Title: "база знаний и каналы команды"}}
 	if !slices.Equal(out.Escalation, want) {
 		t.Fatalf("escalation = %+v", out.Escalation)
 	}
@@ -239,5 +239,12 @@ func TestWhoToAskAcceptsTeamNameInsteadOfID(t *testing.T) {
 		if got := ids(out.People); !slices.Equal(got, []string{"p-gena"}) {
 			t.Errorf("team %q: people = %v, want only Ads", team, got)
 		}
+	}
+}
+
+func TestWhoToAskMatchesRoleTitles(t *testing.T) {
+	out := askWho(t, testDirectory(), intern, `{"topic":"инфраструктура"}`)
+	if got := ids(out.People); !slices.Equal(got, []string{"p-vika"}) || out.People[0].Reason != "Инфраструктура" {
+		t.Fatalf("people = %v (%+v)", got, out.People)
 	}
 }

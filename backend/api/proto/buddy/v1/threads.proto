@@ -31,7 +31,29 @@ service ThreadService {
       body: "*"
     };
   }
+  // RateMessage records a thumbs up or down on one of buddy's answers in the caller's thread; it is an event for
+  // the metrics, the last rating counts.
+  rpc RateMessage(RateMessageRequest) returns (RateMessageResponse) {
+    option (google.api.http) = {
+      post: "/v1/private/messages/{message_id}/feedback"
+      body: "*"
+    };
+  }
 }
+
+enum Rating {
+  RATING_UNSPECIFIED = 0;
+  RATING_UP = 1;
+  RATING_DOWN = 2;
+}
+
+message RateMessageRequest {
+  string message_id = 1;
+  Rating value = 2;
+  string note = 3;
+}
+
+message RateMessageResponse {}
 
 enum ThreadType {
   THREAD_TYPE_UNSPECIFIED = 0;

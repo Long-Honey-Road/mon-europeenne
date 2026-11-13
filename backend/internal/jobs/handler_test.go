@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -50,6 +51,13 @@ type memStore struct {
 	threads  map[string]domain.Thread
 	messages map[string][]domain.Message
 	events   []domain.Event
+	traces   []domain.TurnTrace
+	traceErr error
+}
+
+func (s *memStore) SaveTrace(_ context.Context, t domain.TurnTrace) error {
+	s.traces = append(s.traces, t)
+	return s.traceErr
 }
 
 func newStore(msgs ...string) (*memStore, string) {
@@ -188,6 +196,25 @@ func TestTurnPublishesAndSavesBlocks(t *testing.T) {
 	if err := json.Unmarshal(st.messages["t1"][1].Blocks, &blocks); err != nil || len(blocks) != 1 || blocks[0]["person_id"] != "p-igor" {
 		t.Errorf("saved blocks = %s", st.messages["t1"][1].Blocks)
 	}
+
+	if len(st.traces) != 1 {
+		t.Fatalf("traces = %+v", st.traces)
+	}
+	tr := st.traces[0]
+	if tr.QuestionID != msgID || tr.AnswerID != st.messages["t1"][1].ID || tr.FinalText != "Спроси Игоря." || tr.Mode != "brief" ||
+		!strings.Contains(tr.SystemPrompt, "buddy") || tr.Error != "" {
+		t.Errorf("trace = %+v", tr)
+	}
+	var steps []struct {
+		Tools []struct {
+			Name, Outcome, Result string
+			Args                  map[string]string
+		}
+	}
+	if err := json.Unmarshal(tr.Steps, &steps); err != nil || len(steps) != 2 || len(steps[0].Tools) != 1 ||
+		steps[0].Tools[0].Args["topic"] != "деплой на staging" || !strings.Contains(steps[0].Tools[0].Result, "p-igor") {
+		t.Errorf("steps = %s (%v)", tr.Steps, err)
+	}
 }
 
 func TestTurnSendsOnlyHistoryBeforeTheMessage(t *testing.T) {
@@ -226,6 +253,22 @@ func TestModelFailurePublishesErrorWithEscalation(t *testing.T) {
 	}
 	if len(st.messages["t1"]) != 1 {
 		t.Errorf("answer saved after a failure: %+v", st.messages["t1"])
+	}
+	if len(st.traces) != 1 || !strings.Contains(st.traces[0].Error, "unavailable") || st.traces[0].AnswerID != "" {
+		t.Errorf("failed turn trace = %+v", st.traces)
+	}
+}
+
+func TestLostTraceDoesNotFailTheTurn(t *testing.T) {
+	st, msgID := newStore("Привет")
+	st.traceErr = errors.New("db down")
+	h, rec := handler(t, st, fake.New(fake.Text("ок")))
+
+	if err := h.ProcessTask(context.Background(), task(t, ChatTurn{ThreadID: "t1", UserID: "u-liza", MessageID: msgID})); err != nil {
+		t.Fatalf("ProcessTask: %v", err)
+	}
+	if got := rec.types(); got[len(got)-1] != "done" {
+		t.Fatalf("published %v", got)
 	}
 }
 

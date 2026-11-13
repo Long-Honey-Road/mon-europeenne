@@ -18,6 +18,7 @@ import (
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/httpapi"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/jobs"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/requests"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/store"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/stream"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/seed"
@@ -83,10 +84,16 @@ func buildAPI(ctx context.Context, cfg config.Config) (http.Handler, func(), err
 		pool.Close()
 	}
 
-	h, err := httpapi.New(ctx, httpapi.Deps{
+	st := store.New(pool)
+	deps := httpapi.Deps{
 		Accounts: accounts, Tokens: tokens, Directory: data.Directory(),
-		Threads: store.New(pool), Jobs: queue, Bus: stream.NewRedisBus(rdb),
-	})
+		Threads: st, Plans: st, Jobs: queue, Bus: stream.NewRedisBus(rdb),
+	}
+	if cfg.FeatureRequests {
+		desk := newDesk(data, st, rdb)
+		deps.Requests, deps.Blockers = requests.NewAPI(desk), []httpapi.BlockerSource{desk}
+	}
+	h, err := httpapi.New(ctx, deps)
 	if err != nil {
 		cleanup()
 		return nil, nil, err

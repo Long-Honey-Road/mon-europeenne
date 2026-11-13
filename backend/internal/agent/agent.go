@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm"
@@ -44,6 +45,8 @@ type Turn struct {
 	Mode      Mode
 	// Profile is the caller's compact JSON profile.
 	Profile string
+	// Today is the date line for the prompt, e.g. from TodayLine.
+	Today   string
 	Pinned  string
 	Summary string
 	// History is the thread so far, oldest first; the agent keeps the tail.
@@ -71,6 +74,29 @@ type Block struct {
 	OtherTeam  bool                   `json:"other_team,omitempty"`
 	Topic      string                 `json:"topic,omitempty"`
 	Escalation []tools.EscalationStep `json:"escalation,omitempty"`
+	// Action is a form the user confirms, e.g. {kind: request, type_key, title, fields, approvers}.
+	Action json.RawMessage `json:"action,omitempty"`
+}
+
+var weekdays = [...]string{"воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"}
+
+// companyZone is where the day changes for the company: Moscow time.
+var companyZone = time.FixedZone("MSK", 3*60*60)
+
+// TodayLine tells the model the date and the day of onboarding, counted from the start date (1-based).
+func TodayLine(now, start time.Time) string {
+	now = now.In(companyZone)
+	line := fmt.Sprintf("%s, %s", now.Format(time.DateOnly), weekdays[now.Weekday()])
+	if start.IsZero() {
+		return line
+	}
+	y, m, d := start.Date()
+	ny, nm, nd := now.Date()
+	days := int(time.Date(ny, nm, nd, 0, 0, 0, 0, time.UTC).Sub(time.Date(y, m, d, 0, 0, 0, 0, time.UTC)).Hours() / 24)
+	if days < 0 {
+		return fmt.Sprintf("%s; стажировка начнётся %s", line, start.Format(time.DateOnly))
+	}
+	return fmt.Sprintf("%s; день стажировки %d", line, days+1)
 }
 
 type Event struct {
@@ -83,6 +109,49 @@ type Result struct {
 	Mode   Mode
 	Blocks []Block
 	Events []Event
+	// Trace is filled even when Run fails, as far as the turn got.
+	Trace Trace
+}
+
+// maxTracedResult keeps traces readable: tool results are cut to this many bytes.
+const maxTracedResult = 4000
+
+// Trace is how the turn went, for debugging: every model call with its tools, and the text before the invariants.
+type Trace struct {
+	SystemPrompt string        `json:"system_prompt"`
+	Steps        []TraceStep   `json:"steps"`
+	RawText      string        `json:"raw_text"`
+	Violations   []string      `json:"violations"`
+	Duration     time.Duration `json:"duration"`
+}
+
+type TraceStep struct {
+	DurationMS       int64  `json:"duration_ms"`
+	PromptTokens     int    `json:"prompt_tokens"`
+	CompletionTokens int    `json:"completion_tokens"`
+	ReasoningEffort  string `json:"reasoning_effort,omitempty"`
+	// Text is what the model wrote in this call, including text it withdrew to call tools.
+	Text  string      `json:"text,omitempty"`
+	Tools []TraceTool `json:"tools,omitempty"`
+}
+
+type TraceTool struct {
+	Name       string          `json:"name"`
+	Args       json.RawMessage `json:"args"`
+	Outcome    string          `json:"outcome"`
+	Result     string          `json:"result"`
+	DurationMS int64           `json:"duration_ms"`
+}
+
+func clip(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	cut := s[:n]
+	for !utf8.ValidString(cut) {
+		cut = cut[:len(cut)-1]
+	}
+	return cut + "…"
 }
 
 type Config struct {
@@ -90,6 +159,8 @@ type Config struct {
 	MaxToolSteps int
 	Timeout      time.Duration
 	HistoryLimit int
+	// DetailedEffort is the reasoning effort for detailed answers; empty keeps the client default.
+	DetailedEffort string
 }
 
 type Agent struct {
@@ -125,6 +196,12 @@ func (a *Agent) Run(ctx context.Context, t Turn, emit Emitter) (Result, error) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, a.cfg.Timeout)
 	defer cancel()
+	started := time.Now()
+	trace := Trace{SystemPrompt: system, Steps: []TraceStep{}, Violations: []string{}}
+	failed := func(err error) (Result, error) {
+		trace.Duration = time.Since(started)
+		return Result{Trace: trace}, err
+	}
 
 	st := &turnState{}
 	st.event(domain.EventMessageSent, map[string]any{"thread": t.Thread.String()})
@@ -137,18 +214,26 @@ func (a *Agent) Run(ctx context.Context, t Turn, emit Emitter) (Result, error) {
 	var text string
 	for step := 0; ; step++ {
 		req := llm.Request{Messages: msgs}
+		if t.Mode == ModeDetailed {
+			req.ReasoningEffort = a.cfg.DetailedEffort
+		}
 		if step < a.cfg.MaxToolSteps {
 			req.Tools = offered
 		}
 		streamed := false
+		callStart := time.Now()
 		resp, err := a.model.ChatStream(ctx, req, func(d string) {
 			streamed = true
 			emit.Delta(d)
 		})
+		ts := TraceStep{DurationMS: time.Since(callStart).Milliseconds(), ReasoningEffort: req.ReasoningEffort}
 		if err != nil {
-			return Result{}, fmt.Errorf("model: %w", err)
+			trace.Steps = append(trace.Steps, ts)
+			return failed(fmt.Errorf("model: %w", err))
 		}
+		ts.PromptTokens, ts.CompletionTokens, ts.Text = resp.Usage.PromptTokens, resp.Usage.CompletionTokens, resp.Message.Content
 		if len(resp.Message.ToolCalls) == 0 || len(req.Tools) == 0 {
+			trace.Steps = append(trace.Steps, ts)
 			text = resp.Message.Content
 			break
 		}
@@ -158,11 +243,16 @@ func (a *Agent) Run(ctx context.Context, t Turn, emit Emitter) (Result, error) {
 		msgs = append(msgs, resp.Message)
 		for _, call := range resp.Message.ToolCalls {
 			emit.Status(statusText(call.Name))
+			toolStart := time.Now()
 			content, outcome := a.callTool(ctx, t, call, st)
+			ts.Tools = append(ts.Tools, TraceTool{Name: call.Name, Args: call.Arguments, Outcome: outcome,
+				Result: clip(content, maxTracedResult), DurationMS: time.Since(toolStart).Milliseconds()})
 			st.event(domain.EventToolCalled, map[string]any{"tool": call.Name, "outcome": outcome})
 			msgs = append(msgs, llm.Message{Role: llm.RoleTool, ToolCallID: call.ID, Content: content})
 		}
+		trace.Steps = append(trace.Steps, ts)
 	}
+	trace.RawText = text
 
 	text, cited := st.finishText(text, t.Thread)
 	blocks := st.blocks(cited)
@@ -170,7 +260,9 @@ func (a *Agent) Run(ctx context.Context, t Turn, emit Emitter) (Result, error) {
 		emit.Block(b)
 	}
 	st.closingEvents(blocks)
-	return Result{Text: text, Mode: t.Mode, Blocks: blocks, Events: st.events}, nil
+	trace.Violations = append(trace.Violations, st.violations...)
+	trace.Duration = time.Since(started)
+	return Result{Text: text, Mode: t.Mode, Blocks: blocks, Events: st.events, Trace: trace}, nil
 }
 
 // callTool runs one call and returns what the model sees plus the outcome code for events.
@@ -189,12 +281,15 @@ var statusTexts = map[string]string{
 	"read_repo":          "читаю репозиторий",
 	"get_team_process":   "смотрю процессы команды",
 	"who_to_ask":         "ищу, к кому обратиться",
+	"team_members":       "смотрю состав команды",
 	"report_not_found":   "собираю, к кому обратиться",
+	"general_knowledge":  "вспоминаю общие знания",
 	"get_plan":           "смотрю план адаптации",
 	"update_item_status": "обновляю план",
 	"get_request_types":  "смотрю виды заявок",
 	"prepare_request":    "готовлю заявку",
 	"get_request_status": "проверяю заявку",
+	"list_my_requests":   "смотрю твои заявки",
 }
 
 func statusText(tool string) string {

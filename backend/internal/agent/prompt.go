@@ -44,6 +44,7 @@ func systemPrompt(t Turn) (string, error) {
 		b.WriteString("\n")
 	}
 	for _, part := range []struct{ title, text string }{
+		{"## Today", t.Today},
 		{"## Profile", t.Profile},
 		{"## Pinned context", t.Pinned},
 		{"## Earlier in this thread", t.Summary},

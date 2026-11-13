@@ -64,27 +64,6 @@ describe('chat', () => {
     expect(within(chat).getByText('Контекст: Команда')).toBeInTheDocument()
   })
 
-  it('sends a message and answers with the placeholder reply', async () => {
-    const user = userEvent.setup()
-    renderAt('/')
-    const input = await screen.findByLabelText('Сообщение для buddy')
-    const send = screen.getByRole('button', { name: 'Отправить' })
-    expect(send).toBeDisabled()
-
-    await user.type(input, 'Как оформить отгул?{Enter}')
-    expect(screen.getByText('Как оформить отгул?')).toBeInTheDocument()
-    expect(screen.getByText(/Модель ещё не подключена/)).toBeInTheDocument()
-    expect(input).toHaveValue('')
-  })
-
-  it('ignores an empty message', async () => {
-    const user = userEvent.setup()
-    renderAt('/')
-    const input = await screen.findByLabelText('Сообщение для buddy')
-    await user.type(input, '   {Enter}')
-    expect(screen.queryByText(/Модель ещё не подключена/)).not.toBeInTheDocument()
-  })
-
   it('takes a question from the info panel into the input', async () => {
     const user = userEvent.setup()
     renderAt('/work')
