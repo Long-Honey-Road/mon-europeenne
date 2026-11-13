@@ -2,7 +2,9 @@ package config
 
 import (
 	"errors"
+	"reflect"
 	"testing"
+	"time"
 )
 
 func envOf(vars map[string]string) func(string) (string, bool) {
@@ -67,18 +69,25 @@ func TestLoadReadsEnvironment(t *testing.T) {
 			Model:           "qwen3.6:35b-a3b",
 			APIKey:          "secret",
 			ReasoningEffort: "none",
+			Endpoints: []Endpoint{{
+				Name: "default", BaseURL: "http://ollama:11434/v1", Model: "qwen3.6:35b-a3b", APIKey: "secret",
+				MaxConcurrency: 1, ReasoningEffort: "none",
+			}},
+			QueueTimeout: 5 * time.Minute,
 		},
-		Embeddings:      Embeddings{Enabled: true, Model: "bge-m3"},
-		DatabaseURL:     "postgres://buddy:buddy@postgres:5432/buddy",
-		RedisAddr:       "redis:6379",
-		MocksBaseURL:    "http://mocks:8090",
-		SessionSecret:   "s3",
-		MockFailRate:    0.25,
-		HTTPAddr:        ":18080",
-		GRPCAddr:        ":19090",
-		FeatureRequests: false,
+		TurnTimeout:       80 * time.Second,
+		WorkerConcurrency: 4,
+		Embeddings:        Embeddings{Enabled: true, Model: "bge-m3"},
+		DatabaseURL:       "postgres://buddy:buddy@postgres:5432/buddy",
+		RedisAddr:         "redis:6379",
+		MocksBaseURL:      "http://mocks:8090",
+		SessionSecret:     "s3",
+		MockFailRate:      0.25,
+		HTTPAddr:          ":18080",
+		GRPCAddr:          ":19090",
+		FeatureRequests:   false,
 	}
-	if cfg != want {
+	if !reflect.DeepEqual(cfg, want) {
 		t.Fatalf("Load() =\n%+v\nwant\n%+v", cfg, want)
 	}
 }

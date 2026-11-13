@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 )
 
 var (
@@ -31,6 +32,10 @@ type LLM struct {
 	DetailedReasoningEffort string
 	// Temperature is nil when LLM_TEMPERATURE is empty: the model default.
 	Temperature *float64
+	// Endpoints are the pool's model sources (LLM_ENDPOINTS, or the fields above as a pool of one).
+	Endpoints []Endpoint
+	// QueueTimeout is how long a turn waits for a free endpoint.
+	QueueTimeout time.Duration
 }
 
 type Embeddings struct {
@@ -50,6 +55,9 @@ type Config struct {
 	GRPCAddr      string
 	// FeatureRequests turns on the access requests module.
 	FeatureRequests bool
+	// TurnTimeout limits one agent turn, counted from getting a model endpoint.
+	TurnTimeout       time.Duration
+	WorkerConcurrency int
 }
 
 // Load builds Config from lookup (os.LookupEnv in production).
@@ -120,6 +128,10 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 	}
 	if cfg.MockFailRate < 0 || cfg.MockFailRate > 1 {
 		return Config{}, fmt.Errorf("MOCK_FAIL_RATE=%v outside [0, 1]: %w", cfg.MockFailRate, ErrInvalid)
+	}
+
+	if err := loadPool(&cfg, str); err != nil {
+		return Config{}, err
 	}
 
 	return cfg, nil
