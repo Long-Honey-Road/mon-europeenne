@@ -6,6 +6,7 @@ import (
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/knowledge"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/people"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/requests"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/store"
@@ -18,7 +19,7 @@ const fakeAnswer = "Тестовый режим: модель не подклю�
 
 // agentTools builds the tool set; without a store (buddy ask without DATABASE_URL) only directory tools exist.
 // The requests module is added only when FEATURE_REQUESTS is on.
-func agentTools(data seed.Data, dir people.Directory, st *store.Store, requestsOn bool) (*tools.Registry, error) {
+func agentTools(data seed.Data, dir people.Directory, st *store.Store, search tools.Searcher, requestsOn bool) (*tools.Registry, error) {
 	var list []tools.Tool
 	add := func(t tools.Tool, err error) error {
 		if err != nil {
@@ -40,6 +41,9 @@ func agentTools(data seed.Data, dir people.Directory, st *store.Store, requestsO
 		return nil, err
 	}
 	if st != nil {
+		if err := add(tools.SearchDocs(search)); err != nil {
+			return nil, err
+		}
 		if err := add(tools.GetPlan(st)); err != nil {
 			return nil, err
 		}
@@ -69,7 +73,11 @@ func localTools(ctx context.Context, cfg config.Config, data seed.Data) (*tools.
 		}
 		st, closeFn = store.New(pool), pool.Close
 	}
-	reg, err := agentTools(data, data.Directory(), st, cfg.FeatureRequests)
+	var search tools.Searcher
+	if st != nil {
+		search = knowledge.New(st)
+	}
+	reg, err := agentTools(data, data.Directory(), st, search, cfg.FeatureRequests)
 	if err != nil {
 		closeFn()
 		return nil, nil, err

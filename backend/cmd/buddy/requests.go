@@ -36,10 +36,9 @@ func handleRequestJobs(mux *asynq.ServeMux, desk *requests.Desk) {
 	})
 }
 
-// newRequestsScheduler queues advance_requests; a tick is dropped while the previous one is still queued.
-func newRequestsScheduler(redisAddr string) (*asynq.Scheduler, error) {
-	s := asynq.NewScheduler(asynq.RedisClientOpt{Addr: redisAddr}, nil)
+// registerRequestTasks queues advance_requests; a tick is dropped while the previous one is still queued.
+func registerRequestTasks(s *asynq.Scheduler) error {
 	_, err := s.Register(advanceEvery, asynq.NewTask(taskAdvanceRequests, nil),
 		asynq.Queue("system"), asynq.MaxRetry(0), asynq.Timeout(10*time.Second), asynq.Unique(14*time.Second))
-	return s, err
+	return err
 }

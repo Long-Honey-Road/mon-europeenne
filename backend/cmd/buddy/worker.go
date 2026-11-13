@@ -30,15 +30,16 @@ func runWorker(_ []string, stdout io.Writer) error {
 		return err
 	}
 	defer cleanup()
-	if cfg.FeatureRequests {
-		sched, err := newRequestsScheduler(cfg.RedisAddr)
-		if err != nil {
-			return err
-		}
-		if err := sched.Start(); err != nil {
-			return err
-		}
-		defer sched.Shutdown()
+	sched, err := newScheduler(cfg)
+	if err != nil {
+		return err
+	}
+	if err := sched.Start(); err != nil {
+		return err
+	}
+	defer sched.Shutdown()
+	if err := enqueueSync(cfg.RedisAddr); err != nil {
+		return err
 	}
 	fmt.Fprintf(stdout, "worker started, model provider %s\n", cfg.LLM.Provider)
 	return srv.Run(mux)
@@ -75,7 +76,8 @@ func buildWorker(cfg config.Config) (*asynq.Server, *asynq.ServeMux, func(), err
 		pool.Close()
 		closeSrc()
 	}
-	registry, err := agentTools(data, src.directory, st, cfg.FeatureRequests)
+	know := newKnowledge(cfg, data, src, st)
+	registry, err := agentTools(data, src.directory, st, know, cfg.FeatureRequests)
 	if err != nil {
 		cleanup()
 		return nil, nil, nil, err
@@ -86,6 +88,7 @@ func buildWorker(cfg config.Config) (*asynq.Server, *asynq.ServeMux, func(), err
 		Agent: agent.New(model, registry, agent.Config{DetailedEffort: cfg.LLM.DetailedReasoningEffort}), Users: src.accounts, Directory: src.directory,
 	})
 	mux := jobs.Mux(h)
+	handleKnowledgeJobs(mux, know)
 	if cfg.FeatureRequests {
 		desk, err := newDesk(data, src, st, rdb)
 		if err != nil {

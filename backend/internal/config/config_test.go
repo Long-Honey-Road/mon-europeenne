@@ -59,6 +59,8 @@ func TestLoadReadsEnvironment(t *testing.T) {
 		"HTTP_ADDR":            ":18080",
 		"GRPC_ADDR":            ":19090",
 		"FEATURE_REQUESTS":     "false",
+		"PLAYBOOK_REPO":        "",
+		"PLAYBOOK_REF":         "main",
 	}))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -81,6 +83,7 @@ func TestLoadReadsEnvironment(t *testing.T) {
 		HTTPAddr:        ":18080",
 		GRPCAddr:        ":19090",
 		FeatureRequests: false,
+		PlaybookRef:     "main",
 	}
 	if cfg != want {
 		t.Fatalf("Load() =\n%+v\nwant\n%+v", cfg, want)

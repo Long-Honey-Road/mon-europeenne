@@ -13,6 +13,12 @@ var (
 	ErrMissing = errors.New("missing config value")
 )
 
+// The Playbook is read at a fixed commit, so answers do not change under the user's feet.
+const (
+	DefaultPlaybookRepo = "avito-tech/playbook"
+	DefaultPlaybookRef  = "0c1d2aa1501ca6889357908f54b12695f0534e48"
+)
+
 type Provider string
 
 const (
@@ -61,6 +67,9 @@ type Config struct {
 	GRPCAddr      string
 	// FeatureRequests turns on the access requests module.
 	FeatureRequests bool
+	// PlaybookRepo is the GitHub repository of the open Avito Playbook; empty turns it off.
+	PlaybookRepo string
+	PlaybookRef  string
 }
 
 // Load builds Config from lookup (os.LookupEnv in production).
@@ -91,6 +100,8 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 		SessionSecret: str("SESSION_SECRET", ""),
 		HTTPAddr:      str("HTTP_ADDR", ":8080"),
 		GRPCAddr:      str("GRPC_ADDR", ":9090"),
+		PlaybookRepo:  str("PLAYBOOK_REPO", DefaultPlaybookRepo),
+		PlaybookRef:   str("PLAYBOOK_REF", DefaultPlaybookRef),
 	}
 
 	switch cfg.LLM.Provider {
