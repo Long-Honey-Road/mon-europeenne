@@ -125,9 +125,10 @@ type Data struct {
 	People   PeopleFile
 	Requests RequestsFile
 	Plan     PlanFile
+	Docs     []Doc
 }
 
-// Load reads people.json, request_types.json and plan.json from fsys and checks them as a whole.
+// Load reads people.json, request_types.json, plan.json and docs/*.md from fsys and checks them as a whole.
 func Load(fsys fs.FS) (Data, error) {
 	var d Data
 	for name, dst := range map[string]any{
@@ -139,6 +140,11 @@ func Load(fsys fs.FS) (Data, error) {
 			return Data{}, err
 		}
 	}
+	docs, err := loadDocs(fsys)
+	if err != nil {
+		return Data{}, err
+	}
+	d.Docs = docs
 	if p := validate(d); len(p) > 0 {
 		return Data{}, fmt.Errorf("%w:\n  %s", ErrInvalid, strings.Join(p, "\n  "))
 	}

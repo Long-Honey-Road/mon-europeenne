@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/jsonschema-go/jsonschema"
@@ -26,7 +27,23 @@ func validate(d Data) problems {
 	persons := validatePeople(&p, d.People)
 	validateRequests(&p, d.Requests, d.People, persons)
 	validatePlan(&p, d.Plan, d.People)
+	validateDocs(&p, d.Docs, d.People)
 	return p
+}
+
+func validateDocs(p *problems, docs []Doc, f PeopleFile) {
+	teams := map[string]bool{}
+	for _, t := range f.Teams {
+		teams[t.ID] = true
+	}
+	for _, d := range docs {
+		if d.TeamID != "" && !teams[d.TeamID] {
+			p.addf("doc %q: unknown team %q", d.ID, d.TeamID)
+		}
+		if !strings.Contains(d.Markdown, "Учебная инструкция") {
+			p.addf("doc %q: not labelled as a training instruction", d.ID)
+		}
+	}
 }
 
 // validatePeople returns the set of known person ids.

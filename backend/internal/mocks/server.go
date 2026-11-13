@@ -1,5 +1,5 @@
-// Package mocks serves the imitations of corporate services that buddy cannot reach: auth-roles, people and
-// corp-requests. One process, gRPC for buddy, REST through grpc-gateway for people checking by hand.
+// Package mocks serves the imitations of corporate services that buddy cannot reach: auth-roles, people,
+// corp-requests and documents. One process, gRPC for buddy, REST through grpc-gateway for people checking by hand.
 package mocks
 
 import (
@@ -22,10 +22,12 @@ import (
 
 	authrolesv1 "github.com/Long-Honey-Road/mon-europeenne/backend/gen/mocks/authroles/v1"
 	corprequestsv1 "github.com/Long-Honey-Road/mon-europeenne/backend/gen/mocks/corprequests/v1"
+	documentsv1 "github.com/Long-Honey-Road/mon-europeenne/backend/gen/mocks/documents/v1"
 	peoplev1 "github.com/Long-Honey-Road/mon-europeenne/backend/gen/mocks/people/v1"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/mocks/authroles"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/mocks/corprequests"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/mocks/directory"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/mocks/documents"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/seed"
 )
 
@@ -56,6 +58,7 @@ func New(data seed.Data, chaos Chaos) (*Server, error) {
 	authrolesv1.RegisterAuthRolesServiceServer(g, auth)
 	peoplev1.RegisterDirectoryServiceServer(g, directory.New(data.Directory(), data.Teams()))
 	corprequestsv1.RegisterCorpRequestsServiceServer(g, reqs)
+	documentsv1.RegisterDocumentsServiceServer(g, documents.New(data.Docs))
 	return &Server{GRPC: g, Requests: reqs}, nil
 }
 
@@ -109,6 +112,7 @@ func Gateway(ctx context.Context, grpcAddr string) (http.Handler, func(), error)
 		authrolesv1.RegisterAuthRolesServiceHandler,
 		peoplev1.RegisterDirectoryServiceHandler,
 		corprequestsv1.RegisterCorpRequestsServiceHandler,
+		documentsv1.RegisterDocumentsServiceHandler,
 	} {
 		if err := reg(ctx, mux, conn); err != nil {
 			_ = conn.Close()

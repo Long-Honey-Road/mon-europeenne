@@ -4,5 +4,5 @@ import "embed"
 
 // Files is the shipped synthetic data set.
 //
-//go:embed *.json
+//go:embed *.json docs/*.md
 var Files embed.FS

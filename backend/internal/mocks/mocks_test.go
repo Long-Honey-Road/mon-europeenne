@@ -17,6 +17,7 @@ import (
 
 	authrolesv1 "github.com/Long-Honey-Road/mon-europeenne/backend/gen/mocks/authroles/v1"
 	corprequestsv1 "github.com/Long-Honey-Road/mon-europeenne/backend/gen/mocks/corprequests/v1"
+	documentsv1 "github.com/Long-Honey-Road/mon-europeenne/backend/gen/mocks/documents/v1"
 	peoplev1 "github.com/Long-Honey-Road/mon-europeenne/backend/gen/mocks/people/v1"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/mocks"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/mocks/mockstest"
@@ -98,6 +99,33 @@ func TestDirectory(t *testing.T) {
 	if err != nil || empty.GetRelations().GetMentorId() != "" {
 		t.Errorf("GetRelations(u-ghost) = %+v, %v", empty, err)
 	}
+}
+
+func TestDocuments(t *testing.T) {
+	conn, _ := mockstest.Start(t, mocks.Chaos{})
+	c := documentsv1.NewDocumentsServiceClient(conn)
+	ctx := t.Context()
+
+	all, err := c.ListDocuments(ctx, &documentsv1.ListDocumentsRequest{})
+	if err != nil || len(all.GetDocuments()) < 15 {
+		t.Fatalf("ListDocuments() = %d, %v", len(all.GetDocuments()), err)
+	}
+	for _, d := range all.GetDocuments() {
+		if !d.GetTestInstruction() {
+			t.Errorf("%s is not marked as a training instruction", d.GetId())
+		}
+	}
+	team, _ := c.ListDocuments(ctx, &documentsv1.ListDocumentsRequest{TeamId: "t-notifications"})
+	review, _ := c.ListDocuments(ctx, &documentsv1.ListDocumentsRequest{Topic: "code-review"})
+	if len(team.GetDocuments()) != 1 || len(review.GetDocuments()) != 2 {
+		t.Errorf("filters: team %d, topic %d", len(team.GetDocuments()), len(review.GetDocuments()))
+	}
+	doc, err := c.GetDocument(ctx, &documentsv1.GetDocumentRequest{DocumentId: "messenger-dev-setup"})
+	if err != nil || !strings.Contains(doc.GetMarkdown(), "make dev") || doc.GetInfo().GetTeamId() != "t-messenger" {
+		t.Errorf("GetDocument = %+v, %v", doc.GetInfo(), err)
+	}
+	_, err = c.GetDocument(ctx, &documentsv1.GetDocumentRequest{DocumentId: "ghost"})
+	wantCode(t, err, codes.NotFound)
 }
 
 func submit(t *testing.T, c corprequestsv1.CorpRequestsServiceClient, typeKey string, approvers ...string) *corprequestsv1.Request {
