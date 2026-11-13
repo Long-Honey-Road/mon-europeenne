@@ -1,15 +1,8 @@
-import type { ItemStatus } from '../../shared/data/demo'
 import type { AppSection } from '../nav/sections'
 import { PlanPanel } from '../plan/PlanPanel'
+import { WorkPanel } from '../task/WorkPanel'
 import { TeamPanel } from '../team/TeamPanel'
 import { TodayPanel } from '../today/TodayPanel'
-
-const STATUS_TEXT: Record<ItemStatus, string> = {
-  done: 'Готово',
-  active: 'В работе',
-  waiting: 'Ждёт ответа',
-  todo: 'Впереди',
-}
 
 /** Information attached to the orb in focus. */
 export function InfoPanel({
@@ -36,31 +29,12 @@ export function InfoPanel({
       ) : section.id === 'plan' ? (
         <PlanPanel onAsk={onAsk} />
       ) : (
-        <DemoList section={section} />
+        <WorkPanel />
       )}
 
       <button type="button" className="info__ask" onClick={() => onAsk(section.prompt)}>
         Спросить buddy <span aria-hidden="true">→</span>
       </button>
     </section>
-  )
-}
-
-// Tasks stay on demo data until S-08.
-function DemoList({ section }: { section: AppSection }) {
-  return (
-    <ul className="info__list">
-      {section.items.map((item) => (
-        <li key={item.title} className="info__item">
-          <span className="info__text">
-            <span className="info__item-title">{item.title}</span>
-            <span className="info__note">{item.note}</span>
-          </span>
-          {item.status && (
-            <span className={`info__status info__status--${item.status}`}>{STATUS_TEXT[item.status]}</span>
-          )}
-        </li>
-      ))}
-    </ul>
   )
 }

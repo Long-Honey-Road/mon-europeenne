@@ -1,6 +1,3 @@
-import { workItems } from '../../shared/data/demo'
-import type { InfoItem } from '../../shared/data/demo'
-
 export type Accent = 'green' | 'blue' | 'red' | 'purple'
 
 export type Section = {
@@ -13,8 +10,6 @@ export type Section = {
   name: string
   title: string
   tagline: string
-  /** Demo list for sections without live data yet; live sections render their own panel. */
-  items: readonly InfoItem[]
   /** Question the "ask buddy" button puts into the chat input. */
   prompt: string
   /** Orb centre and diameter in % of the logo box, taken from the Avito logo. */
@@ -30,7 +25,6 @@ export const sections = [
     name: 'Сегодня',
     title: 'Сегодня',
     tagline: 'Ближайшие шаги и то, что ждёт чужого ответа.',
-    items: [],
     prompt: 'Что мне сделать сегодня в первую очередь?',
     orb: { x: 32.4, y: 64.4, d: 52.7 },
   },
@@ -42,7 +36,6 @@ export const sections = [
     name: 'План',
     title: 'План адаптации',
     tagline: 'Этапы первых недель и прогресс по каждому.',
-    items: [],
     prompt: 'Какой следующий шаг в моём плане адаптации?',
     orb: { x: 71.9, y: 30.5, d: 42.9 },
   },
@@ -54,7 +47,6 @@ export const sections = [
     name: 'Задачи',
     title: 'Задачи и заявки',
     tagline: 'Рабочие задачи и запросы через корпоративные сервисы.',
-    items: workItems,
     prompt: 'В каком статусе мои заявки на доступы?',
     orb: { x: 78.3, y: 71.2, d: 31.7 },
   },
@@ -66,7 +58,6 @@ export const sections = [
     name: 'Команда',
     title: 'Команда',
     tagline: 'Кто за что отвечает и с каким вопросом к кому идти.',
-    items: [],
     prompt: 'К кому идти, если не собирается проект?',
     orb: { x: 37.3, y: 24.4, d: 21 },
   },

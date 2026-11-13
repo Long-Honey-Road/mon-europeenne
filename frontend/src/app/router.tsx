@@ -45,6 +45,7 @@ const routeTree = rootRoute.addChildren([
     createRoute({ ...child, path: '/plan/map' }),
     createRoute({ ...child, path: '/work' }),
     createRoute({ ...child, path: '/team' }),
+    createRoute({ ...child, path: '/task/$threadId' }),
   ]),
 ])
 

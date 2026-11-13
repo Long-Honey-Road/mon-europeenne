@@ -63,8 +63,8 @@ describe('chat threads', () => {
   })
 
   it('labels threads by type and date', () => {
-    expect(threadLabel({ id: '1', type: 'THREAD_TYPE_PLAN', title: '', created_at: 'nope' })).toBe('План')
-    expect(threadLabel({ id: '1', type: 'THREAD_TYPE_GENERAL', title: 'Деплой', created_at: '2026-11-13T09:00:00Z' })).toMatch(/^Деплой · 13 нояб/)
+    expect(threadLabel({ id: '1', type: 'THREAD_TYPE_PLAN', title: '', pin: {}, created_at: 'nope' })).toBe('План')
+    expect(threadLabel({ id: '1', type: 'THREAD_TYPE_GENERAL', title: 'Деплой', pin: {}, created_at: '2026-11-13T09:00:00Z' })).toMatch(/^Деплой · 13 нояб/)
   })
 })
 

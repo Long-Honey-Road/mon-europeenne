@@ -28,6 +28,7 @@ import type {
   PlanItemStatus,
   RequestType,
   ServiceRequest,
+  TaskPin,
   Thread,
   ThreadType,
   Today,
@@ -72,7 +73,7 @@ export type Api = {
   /** Sends a request the user confirmed; its status changes arrive in `threadId` as request_status events. */
   submitRequest: (threadId: string, typeKey: string, fields: Record<string, unknown>) => Promise<ServiceRequest>
   threads: () => Promise<Thread[]>
-  createThread: (type: ThreadType) => Promise<Thread>
+  createThread: (type: ThreadType, opts?: { title?: string; task?: TaskPin }) => Promise<Thread>
   messages: (threadId: string) => Promise<ChatMessage[]>
   /** Queues an agent turn; the answer arrives over the thread's event stream. */
   sendMessage: (threadId: string, content: string, mode: AnswerMode) => Promise<{ message_id: string; job_id: string }>
@@ -152,8 +153,22 @@ export function createApi({ baseUrl, getToken, onUnauthorized, fetch: fetchImpl 
       ).request,
     threads: async () =>
       (await call(() => client.GET('/v1/private/threads'), listThreadsResponseSchema, true)).threads,
-    createThread: async (type) =>
-      (await call(() => client.POST('/v1/private/threads', { body: { type } }), threadResponseSchema, true)).thread,
+    createThread: async (type, opts = {}) =>
+      (
+        await call(
+          () =>
+            client.POST('/v1/private/threads', {
+              body: {
+                type,
+                ...(opts.title ? { title: opts.title } : {}),
+                // protobuf Struct comes out of the OpenAPI generator as an object without keys.
+                ...(opts.task ? { pin: { task: opts.task } as unknown as Record<string, never> } : {}),
+              },
+            }),
+          threadResponseSchema,
+          true,
+        )
+      ).thread,
     messages: async (threadId) =>
       (
         await call(

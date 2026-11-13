@@ -81,23 +81,37 @@ export function useChat() {
 
   // Open the newest general thread, or start one, unless another screen asked for a thread type.
   useEffect(() => {
-    if (threadId || !threads.data || creating.current || useChatRoute.getState().wanted) return
+    if (threadId || !threads.data || creating.current || useChatRoute.getState().wanted || useChatRoute.getState().wantedId)
+      return
     const general = threads.data.find((t) => t.type === 'THREAD_TYPE_GENERAL')
     if (general) {
       setThreadId(general.id)
       return
     }
     creating.current = true
-    createThread('THREAD_TYPE_GENERAL')
+    // A screen may pick a thread while this one is being created; the default never overrides that choice.
+    api
+      .createThread('THREAD_TYPE_GENERAL')
+      .then((t) => {
+        setThreadId((current) => current ?? t.id)
+        return qc.invalidateQueries({ queryKey: threadsKey })
+      })
       .catch(() => {})
       .finally(() => {
         creating.current = false
       })
-  }, [threadId, threads.data, createThread])
+  }, [threadId, threads.data, qc])
 
   // Another screen asked for a thread of some type: open the newest one, or start it.
   const wanted = useChatRoute((s) => s.wanted)
+  const wantedId = useChatRoute((s) => s.wantedId)
   const clearWanted = useChatRoute((s) => s.clear)
+  useEffect(() => {
+    if (!wantedId) return
+    clearWanted()
+    setLive(null)
+    setThreadId(wantedId)
+  }, [wantedId, clearWanted])
   useEffect(() => {
     if (!wanted || !threads.data) return
     clearWanted()

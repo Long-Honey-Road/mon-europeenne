@@ -13,6 +13,8 @@ type State = {
   script: ScriptEvent[]
   sent: { threadId: string; content: string; mode: string }[]
   ratings: { messageId: string; value: string }[]
+  /** Bodies of POST /threads, to check what a screen asked to create. */
+  created: { type: ThreadType; title?: string; pin?: Thread['pin'] }[]
   failEvents: boolean
   failSend: boolean
   seq: number
@@ -24,6 +26,7 @@ const fresh = (): State => ({
   script: [],
   sent: [],
   ratings: [],
+  created: [],
   failEvents: false,
   failSend: false,
   seq: 0,
@@ -45,8 +48,12 @@ const encoder = new TextEncoder()
 
 const nextId = () => `00000000-0000-0000-0000-${String(++chat.seq).padStart(12, '0')}`
 
-export function addThread(type: ThreadType = 'THREAD_TYPE_GENERAL', createdAt = '2026-11-13T09:00:00Z'): Thread {
-  const t: Thread = { id: nextId(), type, title: '', created_at: createdAt }
+export function addThread(
+  type: ThreadType = 'THREAD_TYPE_GENERAL',
+  createdAt = '2026-11-13T09:00:00Z',
+  extra: Partial<Pick<Thread, 'title' | 'pin'>> = {},
+): Thread {
+  const t: Thread = { id: nextId(), type, title: '', pin: {}, created_at: createdAt, ...extra }
   chat.threads.unshift(t)
   chat.messages[t.id] = []
   return t
@@ -101,8 +108,10 @@ function play(threadId: string) {
 export const chatHandlers = [
   http.get(`${API}/v1/private/threads`, () => HttpResponse.json({ threads: chat.threads })),
   http.post(`${API}/v1/private/threads`, async ({ request }) => {
-    const body = (await request.json()) as { type: ThreadType }
-    return HttpResponse.json({ thread: addThread(body.type, '2026-11-13T10:00:00Z') })
+    const body = (await request.json()) as { type: ThreadType; title?: string; pin?: Thread['pin'] }
+    chat.created.push(body)
+    const extra = { title: body.title ?? '', pin: body.pin ?? {} }
+    return HttpResponse.json({ thread: addThread(body.type, '2026-11-13T10:00:00Z', extra) })
   }),
   http.get(`${API}/v1/private/threads/:id/messages`, ({ params }) =>
     HttpResponse.json({ messages: chat.messages[String(params.id)] ?? [] }),

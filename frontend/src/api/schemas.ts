@@ -76,10 +76,22 @@ export const threadTypeSchema = z.enum([
   'THREAD_TYPE_TASK',
 ])
 
+export const taskPinSchema = z.object({
+  key: z.string(),
+  title: z.string().optional(),
+  repo: z.string().optional(),
+})
+
 export const threadSchema = z.object({
   id: z.string(),
   type: threadTypeSchema,
   title: z.string(),
+  /** Pinned context: {plan_item_id} or {request_id} or {task: {key, title, repo}}. */
+  pin: z
+    .object({ task: taskPinSchema.optional() })
+    .loose()
+    .nullish()
+    .transform((v) => v ?? {}),
   created_at: z.string(),
 })
 
@@ -266,3 +278,4 @@ export type RequestType = z.infer<typeof requestTypeSchema>
 /** A request in the company's request system (named so it does not clash with the fetch Request). */
 export type ServiceRequest = z.infer<typeof serviceRequestSchema>
 export type Plan = z.infer<typeof getPlanResponseSchema>
+export type TaskPin = z.infer<typeof taskPinSchema>

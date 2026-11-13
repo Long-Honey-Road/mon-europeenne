@@ -6,6 +6,7 @@ import { server } from './server'
 import { chat } from './chat'
 import { resetPanels } from './panels'
 import { requests } from './requests'
+import { useTaskProgress } from '../features/task/progress'
 import { usePlanHighlight } from '../features/plan/highlight'
 
 // The chat loads threads, then history and its stream; coverage runs make that slower than the 1 s default.
@@ -20,6 +21,7 @@ afterEach(() => {
   chat.reset()
   resetPanels()
   requests.reset()
+  useTaskProgress.getState().reset()
   usePlanHighlight.getState().set([], '')
 })
 afterAll(() => server.close())

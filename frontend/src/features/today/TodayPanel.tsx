@@ -1,5 +1,6 @@
 import { plural, pluralGenitive } from '../../shared/plural'
 import { QueryState } from '../../shared/ui/QueryState'
+import { TaskForm } from '../task/TaskForm'
 import { dayLabel, itemStatus, periodTitle, useToday } from './useToday'
 
 const blockerKind: Record<string, string> = {
@@ -13,6 +14,7 @@ export function TodayPanel({ onAsk }: { onAsk: (text: string) => void }) {
   const today = useToday()
 
   return (
+    <>
     <QueryState
       query={today}
       isEmpty={(t) => t.next_steps.length === 0 && t.blockers.length === 0}
@@ -74,5 +76,7 @@ export function TodayPanel({ onAsk }: { onAsk: (text: string) => void }) {
         </>
       )}
     </QueryState>
+    <TaskForm />
+    </>
   )
 }
