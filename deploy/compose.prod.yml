@@ -1,0 +1,43 @@
+# Override for self-hosted staging/prod on top of docker-compose.yml.
+# No host ports: the only way in is the Cloudflare tunnel to the frontend.
+# Run through deploy/stack.sh, which sets the project name and env file.
+
+services:
+  postgres:
+    ports: !reset []
+    restart: unless-stopped
+
+  redis:
+    ports: !reset []
+    restart: unless-stopped
+
+  migrate:
+    image: ${BACKEND_IMAGE:-buddy-backend:staging}
+
+  seed:
+    image: ${BACKEND_IMAGE:-buddy-backend:staging}
+
+  api:
+    image: ${BACKEND_IMAGE:-buddy-backend:staging}
+    ports: !reset []
+    restart: unless-stopped
+
+  worker:
+    image: ${BACKEND_IMAGE:-buddy-backend:staging}
+    restart: unless-stopped
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-buddy-frontend:staging}
+    ports: !reset []
+    restart: unless-stopped
+
+  # Remotely-managed tunnel: public hostnames live in the Cloudflare dashboard.
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.7
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in the env file}
+    restart: unless-stopped
+    depends_on:
+      frontend:
+        condition: service_healthy
