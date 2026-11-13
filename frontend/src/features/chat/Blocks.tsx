@@ -1,16 +1,6 @@
 import type { Block, EscalationStep } from '../../api/schemas'
-
-const roleNames: Record<string, string> = {
-  mentor: 'наставник',
-  manager: 'руководитель',
-  hr_bp: 'HR BP',
-  open_sources: 'открытые источники',
-  object_owner: 'владелец ресурса',
-  devops: 'DevOps',
-  hr_admin: 'HR-администратор',
-}
-
-const roleName = (role: string) => roleNames[role] ?? role
+import { RequestAction } from '../requests/RequestAction'
+import { roleName } from '../requests/roles'
 
 export function Escalation({ steps }: { steps: EscalationStep[] }) {
   if (steps.length === 0) return null
@@ -81,34 +71,6 @@ function NotFound({ block }: { block: Block }) {
   )
 }
 
-type ActionApprover = { role?: string; name?: string }
-
-// The form that edits and sends the request comes with S-05; here the prepared request is shown as is.
-function Action({ block }: { block: Block }) {
-  const action = block.action ?? {}
-  const title = typeof action.title === 'string' ? action.title : 'Заявка'
-  const fields = (action.fields && typeof action.fields === 'object' ? action.fields : {}) as Record<string, unknown>
-  const approvers = (Array.isArray(action.approvers) ? action.approvers : []) as ActionApprover[]
-  return (
-    <section className="block block--action" aria-label={`Заявка: ${title}`}>
-      <p className="block__title">{title}</p>
-      <dl className="block__fields">
-        {Object.entries(fields).map(([k, v]) => (
-          <div key={k}>
-            <dt>{k}</dt>
-            <dd>{String(v)}</dd>
-          </div>
-        ))}
-      </dl>
-      {approvers.length > 0 && (
-        <p className="block__meta">
-          Согласует: {approvers.map((a) => a.name || roleName(a.role ?? '')).join(', ')}
-        </p>
-      )}
-    </section>
-  )
-}
-
 // The server adds this block whenever the answer used the model's own knowledge instead of company data.
 function GeneralKnowledge({ block }: { block: Block }) {
   return (
@@ -144,7 +106,7 @@ export function Blocks({ blocks }: { blocks: Block[] }) {
           case 'not_found':
             return <NotFound key={key} block={b} />
           case 'action':
-            return <Action key={key} block={b} />
+            return <RequestAction key={key} action={b.action} />
           case 'general_knowledge':
             return <GeneralKnowledge key={key} block={b} />
           default:

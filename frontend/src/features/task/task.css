@@ -1,0 +1,116 @@
+.task-screen {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100dvh;
+  background:
+    radial-gradient(50% 35% at 25% 15%, rgb(255 64 83 / 0.12), transparent 70%),
+    radial-gradient(40% 30% at 80% 70%, rgb(150 94 235 / 0.1), transparent 70%),
+    var(--space);
+}
+.task-screen__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  max-width: 760px;
+  overflow-y: auto;
+  padding: 8px var(--gutter) 32px;
+}
+.task-screen__title {
+  font-size: clamp(1.6rem, 3.6vw, 2.6rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+.task-screen__key {
+  color: var(--orb-red);
+}
+.task-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.task-step {
+  display: flex;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: rgb(255 255 255 / 0.03);
+  animation: rise 0.4s var(--ease-out) both;
+}
+.task-step[data-done='true'] {
+  border-color: rgb(4 224 97 / 0.4);
+}
+.task-step__num {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--glass);
+  box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.3);
+  font-weight: 800;
+}
+.task-step[data-done='true'] .task-step__num {
+  background: var(--orb-green);
+  color: var(--space);
+  box-shadow: 0 0 18px rgb(4 224 97 / 0.5);
+}
+.task-step__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.task-step__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.task-start {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 7px 14px;
+  border: 1px dashed rgb(255 255 255 / 0.3);
+  border-radius: 999px;
+  font-size: var(--text-small);
+  font-weight: 700;
+  color: var(--text);
+}
+.task-start:hover {
+  border-color: var(--accent, var(--text));
+}
+.task-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-self: stretch;
+  padding: 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.03);
+}
+.task-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.task-form__input {
+  padding: 8px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--glass);
+  font-size: var(--text-small);
+}
+.task-form__input:focus-visible {
+  outline: none;
+  border-color: rgb(255 255 255 / 0.45);
+}

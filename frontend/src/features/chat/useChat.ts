@@ -7,6 +7,9 @@ import type { ThreadEvent } from '../../api/events'
 import { blockSchema, escalationStepSchema } from '../../api/schemas'
 import type { Block, EscalationStep, ThreadType } from '../../api/schemas'
 import { useSession } from '../auth/session'
+import { applyHighlight } from '../plan/highlight'
+import { applyRequestStatus } from '../requests/useRequests'
+import { useChatRoute } from './route'
 
 /** How long to wait for the event stream before sending, and for the answer after sending. */
 export const CONNECT_TIMEOUT_MS = 5_000
@@ -67,29 +70,64 @@ export function useChat() {
   const createThread = useCallback(
     async (type: ThreadType) => {
       const t = await api.createThread(type)
-      await qc.invalidateQueries({ queryKey: threadsKey })
+      // Select before the list refetch, so the default thread effect never sees an empty selection.
       setLive(null)
       setThreadId(t.id)
+      await qc.invalidateQueries({ queryKey: threadsKey })
       return t
     },
     [qc],
   )
 
-  // Open the newest general thread, or start one.
+  // Open the newest general thread, or start one, unless another screen asked for a thread type.
   useEffect(() => {
-    if (threadId || !threads.data || creating.current) return
+    if (threadId || !threads.data || creating.current || useChatRoute.getState().wanted || useChatRoute.getState().wantedId)
+      return
     const general = threads.data.find((t) => t.type === 'THREAD_TYPE_GENERAL')
     if (general) {
       setThreadId(general.id)
       return
     }
     creating.current = true
-    createThread('THREAD_TYPE_GENERAL')
+    // A screen may pick a thread while this one is being created; the default never overrides that choice.
+    api
+      .createThread('THREAD_TYPE_GENERAL')
+      .then((t) => {
+        setThreadId((current) => current ?? t.id)
+        return qc.invalidateQueries({ queryKey: threadsKey })
+      })
       .catch(() => {})
       .finally(() => {
         creating.current = false
       })
-  }, [threadId, threads.data, createThread])
+  }, [threadId, threads.data, qc])
+
+  // Another screen asked for a thread of some type: open the newest one, or start it.
+  const wanted = useChatRoute((s) => s.wanted)
+  const wantedId = useChatRoute((s) => s.wantedId)
+  const clearWanted = useChatRoute((s) => s.clear)
+  useEffect(() => {
+    if (!wantedId) return
+    clearWanted()
+    setLive(null)
+    setThreadId(wantedId)
+  }, [wantedId, clearWanted])
+  useEffect(() => {
+    if (!wanted || !threads.data) return
+    clearWanted()
+    const found = threads.data.find((t) => t.type === wanted)
+    if (found) {
+      setLive(null)
+      setThreadId(found.id)
+      return
+    }
+    creating.current = true
+    createThread(wanted)
+      .catch(() => {})
+      .finally(() => {
+        creating.current = false
+      })
+  }, [wanted, threads.data, createThread, clearWanted])
 
   const stopTimer = () => {
     if (turnTimer.current) clearTimeout(turnTimer.current)
@@ -122,6 +160,12 @@ export function useChat() {
           void qc.invalidateQueries({ queryKey: messagesKey(threadId) })
           break
         }
+        case 'highlight':
+          applyHighlight(e.data)
+          break
+        case 'request_status':
+          applyRequestStatus(qc, e.data)
+          break
         case 'error': {
           stopTimer()
           const escalation = escalationStepSchema.array().safeParse(e.data.escalation)

@@ -423,3 +423,108 @@
     translate: 0 8px;
   }
 }
+
+/* ---------- Request form (S-05) ---------- */
+.request__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+.request__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.request__label {
+  font-size: var(--text-label);
+  font-weight: 700;
+  color: var(--text-soft);
+}
+.request__input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--glass);
+  font: inherit;
+  font-size: var(--text-small);
+  color: inherit;
+  resize: vertical;
+}
+.request__input:focus-visible {
+  outline: none;
+  border-color: rgb(255 255 255 / 0.45);
+}
+.request__input[aria-invalid='true'] {
+  border-color: var(--orb-red);
+}
+.request__input:disabled {
+  opacity: 0.6;
+}
+select.request__input option {
+  background: var(--space-raised);
+}
+.request__error {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgb(255 64 83 / 0.12);
+  color: #ffb3bb;
+  font-size: var(--text-small);
+}
+.request__send {
+  align-self: flex-start;
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: var(--orb-green);
+  color: var(--space);
+  font-size: var(--text-small);
+  font-weight: 800;
+  transition:
+    opacity 0.2s,
+    transform 0.2s var(--ease-spring);
+}
+.request__send:hover:not(:disabled) {
+  transform: scale(1.04);
+}
+.request__send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.request__hint {
+  font-size: var(--text-label);
+  color: var(--text-soft);
+}
+.request__id {
+  margin-left: 6px;
+  font-size: var(--text-label);
+  font-weight: 600;
+  color: var(--text-soft);
+}
+.request__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: var(--text-small);
+  font-weight: 700;
+}
+.request__status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dot);
+  box-shadow: 0 0 10px var(--dot);
+}
+.request--pending {
+  --dot: var(--orb-blue);
+}
+.request--approved {
+  --dot: var(--orb-green);
+  border-color: rgb(4 224 97 / 0.45);
+}
+.request--rejected {
+  --dot: var(--orb-red);
+  border-color: rgb(255 64 83 / 0.45);
+}

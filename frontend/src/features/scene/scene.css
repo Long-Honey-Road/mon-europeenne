@@ -411,3 +411,126 @@
     padding: 6px 10px;
   }
 }
+
+/* ---------- Live panels: today and team ---------- */
+.info__meta {
+  font-size: var(--text-small);
+  color: var(--text-soft);
+}
+.info__subhead {
+  margin-top: 8px;
+}
+.info__list > li {
+  list-style: none;
+}
+.info__item--button {
+  width: 100%;
+  text-align: left;
+  border-radius: 0;
+  transition: background 0.2s;
+}
+.info__item--button:hover {
+  background: var(--glass);
+}
+.info__item--button[aria-expanded='true'] .info__item-title {
+  color: var(--accent);
+}
+.team-scope {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.team-scope__chip {
+  position: relative;
+  padding: 6px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+.team-scope__chip input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.team-scope__chip:has(input:checked) {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.team-scope__chip:has(input:focus-visible) {
+  outline: 2px solid var(--text);
+  outline-offset: 3px;
+}
+.person__details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 0 0 14px;
+  font-size: var(--text-small);
+  animation: fade-in 0.3s var(--ease-out) both;
+}
+.person__details .label {
+  margin-right: 6px;
+}
+.person__ask {
+  margin-top: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  font-weight: 700;
+  color: var(--text);
+}
+.person__ask:hover {
+  background: var(--accent);
+  color: var(--space);
+}
+
+/* ---------- Plan list (S-06) ---------- */
+.plan-stage {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+.plan-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.plan-card__status {
+  padding: 6px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  font-weight: 700;
+  color: var(--text);
+  transition: border-color 0.2s;
+}
+.plan-card__status:hover:not(:disabled) {
+  border-color: rgb(255 255 255 / 0.45);
+}
+.plan-card__status:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.plan-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  align-self: stretch;
+}
+.plan-meta__map {
+  font-weight: 700;
+  color: var(--accent);
+}
+.plan-meta__map:hover {
+  text-decoration: underline;
+}

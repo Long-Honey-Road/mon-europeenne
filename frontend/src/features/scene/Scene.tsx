@@ -1,8 +1,9 @@
 import type { CSSProperties } from 'react'
 import { Link } from '@tanstack/react-router'
-import { intern } from '../../shared/data/demo'
 import { UserMenu } from '../auth/UserMenu'
-import { useCurrentUser } from '../auth/useMe'
+import { useCurrentUser, useMe } from '../auth/useMe'
+import { useOrbStats } from '../nav/useOrbStat'
+import { dayLabel, useToday } from '../today/useToday'
 import { sections } from '../nav/sections'
 import type { AppSection } from '../nav/sections'
 import { InfoPanel } from './InfoPanel'
@@ -13,6 +14,9 @@ import './scene.css'
 export function Scene({ active, onAsk }: { active?: AppSection; onAsk: (text: string) => void }) {
   const minis = sections.filter((s) => s !== active)
   const firstName = useCurrentUser()?.firstName
+  const stats = useOrbStats()
+  const teamName = useMe().data?.team?.name
+  const today = useToday().data
 
   return (
     <section className="scene" data-accent={active?.accent} aria-label="Сцена разделов">
@@ -63,8 +67,8 @@ export function Scene({ active, onAsk }: { active?: AppSection; onAsk: (text: st
                 <span className="orb__ball" data-orb-ball data-state={state} data-color={s.color} />
               </span>
               <span className="orb__label">
-                <span className="orb__name">{s.name}</span>
-                <span className="orb__stat">{s.stat}</span>
+                <span className="orb__name">{s.name}</span>{' '}
+                {stats[s.id] && <span className="orb__stat">{stats[s.id]}</span>}
               </span>
             </Link>
           )
@@ -75,11 +79,12 @@ export function Scene({ active, onAsk }: { active?: AppSection; onAsk: (text: st
       <SceneCanvas />
 
       {active ? (
-        <InfoPanel key={active.id} section={active} onAsk={onAsk} />
+        <InfoPanel key={active.id} section={active} stat={stats[active.id]} onAsk={onAsk} />
       ) : (
         <div className="scene__hello">
           <p className="label">
-            {intern.team} · день {intern.day} из {intern.totalDays}
+            {teamName && <span>{teamName} · </span>}
+            {today && <span>{dayLabel(today.day, today.week)}</span>}
           </p>
           <h1 className="scene__title">{firstName ? `Привет, ${firstName}` : 'Привет'}</h1>
           <p className="scene__lead">Выбери сферу — покажу, что внутри.</p>

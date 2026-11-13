@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from '@tanstack/react-router'
 import { ChatPanel } from '../chat/ChatPanel'
-import { sectionByPath } from '../nav/sections'
+import { sectionByPath, sections } from '../nav/sections'
+import { PlanMap } from '../plan/PlanMap'
+import { TaskScreen } from '../task/TaskScreen'
 import { Scene } from '../scene/Scene'
 import './home.css'
 
@@ -9,7 +11,13 @@ import './home.css'
 export function Home() {
   const pathname = useLocation({ select: (l) => l.pathname })
   const navigate = useNavigate()
-  const active = sectionByPath(pathname)
+  const onMap = pathname === '/plan/map'
+  const taskId = pathname.startsWith('/task/') ? decodeURIComponent(pathname.slice('/task/'.length)) : null
+  const active = onMap
+    ? sections.find((s) => s.id === 'plan')
+    : taskId
+      ? sections.find((s) => s.id === 'work')
+      : sectionByPath(pathname)
   const [draft, setDraft] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -29,7 +37,13 @@ export function Home() {
 
   return (
     <div className="home">
-      <Scene active={active} onAsk={ask} />
+      {onMap ? (
+        <PlanMap onAsk={ask} />
+      ) : taskId ? (
+        <TaskScreen threadId={taskId} onAsk={ask} />
+      ) : (
+        <Scene active={active} onAsk={ask} />
+      )}
       <ChatPanel context={active} draft={draft} onDraftChange={setDraft} inputRef={inputRef} />
     </div>
   )

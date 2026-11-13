@@ -76,10 +76,22 @@ export const threadTypeSchema = z.enum([
   'THREAD_TYPE_TASK',
 ])
 
+export const taskPinSchema = z.object({
+  key: z.string(),
+  title: z.string().optional(),
+  repo: z.string().optional(),
+})
+
 export const threadSchema = z.object({
   id: z.string(),
   type: threadTypeSchema,
   title: z.string(),
+  /** Pinned context: {plan_item_id} or {request_id} or {task: {key, title, repo}}. */
+  pin: z
+    .object({ task: taskPinSchema.optional() })
+    .loose()
+    .nullish()
+    .transform((v) => v ?? {}),
   created_at: z.string(),
 })
 
@@ -134,6 +146,116 @@ export const listMessagesResponseSchema = z.object({ messages: z.array(chatMessa
 export const sendMessageResponseSchema = z.object({ message_id: z.string(), job_id: z.string() })
 export const emptySchema = z.object({})
 
+export const planPeriodSchema = z.enum([
+  'PLAN_PERIOD_UNSPECIFIED',
+  'PLAN_PERIOD_W1',
+  'PLAN_PERIOD_W2',
+  'PLAN_PERIOD_M1',
+  'PLAN_PERIOD_M2',
+  'PLAN_PERIOD_EQUATOR',
+  'PLAN_PERIOD_FINAL',
+])
+
+export const planItemStatusSchema = z.enum([
+  'PLAN_ITEM_STATUS_UNSPECIFIED',
+  'PLAN_ITEM_STATUS_TODO',
+  'PLAN_ITEM_STATUS_DOING',
+  'PLAN_ITEM_STATUS_BLOCKED',
+  'PLAN_ITEM_STATUS_DONE',
+])
+
+export const planItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  practice: z.string(),
+  period: planPeriodSchema,
+  status: planItemStatusSchema,
+  note: z.string(),
+  depends_on: z.array(z.string()),
+  blocked_by: z.array(z.string()),
+  map: z
+    .object({ x: z.number(), y: z.number(), group: z.string() })
+    .nullish()
+    .transform((v) => v ?? undefined),
+})
+
+export const getPlanResponseSchema = z.object({
+  items: z.array(planItemSchema),
+  done: z.number(),
+  total: z.number(),
+})
+
+export const updatePlanItemResponseSchema = z.object({ item: planItemSchema })
+
+export const blockerSchema = z.object({
+  kind: z.string(),
+  id: z.string(),
+  title: z.string(),
+  reason: z.string(),
+})
+
+export const todaySchema = z.object({
+  day: z.number(),
+  week: z.number(),
+  period: planPeriodSchema,
+  next_steps: z.array(planItemSchema),
+  blockers: z.array(blockerSchema),
+  done: z.number(),
+  total: z.number(),
+})
+
+export const personSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  role_title: z.string(),
+  team_id: z.string(),
+  responsibilities: z.array(z.string()),
+  ask_me_about: z.array(z.string()),
+  contact: z.string(),
+  other_team: z.boolean(),
+})
+
+export const listPeopleResponseSchema = z.object({ people: z.array(personSchema) })
+export const requestStatusSchema = z.enum([
+  'REQUEST_STATUS_UNSPECIFIED',
+  'REQUEST_STATUS_PENDING',
+  'REQUEST_STATUS_APPROVED',
+  'REQUEST_STATUS_REJECTED',
+])
+
+export const approverSchema = z.object({
+  role: z.string(),
+  person_id: z.string().optional(),
+  name: z.string().optional(),
+})
+
+export const requestTypeSchema = z.object({
+  key: z.string(),
+  title: z.string(),
+  category: z.string(),
+  fields_schema: z.record(z.string(), z.unknown()),
+  approval_chain: z.array(z.object({ resolver: z.string(), object: z.string() })),
+  sla_hours: z.number(),
+})
+
+export const serviceRequestSchema = z.object({
+  id: z.string(),
+  type_key: z.string(),
+  title: z.string(),
+  status: requestStatusSchema,
+  approver: approverSchema.nullish().transform((v) => v ?? undefined),
+  next_step: z.string(),
+  reason: z.string(),
+  fields: z.record(z.string(), z.unknown()).nullish().transform((v) => v ?? {}),
+  history: z.array(z.object({ at: z.string(), status: requestStatusSchema, by: z.string(), note: z.string() })),
+  thread_id: z.string(),
+  updated_at: z.string(),
+})
+
+export const listRequestTypesResponseSchema = z.object({ types: z.array(requestTypeSchema) })
+export const listRequestsResponseSchema = z.object({ requests: z.array(serviceRequestSchema) })
+export const requestResponseSchema = z.object({ request: serviceRequestSchema })
+
 export type Role = z.infer<typeof roleSchema>
 export type User = z.infer<typeof userSchema>
 export type LoginResponse = z.infer<typeof loginResponseSchema>
@@ -144,3 +266,16 @@ export type Block = z.infer<typeof blockSchema>
 export type Source = z.infer<typeof sourceSchema>
 export type EscalationStep = z.infer<typeof escalationStepSchema>
 export type ChatMessage = z.infer<typeof chatMessageSchema>
+export type PlanPeriod = z.infer<typeof planPeriodSchema>
+export type PlanItemStatus = z.infer<typeof planItemStatusSchema>
+export type PlanItem = z.infer<typeof planItemSchema>
+export type Blocker = z.infer<typeof blockerSchema>
+export type Today = z.infer<typeof todaySchema>
+export type Person = z.infer<typeof personSchema>
+export type RequestStatus = z.infer<typeof requestStatusSchema>
+export type Approver = z.infer<typeof approverSchema>
+export type RequestType = z.infer<typeof requestTypeSchema>
+/** A request in the company's request system (named so it does not clash with the fetch Request). */
+export type ServiceRequest = z.infer<typeof serviceRequestSchema>
+export type Plan = z.infer<typeof getPlanResponseSchema>
+export type TaskPin = z.infer<typeof taskPinSchema>

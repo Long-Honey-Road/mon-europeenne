@@ -63,8 +63,8 @@ describe('chat threads', () => {
   })
 
   it('labels threads by type and date', () => {
-    expect(threadLabel({ id: '1', type: 'THREAD_TYPE_PLAN', title: '', created_at: 'nope' })).toBe('План')
-    expect(threadLabel({ id: '1', type: 'THREAD_TYPE_GENERAL', title: 'Деплой', created_at: '2026-11-13T09:00:00Z' })).toMatch(/^Деплой · 13 нояб/)
+    expect(threadLabel({ id: '1', type: 'THREAD_TYPE_PLAN', title: '', pin: {}, created_at: 'nope' })).toBe('План')
+    expect(threadLabel({ id: '1', type: 'THREAD_TYPE_GENERAL', title: 'Деплой', pin: {}, created_at: '2026-11-13T09:00:00Z' })).toMatch(/^Деплой · 13 нояб/)
   })
 })
 
@@ -130,7 +130,7 @@ describe('chat turn', () => {
     expect(warn).toHaveTextContent('проверь у наставника')
   })
 
-  it('shows a prepared request as a card', async () => {
+  it('shows a prepared request as a form', async () => {
     addThread('THREAD_TYPE_REQUEST')
     chat.script = [
       {
@@ -153,8 +153,8 @@ describe('chat turn', () => {
     renderApp('/')
 
     await ask('Нужен VPN')
-    const card = await screen.findByRole('region', { name: 'Заявка: Доступ к VPN' })
-    expect(card).toHaveTextContent('работа из дома')
+    const card = await screen.findByRole('form', { name: 'Заявка: Доступ к VPN' })
+    expect(await within(card).findByLabelText(/Обоснование/)).toHaveValue('работа из дома')
     expect(card).toHaveTextContent('Согласует: Артём, руководитель')
   })
 
