@@ -110,5 +110,17 @@ claude mcp add buddy -- go -C backend run ./cmd/buddy mcp -as intern -thread pla
 
 Or MCP Inspector: `npx @modelcontextprotocol/inspector go -C backend run ./cmd/buddy mcp`.
 
+## Coverage
+
+```bash
+make cover
+```
+
+Runs the Go tests (Docker needed: they start Postgres and Redis) and the frontend tests, then merges both into one
+line figure with a threshold of 80% (`COVERAGE_MIN` to change). The report is `coverage/summary.md`, the merged lcov
+`coverage/lcov.info`, the frontend HTML `coverage/frontend/index.html`. Generated code, mock services, test fakes and
+the entry point are excluded, and the summary lists every exclusion. CI runs the same command and keeps
+`coverage/` as an artifact.
+
 Contracts live in `backend/api/proto` (source of truth). `backend/gen` and
 `backend/api/openapi/buddy-api.yaml` are generated and committed; CI fails if they are stale.
