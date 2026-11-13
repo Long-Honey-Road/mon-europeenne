@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package mocks.people.v1;
+
+import "google/api/annotations.proto";
+
+// DirectoryService imitates the company's employee directory: teams, people and who supports whom.
+// Data is synthetic; no real employees.
+service DirectoryService {
+  // ListPeople filters by team and by words in name, role, responsibilities and topics.
+  rpc ListPeople(ListPeopleRequest) returns (ListPeopleResponse) {
+    option (google.api.http) = {get: "/people"};
+  }
+  // GetPerson fails with NOT_FOUND for an unknown id.
+  rpc GetPerson(GetPersonRequest) returns (GetPersonResponse) {
+    option (google.api.http) = {get: "/people/{person_id}"};
+  }
+  rpc ListTeams(ListTeamsRequest) returns (ListTeamsResponse) {
+    option (google.api.http) = {get: "/teams"};
+  }
+  // GetRelations returns empty relations for a user without mentor, manager or HR BP.
+  rpc GetRelations(GetRelationsRequest) returns (GetRelationsResponse) {
+    option (google.api.http) = {get: "/people/relations/{user_id}"};
+  }
+}
+
+message Person {
+  string id = 1;
+  // Account id when the person can sign in.
+  string user_id = 2;
+  string name = 3;
+  string role_title = 4;
+  string team_id = 5;
+  repeated string responsibilities = 6;
+  repeated string ask_me_about = 7;
+  string contact = 8;
+}
+
+message Team {
+  string id = 1;
+  string name = 2;
+  string unit = 3;
+  string cluster = 4;
+  string mattermost_channel = 5;
+}
+
+// Relations are person ids.
+message Relations {
+  string mentor_id = 1;
+  string manager_id = 2;
+  string hr_bp_id = 3;
+}
+
+message ListPeopleRequest {
+  string team_id = 1;
+  string q = 2;
+}
+
+message ListPeopleResponse {
+  repeated Person people = 1;
+}
+
+message GetPersonRequest {
+  string person_id = 1;
+}
+
+message GetPersonResponse {
+  Person person = 1;
+}
+
+message ListTeamsRequest {}
+
+message ListTeamsResponse {
+  repeated Team teams = 1;
+}
+
+message GetRelationsRequest {
+  string user_id = 1;
+}
+
+message GetRelationsResponse {
+  Relations relations = 1;
+}

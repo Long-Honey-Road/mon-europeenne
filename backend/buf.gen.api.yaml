@@ -1,0 +1,22 @@
+version: v2
+# OpenAPI of the buddy API only; mocks get their own file (buf.gen.mocks.yaml).
+managed:
+  enabled: true
+  disable:
+    - path: google
+  override:
+    - file_option: go_package_prefix
+      value: github.com/Long-Honey-Road/mon-europeenne/backend/gen
+inputs:
+  - directory: api/proto
+    exclude_paths:
+      - api/proto/mocks
+plugins:
+  - local: [go, tool, -modfile=tools.mod, protoc-gen-openapi]
+    out: api/openapi
+    strategy: all
+    opt:
+      - naming=proto
+      - enum_type=string
+      - title=AI-buddy API
+      - version=0.1.0

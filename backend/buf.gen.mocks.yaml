@@ -1,0 +1,22 @@
+version: v2
+# OpenAPI of the mock corporate services, served by buddy mocks.
+managed:
+  enabled: true
+  disable:
+    - path: google
+  override:
+    - file_option: go_package_prefix
+      value: github.com/Long-Honey-Road/mon-europeenne/backend/gen
+inputs:
+  - directory: api/proto
+    paths:
+      - api/proto/mocks
+plugins:
+  - local: [go, tool, -modfile=tools.mod, protoc-gen-openapi]
+    out: api/openapi
+    strategy: all
+    opt:
+      - naming=proto
+      - enum_type=string
+      - title=AI-buddy mock corporate services
+      - version=0.1.0

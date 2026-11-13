@@ -33,7 +33,10 @@ fmt:
 
 gen:
 	$(TOOL) buf generate
+	$(TOOL) buf generate --template buf.gen.api.yaml
 	mv api/openapi/openapi.yaml api/openapi/buddy-api.yaml
+	$(TOOL) buf generate --template buf.gen.mocks.yaml
+	mv api/openapi/openapi.yaml api/openapi/mocks-api.yaml
 
 # Fails if committed generated code is stale.
 gen-check: gen
