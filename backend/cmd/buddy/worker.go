@@ -77,7 +77,7 @@ func buildWorker(cfg config.Config) (*asynq.Server, *asynq.ServeMux, func(), err
 		closeSrc()
 	}
 	know := newKnowledge(cfg, data, src, st)
-	registry, err := agentTools(data, src.directory, st, know, cfg.FeatureRequests)
+	registry, err := agentTools(data, src.directory, st, know, src.teamRepo(), cfg.FeatureRequests)
 	if err != nil {
 		cleanup()
 		return nil, nil, nil, err

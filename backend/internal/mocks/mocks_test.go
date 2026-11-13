@@ -19,6 +19,7 @@ import (
 	corprequestsv1 "github.com/Long-Honey-Road/mon-europeenne/backend/gen/mocks/corprequests/v1"
 	documentsv1 "github.com/Long-Honey-Road/mon-europeenne/backend/gen/mocks/documents/v1"
 	peoplev1 "github.com/Long-Honey-Road/mon-europeenne/backend/gen/mocks/people/v1"
+	teamrepov1 "github.com/Long-Honey-Road/mon-europeenne/backend/gen/mocks/teamrepo/v1"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/mocks"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/mocks/mockstest"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/seed"
@@ -125,6 +126,63 @@ func TestDocuments(t *testing.T) {
 		t.Errorf("GetDocument = %+v, %v", doc.GetInfo(), err)
 	}
 	_, err = c.GetDocument(ctx, &documentsv1.GetDocumentRequest{DocumentId: "ghost"})
+	wantCode(t, err, codes.NotFound)
+}
+
+func TestTeamRepo(t *testing.T) {
+	conn, _ := mockstest.Start(t, mocks.Chaos{})
+	c := teamrepov1.NewTeamRepoServiceClient(conn)
+	ctx := t.Context()
+
+	top, err := c.GetTree(ctx, &teamrepov1.GetTreeRequest{TeamId: "t-messenger"})
+	if err != nil || top.GetRepo() != "messenger-api" {
+		t.Fatalf("GetTree = %+v, %v", top, err)
+	}
+	paths := map[string]bool{}
+	for _, e := range top.GetEntries() {
+		paths[e.GetPath()] = e.GetDir()
+	}
+	if dir, ok := paths["internal"]; !ok || !dir || paths["README.md"] || len(paths) < 6 {
+		t.Errorf("root entries = %v", paths)
+	}
+	if _, deep := paths["internal/chat"]; deep {
+		t.Error("depth 1 listed a nested entry")
+	}
+	two, _ := c.GetTree(ctx, &teamrepov1.GetTreeRequest{TeamId: "t-messenger", Path: "/internal/", Depth: 9})
+	if len(two.GetEntries()) != 5 || two.GetEntries()[0].GetPath() != "internal/chat" {
+		t.Errorf("internal tree = %+v", two.GetEntries())
+	}
+
+	f, err := c.GetFile(ctx, &teamrepov1.GetFileRequest{TeamId: "t-messenger", Path: "./README.md"})
+	if err != nil || f.GetPath() != "README.md" || !strings.Contains(f.GetText(), "make dev") {
+		t.Errorf("GetFile = %+v, %v", f, err)
+	}
+	for path, want := range map[string]codes.Code{"nothing.md": codes.NotFound, "internal": codes.InvalidArgument, "": codes.InvalidArgument, "../seed.go": codes.NotFound} {
+		_, err := c.GetFile(ctx, &teamrepov1.GetFileRequest{TeamId: "t-messenger", Path: path})
+		if status.Code(err) != want {
+			t.Errorf("GetFile(%q) = %v, want %v", path, err, want)
+		}
+	}
+	_, err = c.GetTree(ctx, &teamrepov1.GetTreeRequest{TeamId: "t-messenger", Path: "README.md"})
+	wantCode(t, err, codes.NotFound)
+	_, err = c.GetTree(ctx, &teamrepov1.GetTreeRequest{TeamId: "t-notifications"})
+	wantCode(t, err, codes.NotFound)
+
+	proc, err := c.GetProcess(ctx, &teamrepov1.GetProcessRequest{TeamId: "t-messenger"})
+	if err != nil || len(proc.GetSections()) != 5 {
+		t.Fatalf("GetProcess = %+v, %v", proc, err)
+	}
+	keys := []string{}
+	for _, s := range proc.GetSections() {
+		keys = append(keys, s.GetKey())
+		if s.GetFile() != "CONTRIBUTING.md" || s.GetMarkdown() == "" {
+			t.Errorf("section = %+v", s)
+		}
+	}
+	if strings.Join(keys, ",") != "dor,code_style,pr,review,run" {
+		t.Errorf("sections = %v", keys)
+	}
+	_, err = c.GetProcess(ctx, &teamrepov1.GetProcessRequest{TeamId: "t-ghost"})
 	wantCode(t, err, codes.NotFound)
 }
 

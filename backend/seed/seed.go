@@ -126,6 +126,8 @@ type Data struct {
 	Requests RequestsFile
 	Plan     PlanFile
 	Docs     []Doc
+	// Repos are the team repositories served by the team-repo mock, by team id.
+	Repos map[string]Repo
 }
 
 // Load reads people.json, request_types.json, plan.json and docs/*.md from fsys and checks them as a whole.
@@ -145,6 +147,9 @@ func Load(fsys fs.FS) (Data, error) {
 		return Data{}, err
 	}
 	d.Docs = docs
+	if d.Repos, err = loadRepos(fsys); err != nil {
+		return Data{}, err
+	}
 	if p := validate(d); len(p) > 0 {
 		return Data{}, fmt.Errorf("%w:\n  %s", ErrInvalid, strings.Join(p, "\n  "))
 	}

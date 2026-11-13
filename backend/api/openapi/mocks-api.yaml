@@ -187,6 +187,95 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /repos/{team_id}/file:
+        get:
+            tags:
+                - TeamRepoService
+            description: GetFile returns a file's text; NOT_FOUND for an unknown team or file, INVALID_ARGUMENT for a directory.
+            operationId: TeamRepoService_GetFile
+            parameters:
+                - name: team_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: path
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetFileResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /repos/{team_id}/process:
+        get:
+            tags:
+                - TeamRepoService
+            description: GetProcess returns the sections of CONTRIBUTING.md the team works by.
+            operationId: TeamRepoService_GetProcess
+            parameters:
+                - name: team_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetProcessResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /repos/{team_id}/tree:
+        get:
+            tags:
+                - TeamRepoService
+            description: GetTree lists entries under a path, depth levels deep (1 to 3); NOT_FOUND for an unknown team or path.
+            operationId: TeamRepoService_GetTree
+            parameters:
+                - name: team_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: path
+                  in: query
+                  description: Empty for the repository root.
+                  schema:
+                    type: string
+                - name: depth
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetTreeResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /requests:
         get:
             tags:
@@ -396,6 +485,13 @@ components:
                 test_instruction:
                     type: boolean
                     description: 'Always true here: the documents are training instructions, not Avito regulations.'
+        Entry:
+            type: object
+            properties:
+                path:
+                    type: string
+                dir:
+                    type: boolean
         GetAccountResponse:
             type: object
             properties:
@@ -408,11 +504,29 @@ components:
                     $ref: '#/components/schemas/DocumentInfo'
                 markdown:
                     type: string
+        GetFileResponse:
+            type: object
+            properties:
+                repo:
+                    type: string
+                path:
+                    type: string
+                text:
+                    type: string
         GetPersonResponse:
             type: object
             properties:
                 person:
                     $ref: '#/components/schemas/Person'
+        GetProcessResponse:
+            type: object
+            properties:
+                repo:
+                    type: string
+                sections:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/ProcessSection'
         GetRelationsResponse:
             type: object
             properties:
@@ -423,6 +537,15 @@ components:
             properties:
                 request:
                     $ref: '#/components/schemas/Request'
+        GetTreeResponse:
+            type: object
+            properties:
+                repo:
+                    type: string
+                entries:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Entry'
         GoogleProtobufAny:
             type: object
             properties:
@@ -493,6 +616,19 @@ components:
                         type: string
                 contact:
                     type: string
+        ProcessSection:
+            type: object
+            properties:
+                key:
+                    type: string
+                    description: dor, code_style, pr, review or run.
+                title:
+                    type: string
+                markdown:
+                    type: string
+                file:
+                    type: string
+                    description: File the section comes from, e.g. CONTRIBUTING.md.
         Relations:
             type: object
             properties:
@@ -608,3 +744,7 @@ tags:
       description: |-
         DocumentsService imitates the team wiki (Confluence): general and team documents in markdown. Every document is
          a synthetic training instruction. Buddy reads it with a service account and applies team rights itself.
+    - name: TeamRepoService
+      description: |-
+        TeamRepoService imitates the team's repository host (Bitbucket): one synthetic repository per team and the
+         team's process read from it. Buddy applies team rights itself; the mock answers any team it has.

@@ -19,6 +19,7 @@ const serviceConfig = `{"methodConfig": [{
     {"service": "mocks.authroles.v1.AuthRolesService"},
     {"service": "mocks.people.v1.DirectoryService"},
     {"service": "mocks.documents.v1.DocumentsService"},
+    {"service": "mocks.teamrepo.v1.TeamRepoService"},
     {"service": "mocks.corprequests.v1.CorpRequestsService", "method": "GetRequest"},
     {"service": "mocks.corprequests.v1.CorpRequestsService", "method": "ListRequests"},
     {"service": "mocks.corprequests.v1.CorpRequestsService", "method": "ListUpdates"}

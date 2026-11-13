@@ -3,6 +3,7 @@ package seed
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"slices"
 	"strings"
 	"time"
@@ -28,7 +29,23 @@ func validate(d Data) problems {
 	validateRequests(&p, d.Requests, d.People, persons)
 	validatePlan(&p, d.Plan, d.People)
 	validateDocs(&p, d.Docs, d.People)
+	validateRepos(&p, d.Repos, d.People)
 	return p
+}
+
+func validateRepos(p *problems, repos map[string]Repo, f PeopleFile) {
+	teams := map[string]bool{}
+	for _, t := range f.Teams {
+		teams[t.ID] = true
+	}
+	for team, r := range repos {
+		if !teams[team] {
+			p.addf("repository %q: unknown team %q", r.Name, team)
+		}
+		if _, err := fs.Stat(r.FS, "CONTRIBUTING.md"); err != nil {
+			p.addf("repository %q: no CONTRIBUTING.md with the team process", r.Name)
+		}
+	}
 }
 
 func validateDocs(p *problems, docs []Doc, f PeopleFile) {

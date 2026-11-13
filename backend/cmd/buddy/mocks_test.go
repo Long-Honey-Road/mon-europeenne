@@ -5,11 +5,13 @@ import (
 	"context"
 	"errors"
 	"net"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/mocks"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/seed"
 )
@@ -84,5 +86,28 @@ func TestRequestsNeedMocks(t *testing.T) {
 	}
 	if _, err := newDesk(data, src, nil, nil); !errors.Is(err, errNoMocks) {
 		t.Errorf("newDesk without mocks = %v", err)
+	}
+}
+
+func TestTaskThreadGetsRepositoryToolsWithMocks(t *testing.T) {
+	data, _ := seed.Load(seed.Files)
+	src, closeSrc, err := openSources(config.Config{MocksAddr: startMocks(t)}, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeSrc()
+	if (sources{}).teamRepo() != nil {
+		t.Error("repository tools without the service")
+	}
+	reg, err := agentTools(data, src.directory, nil, nil, src.teamRepo(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, tl := range reg.Available(domain.Principal{UserID: "u-liza", Role: domain.RoleIntern}, domain.ThreadTask) {
+		names = append(names, tl.Name)
+	}
+	if !slices.Contains(names, "read_repo") || !slices.Contains(names, "get_team_process") {
+		t.Errorf("task thread tools = %v", names)
 	}
 }

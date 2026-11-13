@@ -19,7 +19,8 @@ const fakeAnswer = "Тестовый режим: модель не подклю�
 
 // agentTools builds the tool set; without a store (buddy ask without DATABASE_URL) only directory tools exist.
 // The requests module is added only when FEATURE_REQUESTS is on.
-func agentTools(data seed.Data, dir people.Directory, st *store.Store, search tools.Searcher, requestsOn bool) (*tools.Registry, error) {
+// repo is nil without the team-repo service: the task thread then has no repository tools.
+func agentTools(data seed.Data, dir people.Directory, st *store.Store, search tools.Searcher, repo tools.TeamRepo, requestsOn bool) (*tools.Registry, error) {
 	var list []tools.Tool
 	add := func(t tools.Tool, err error) error {
 		if err != nil {
@@ -39,6 +40,14 @@ func agentTools(data seed.Data, dir people.Directory, st *store.Store, search to
 	}
 	if err := add(tools.TeamMembers(dir)); err != nil {
 		return nil, err
+	}
+	if repo != nil {
+		if err := add(tools.ReadRepo(repo)); err != nil {
+			return nil, err
+		}
+		if err := add(tools.TeamProcess(repo)); err != nil {
+			return nil, err
+		}
 	}
 	if st != nil {
 		if err := add(tools.SearchDocs(search)); err != nil {
@@ -77,7 +86,7 @@ func localTools(ctx context.Context, cfg config.Config, data seed.Data) (*tools.
 	if st != nil {
 		search = knowledge.New(st)
 	}
-	reg, err := agentTools(data, data.Directory(), st, search, cfg.FeatureRequests)
+	reg, err := agentTools(data, data.Directory(), st, search, nil, cfg.FeatureRequests)
 	if err != nil {
 		closeFn()
 		return nil, nil, err

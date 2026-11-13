@@ -22,7 +22,7 @@ func toolNames(t *testing.T, st *store.Store, requestsOn bool, thread domain.Thr
 	if st != nil {
 		search = knowledge.New(st)
 	}
-	reg, err := agentTools(data, data.Directory(), st, search, requestsOn)
+	reg, err := agentTools(data, data.Directory(), st, search, nil, requestsOn)
 	if err != nil {
 		t.Fatalf("agentTools: %v", err)
 	}

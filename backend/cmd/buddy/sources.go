@@ -14,6 +14,8 @@ import (
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/people"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/requests"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/requests/corpclient"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/teamrepo"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/tools"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/seed"
 )
 
@@ -46,6 +48,14 @@ func openSources(cfg config.Config, data seed.Data) (sources, func(), error) {
 	}
 	src := sources{accounts: auth.NewRemote(conn), directory: people.NewRemote(conn, directoryTTL), conn: conn}
 	return src, func() { _ = conn.Close() }, nil
+}
+
+// teamRepo is the team repository host, or nil without MOCKS_ADDR (no repository tools then).
+func (s sources) teamRepo() tools.TeamRepo {
+	if s.conn == nil {
+		return nil
+	}
+	return teamrepo.New(s.conn)
 }
 
 // requestService is the company's request system; there is no in-memory stand-in, requests need the service.
