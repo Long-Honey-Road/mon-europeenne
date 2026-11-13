@@ -134,6 +134,64 @@ export const listMessagesResponseSchema = z.object({ messages: z.array(chatMessa
 export const sendMessageResponseSchema = z.object({ message_id: z.string(), job_id: z.string() })
 export const emptySchema = z.object({})
 
+export const planPeriodSchema = z.enum([
+  'PLAN_PERIOD_UNSPECIFIED',
+  'PLAN_PERIOD_W1',
+  'PLAN_PERIOD_W2',
+  'PLAN_PERIOD_M1',
+  'PLAN_PERIOD_M2',
+  'PLAN_PERIOD_EQUATOR',
+  'PLAN_PERIOD_FINAL',
+])
+
+export const planItemStatusSchema = z.enum([
+  'PLAN_ITEM_STATUS_UNSPECIFIED',
+  'PLAN_ITEM_STATUS_TODO',
+  'PLAN_ITEM_STATUS_DOING',
+  'PLAN_ITEM_STATUS_BLOCKED',
+  'PLAN_ITEM_STATUS_DONE',
+])
+
+export const planItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  practice: z.string(),
+  period: planPeriodSchema,
+  status: planItemStatusSchema,
+  note: z.string(),
+  blocked_by: z.array(z.string()),
+})
+
+export const blockerSchema = z.object({
+  kind: z.string(),
+  id: z.string(),
+  title: z.string(),
+  reason: z.string(),
+})
+
+export const todaySchema = z.object({
+  day: z.number(),
+  week: z.number(),
+  period: planPeriodSchema,
+  next_steps: z.array(planItemSchema),
+  blockers: z.array(blockerSchema),
+  done: z.number(),
+  total: z.number(),
+})
+
+export const personSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  role_title: z.string(),
+  team_id: z.string(),
+  responsibilities: z.array(z.string()),
+  ask_me_about: z.array(z.string()),
+  contact: z.string(),
+  other_team: z.boolean(),
+})
+
+export const listPeopleResponseSchema = z.object({ people: z.array(personSchema) })
+
 export type Role = z.infer<typeof roleSchema>
 export type User = z.infer<typeof userSchema>
 export type LoginResponse = z.infer<typeof loginResponseSchema>
@@ -144,3 +202,9 @@ export type Block = z.infer<typeof blockSchema>
 export type Source = z.infer<typeof sourceSchema>
 export type EscalationStep = z.infer<typeof escalationStepSchema>
 export type ChatMessage = z.infer<typeof chatMessageSchema>
+export type PlanPeriod = z.infer<typeof planPeriodSchema>
+export type PlanItemStatus = z.infer<typeof planItemStatusSchema>
+export type PlanItem = z.infer<typeof planItemSchema>
+export type Blocker = z.infer<typeof blockerSchema>
+export type Today = z.infer<typeof todaySchema>
+export type Person = z.infer<typeof personSchema>

@@ -5,13 +5,15 @@ import {
   emptySchema,
   getMeResponseSchema,
   listMessagesResponseSchema,
+  listPeopleResponseSchema,
   listThreadsResponseSchema,
   loginResponseSchema,
   sendMessageResponseSchema,
   statusSchema,
   threadResponseSchema,
+  todaySchema,
 } from './schemas'
-import type { ChatMessage, LoginResponse, Me, Thread, ThreadType } from './schemas'
+import type { ChatMessage, LoginResponse, Me, Person, Thread, ThreadType, Today } from './schemas'
 
 export type AnswerMode = 'brief' | 'detailed'
 export type Rating = 'up' | 'down'
@@ -41,6 +43,9 @@ export type ApiOptions = {
 export type Api = {
   login: (login: string, password: string) => Promise<LoginResponse>
   me: () => Promise<Me>
+  today: () => Promise<Today>
+  /** Directory, the caller's team first. */
+  people: () => Promise<Person[]>
   threads: () => Promise<Thread[]>
   createThread: (type: ThreadType) => Promise<Thread>
   messages: (threadId: string) => Promise<ChatMessage[]>
@@ -90,6 +95,8 @@ export function createApi({ baseUrl, getToken, onUnauthorized, fetch: fetchImpl 
     login: (login, password) =>
       call(() => client.POST('/v1/public/auth/login', { body: { login, password } }), loginResponseSchema, false),
     me: () => call(() => client.GET('/v1/private/me'), getMeResponseSchema, true),
+    today: () => call(() => client.GET('/v1/private/today'), todaySchema, true),
+    people: async () => (await call(() => client.GET('/v1/private/people'), listPeopleResponseSchema, true)).people,
     threads: async () =>
       (await call(() => client.GET('/v1/private/threads'), listThreadsResponseSchema, true)).threads,
     createThread: async (type) =>
