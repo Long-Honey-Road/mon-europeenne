@@ -1,5 +1,4 @@
 import { HttpResponse, http } from 'msw'
-import { setupServer } from 'msw/node'
 import type { LoginResponse, Me, User } from '../api/schemas'
 import { chatHandlers } from './chat'
 import { panelHandlers } from './panels'
@@ -52,4 +51,3 @@ export const handlers = [
   ...requestHandlers,
 ]
 
-export const server = setupServer(...handlers)

@@ -1,19 +1,11 @@
 import { useState } from 'react'
-import type { PlanItem, PlanItemStatus, PlanPeriod } from '../../api/schemas'
+import { Link } from '@tanstack/react-router'
+import type { PlanItem } from '../../api/schemas'
 import { QueryState } from '../../shared/ui/QueryState'
-import { useChatRoute } from '../chat/route'
 import { itemStatus, periodTitle } from '../today/useToday'
-import { usePlan, useSetItemStatus } from './usePlan'
-
-const periodOrder: PlanPeriod[] = [
-  'PLAN_PERIOD_W1',
-  'PLAN_PERIOD_W2',
-  'PLAN_PERIOD_M1',
-  'PLAN_PERIOD_M2',
-  'PLAN_PERIOD_EQUATOR',
-  'PLAN_PERIOD_FINAL',
-  'PLAN_PERIOD_UNSPECIFIED',
-]
+import { periodOrder } from './layout'
+import { PlanItemCard } from './PlanItemCard'
+import { usePlan } from './usePlan'
 
 /** Live content of the «План» orb: items by stage, an item card with status changes, a link to the plan thread. */
 export function PlanPanel({ onAsk }: { onAsk: (text: string) => void }) {
@@ -30,8 +22,13 @@ export function PlanPanel({ onAsk }: { onAsk: (text: string) => void }) {
         const titles = new Map(p.items.map((i) => [i.id, i.title]))
         return (
           <>
-            <p className="info__meta">
-              Сделано {p.done} из {p.total}
+            <p className="info__meta plan-meta">
+              <span>
+                Сделано {p.done} из {p.total}
+              </span>
+              <Link to="/plan/map" className="plan-meta__map">
+                Открыть карту
+              </Link>
             </p>
             {periodOrder.map((period) => {
               const items = p.items.filter((i) => i.period === period)
@@ -62,15 +59,6 @@ export function PlanPanel({ onAsk }: { onAsk: (text: string) => void }) {
   )
 }
 
-const nextStatuses = (s: PlanItemStatus): { status: PlanItemStatus; text: string }[] => {
-  if (s === 'PLAN_ITEM_STATUS_DONE') return [{ status: 'PLAN_ITEM_STATUS_DOING', text: 'Вернуть в работу' }]
-  if (s === 'PLAN_ITEM_STATUS_DOING') return [{ status: 'PLAN_ITEM_STATUS_DONE', text: 'Отметить сделанным' }]
-  return [
-    { status: 'PLAN_ITEM_STATUS_DOING', text: 'Начать' },
-    { status: 'PLAN_ITEM_STATUS_DONE', text: 'Отметить сделанным' },
-  ]
-}
-
 function PlanRow({
   item,
   blockedBy,
@@ -85,8 +73,6 @@ function PlanRow({
   onAsk: (text: string) => void
 }) {
   const status = itemStatus[item.status]
-  const setStatus = useSetItemStatus()
-  const openThread = useChatRoute((s) => s.open)
   const cardId = `plan-item-${item.id}`
 
   return (
@@ -104,43 +90,7 @@ function PlanRow({
         <span className={`info__status info__status--${status.tone}`}>{status.text}</span>
       </button>
       {expanded && (
-        <div id={cardId} role="group" aria-label={item.title} className="person__details plan-card">
-          {item.practice && <p>{item.practice}</p>}
-          {item.note && (
-            <p>
-              <span className="label">Заметка</span> {item.note}
-            </p>
-          )}
-          {blockedBy.length > 0 && <p className="info__note">Ждёт: {blockedBy.join(', ')}</p>}
-          {setStatus.isError && (
-            <p className="qs qs--error" role="alert">
-              Статус не сохранился. Попробуй ещё раз.
-            </p>
-          )}
-          <div className="plan-card__actions">
-            {nextStatuses(item.status).map((n) => (
-              <button
-                key={n.status}
-                type="button"
-                className="plan-card__status"
-                disabled={setStatus.isPending}
-                onClick={() => setStatus.mutate({ id: item.id, status: n.status })}
-              >
-                {n.text}
-              </button>
-            ))}
-            <button
-              type="button"
-              className="person__ask"
-              onClick={() => {
-                openThread('THREAD_TYPE_PLAN')
-                onAsk(`Расскажи про пункт плана «${item.title}»: что сделать?`)
-              }}
-            >
-              Обсудить в треде плана
-            </button>
-          </div>
-        </div>
+        <PlanItemCard id={cardId} item={item} blockedBy={blockedBy} onAsk={onAsk} className="person__details" />
       )}
     </li>
   )

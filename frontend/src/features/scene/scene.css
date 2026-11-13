@@ -520,3 +520,17 @@
   opacity: 0.5;
   cursor: default;
 }
+.plan-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  align-self: stretch;
+}
+.plan-meta__map {
+  font-weight: 700;
+  color: var(--accent);
+}
+.plan-meta__map:hover {
+  text-decoration: underline;
+}

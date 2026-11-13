@@ -7,6 +7,7 @@ import type { ThreadEvent } from '../../api/events'
 import { blockSchema, escalationStepSchema } from '../../api/schemas'
 import type { Block, EscalationStep, ThreadType } from '../../api/schemas'
 import { useSession } from '../auth/session'
+import { applyHighlight } from '../plan/highlight'
 import { applyRequestStatus } from '../requests/useRequests'
 import { useChatRoute } from './route'
 
@@ -69,17 +70,18 @@ export function useChat() {
   const createThread = useCallback(
     async (type: ThreadType) => {
       const t = await api.createThread(type)
-      await qc.invalidateQueries({ queryKey: threadsKey })
+      // Select before the list refetch, so the default thread effect never sees an empty selection.
       setLive(null)
       setThreadId(t.id)
+      await qc.invalidateQueries({ queryKey: threadsKey })
       return t
     },
     [qc],
   )
 
-  // Open the newest general thread, or start one.
+  // Open the newest general thread, or start one, unless another screen asked for a thread type.
   useEffect(() => {
-    if (threadId || !threads.data || creating.current) return
+    if (threadId || !threads.data || creating.current || useChatRoute.getState().wanted) return
     const general = threads.data.find((t) => t.type === 'THREAD_TYPE_GENERAL')
     if (general) {
       setThreadId(general.id)
@@ -105,7 +107,12 @@ export function useChat() {
       setThreadId(found.id)
       return
     }
-    createThread(wanted).catch(() => {})
+    creating.current = true
+    createThread(wanted)
+      .catch(() => {})
+      .finally(() => {
+        creating.current = false
+      })
   }, [wanted, threads.data, createThread, clearWanted])
 
   const stopTimer = () => {
@@ -139,6 +146,9 @@ export function useChat() {
           void qc.invalidateQueries({ queryKey: messagesKey(threadId) })
           break
         }
+        case 'highlight':
+          applyHighlight(e.data)
+          break
         case 'request_status':
           applyRequestStatus(qc, e.data)
           break

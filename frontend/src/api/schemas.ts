@@ -159,7 +159,12 @@ export const planItemSchema = z.object({
   period: planPeriodSchema,
   status: planItemStatusSchema,
   note: z.string(),
+  depends_on: z.array(z.string()),
   blocked_by: z.array(z.string()),
+  map: z
+    .object({ x: z.number(), y: z.number(), group: z.string() })
+    .nullish()
+    .transform((v) => v ?? undefined),
 })
 
 export const getPlanResponseSchema = z.object({

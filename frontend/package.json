@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "preview": "vite preview",
-    "gen:api": "npx --yes openapi-typescript@7.13.0 ../backend/api/openapi/buddy-api.yaml -o src/api/schema.gen.ts"
+    "gen:api": "npx --yes openapi-typescript@7.13.0 ../backend/api/openapi/buddy-api.yaml -o src/api/schema.gen.ts",
+    "dev:mock": "VITE_MOCK_API=1 VITE_API_URL=http://api.test vite"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",
@@ -36,5 +37,10 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.0"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }

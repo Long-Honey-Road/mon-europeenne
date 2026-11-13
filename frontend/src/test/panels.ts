@@ -11,7 +11,9 @@ const item = (id: string, title: string, status: PlanItem['status'], practice = 
   period: 'PLAN_PERIOD_W1',
   status,
   note: '',
+  depends_on: [],
   blocked_by: [],
+  map: undefined,
 })
 
 export const today: Today = {
@@ -68,15 +70,22 @@ const planItem = (
 
 export const plan: { items: PlanItem[]; done: number; total: number } = {
   items: [
-    planItem('w1-team', 'Познакомиться с командой', 'PLAN_PERIOD_W1', 'PLAN_ITEM_STATUS_DONE'),
+    planItem('w1-team', 'Познакомиться с командой', 'PLAN_PERIOD_W1', 'PLAN_ITEM_STATUS_DONE', {
+      map: { x: 0, y: 0, group: 'team' },
+    }),
     planItem('w1-access', 'Запросить доступы', 'PLAN_PERIOD_W1', 'PLAN_ITEM_STATUS_DOING', {
       practice: 'Отправь заявки на Jira, Bitbucket и VPN через buddy',
       note: 'VPN ещё на согласовании',
+      map: { x: 0, y: 1, group: 'access' },
     }),
     planItem('w1-cli', 'Настроить avito-cli', 'PLAN_PERIOD_W1', 'PLAN_ITEM_STATUS_BLOCKED', {
+      depends_on: ['w1-access'],
       blocked_by: ['w1-access'],
+      map: { x: 0, y: 2, group: 'tools' },
     }),
-    planItem('w2-review', 'Пройти первое ревью', 'PLAN_PERIOD_W2', 'PLAN_ITEM_STATUS_TODO'),
+    planItem('w2-review', 'Пройти первое ревью', 'PLAN_PERIOD_W2', 'PLAN_ITEM_STATUS_TODO', {
+      depends_on: ['w1-cli', 'w1-team'],
+    }),
   ],
   done: 1,
   total: 4,

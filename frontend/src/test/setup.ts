@@ -2,10 +2,11 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, configure } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll } from 'vitest'
 import { useSession } from '../features/auth/session'
-import { server } from './api'
+import { server } from './server'
 import { chat } from './chat'
 import { resetPanels } from './panels'
 import { requests } from './requests'
+import { usePlanHighlight } from '../features/plan/highlight'
 
 // The chat loads threads, then history and its stream; coverage runs make that slower than the 1 s default.
 configure({ asyncUtilTimeout: 3000 })
@@ -19,6 +20,7 @@ afterEach(() => {
   chat.reset()
   resetPanels()
   requests.reset()
+  usePlanHighlight.getState().set([], '')
 })
 afterAll(() => server.close())
 

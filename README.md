@@ -82,6 +82,7 @@ Frontend (from `frontend/`):
 | `npm ci && npm run dev` | dev server on http://localhost:5173; `/v1` is proxied to the API on `localhost:8080` |
 | `npm test` / `npm run test:coverage` | Vitest with the API mocked by msw |
 | `npm run typecheck` | TypeScript check |
+| `npm run dev:mock` | dev server on the fake API from the tests (msw in the browser), no backend needed |
 | `npm run gen:api` | regenerate `src/api/schema.gen.ts` from `backend/api/openapi/buddy-api.yaml` |
 
 Sign in with a test account below; the login page also has buttons that fill them in.
