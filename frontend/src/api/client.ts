@@ -4,6 +4,7 @@ import type { paths } from './schema.gen'
 import {
   emptySchema,
   getMeResponseSchema,
+  getPlanResponseSchema,
   listMessagesResponseSchema,
   listPeopleResponseSchema,
   listRequestTypesResponseSchema,
@@ -15,12 +16,16 @@ import {
   statusSchema,
   threadResponseSchema,
   todaySchema,
+  updatePlanItemResponseSchema,
 } from './schemas'
 import type {
   ChatMessage,
   LoginResponse,
   Me,
   Person,
+  Plan,
+  PlanItem,
+  PlanItemStatus,
   RequestType,
   ServiceRequest,
   Thread,
@@ -57,6 +62,8 @@ export type Api = {
   login: (login: string, password: string) => Promise<LoginResponse>
   me: () => Promise<Me>
   today: () => Promise<Today>
+  plan: () => Promise<Plan>
+  updatePlanItem: (itemId: string, status: PlanItemStatus) => Promise<PlanItem>
   /** Directory, the caller's team first. */
   people: () => Promise<Person[]>
   requestTypes: () => Promise<RequestType[]>
@@ -114,6 +121,19 @@ export function createApi({ baseUrl, getToken, onUnauthorized, fetch: fetchImpl 
       call(() => client.POST('/v1/public/auth/login', { body: { login, password } }), loginResponseSchema, false),
     me: () => call(() => client.GET('/v1/private/me'), getMeResponseSchema, true),
     today: () => call(() => client.GET('/v1/private/today'), todaySchema, true),
+    plan: () => call(() => client.GET('/v1/private/plan'), getPlanResponseSchema, true),
+    updatePlanItem: async (itemId, status) =>
+      (
+        await call(
+          () =>
+            client.PATCH('/v1/private/plan/items/{item_id}', {
+              params: { path: { item_id: itemId } },
+              body: { item_id: itemId, status },
+            }),
+          updatePlanItemResponseSchema,
+          true,
+        )
+      ).item,
     people: async () => (await call(() => client.GET('/v1/private/people'), listPeopleResponseSchema, true)).people,
     requestTypes: async () =>
       (await call(() => client.GET('/v1/private/request-types'), listRequestTypesResponseSchema, true)).types,

@@ -162,6 +162,14 @@ export const planItemSchema = z.object({
   blocked_by: z.array(z.string()),
 })
 
+export const getPlanResponseSchema = z.object({
+  items: z.array(planItemSchema),
+  done: z.number(),
+  total: z.number(),
+})
+
+export const updatePlanItemResponseSchema = z.object({ item: planItemSchema })
+
 export const blockerSchema = z.object({
   kind: z.string(),
   id: z.string(),
@@ -252,3 +260,4 @@ export type Approver = z.infer<typeof approverSchema>
 export type RequestType = z.infer<typeof requestTypeSchema>
 /** A request in the company's request system (named so it does not clash with the fetch Request). */
 export type ServiceRequest = z.infer<typeof serviceRequestSchema>
+export type Plan = z.infer<typeof getPlanResponseSchema>

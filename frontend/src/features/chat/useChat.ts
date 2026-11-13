@@ -8,6 +8,7 @@ import { blockSchema, escalationStepSchema } from '../../api/schemas'
 import type { Block, EscalationStep, ThreadType } from '../../api/schemas'
 import { useSession } from '../auth/session'
 import { applyRequestStatus } from '../requests/useRequests'
+import { useChatRoute } from './route'
 
 /** How long to wait for the event stream before sending, and for the answer after sending. */
 export const CONNECT_TIMEOUT_MS = 5_000
@@ -91,6 +92,21 @@ export function useChat() {
         creating.current = false
       })
   }, [threadId, threads.data, createThread])
+
+  // Another screen asked for a thread of some type: open the newest one, or start it.
+  const wanted = useChatRoute((s) => s.wanted)
+  const clearWanted = useChatRoute((s) => s.clear)
+  useEffect(() => {
+    if (!wanted || !threads.data) return
+    clearWanted()
+    const found = threads.data.find((t) => t.type === wanted)
+    if (found) {
+      setLive(null)
+      setThreadId(found.id)
+      return
+    }
+    createThread(wanted).catch(() => {})
+  }, [wanted, threads.data, createThread, clearWanted])
 
   const stopTimer = () => {
     if (turnTimer.current) clearTimeout(turnTimer.current)

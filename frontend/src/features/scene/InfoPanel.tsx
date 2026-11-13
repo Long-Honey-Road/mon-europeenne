@@ -1,5 +1,6 @@
 import type { ItemStatus } from '../../shared/data/demo'
 import type { AppSection } from '../nav/sections'
+import { PlanPanel } from '../plan/PlanPanel'
 import { TeamPanel } from '../team/TeamPanel'
 import { TodayPanel } from '../today/TodayPanel'
 
@@ -32,6 +33,8 @@ export function InfoPanel({
         <TodayPanel onAsk={onAsk} />
       ) : section.id === 'team' ? (
         <TeamPanel onAsk={onAsk} />
+      ) : section.id === 'plan' ? (
+        <PlanPanel onAsk={onAsk} />
       ) : (
         <DemoList section={section} />
       )}
@@ -43,7 +46,7 @@ export function InfoPanel({
   )
 }
 
-// Plan and tasks stay on demo data until S-06 and S-08.
+// Tasks stay on demo data until S-08.
 function DemoList({ section }: { section: AppSection }) {
   return (
     <ul className="info__list">

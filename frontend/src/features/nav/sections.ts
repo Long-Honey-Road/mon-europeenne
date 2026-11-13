@@ -1,4 +1,4 @@
-import { planItems, workItems } from '../../shared/data/demo'
+import { workItems } from '../../shared/data/demo'
 import type { InfoItem } from '../../shared/data/demo'
 
 export type Accent = 'green' | 'blue' | 'red' | 'purple'
@@ -42,7 +42,7 @@ export const sections = [
     name: 'План',
     title: 'План адаптации',
     tagline: 'Этапы первых недель и прогресс по каждому.',
-    items: planItems,
+    items: [],
     prompt: 'Какой следующий шаг в моём плане адаптации?',
     orb: { x: 71.9, y: 30.5, d: 42.9 },
   },
