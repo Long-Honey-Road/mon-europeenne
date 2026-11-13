@@ -31,6 +31,11 @@ The worker calls any OpenAI-compatible chat API, set in `deploy/.env`:
 | Ollama inside compose | `COMPOSE_PROFILES=ollama`, `LLM_BASE_URL=http://ollama:11434/v1`; the first start pulls `LLM_MODEL` into a volume |
 | External provider | its OpenAI-compatible base URL in `LLM_BASE_URL`, model in `LLM_MODEL`, key in `LLM_API_KEY` |
 | No model | `LLM_PROVIDER=fake`: every question gets a fixed text; enough for the UI and CI, not for the scenarios |
+| Several sources | `LLM_ENDPOINTS` as a JSON list of `{name, base_url, api_key, model, max_concurrency}` (example in `deploy/.env.example`); overrides `LLM_BASE_URL` |
+
+Each endpoint serves `max_concurrency` answers at once (`LLM_MAX_CONCURRENCY` for `LLM_BASE_URL`, 1 by default).
+Extra answers wait in a queue for up to `LLM_QUEUE_TIMEOUT` (5m) with a "queued" status in the chat; one answer
+stays on one endpoint, and an endpoint that fails before answering hands the turn to the next one.
 
 `qwen3.6:35b-a3b` needs about 24 GB of RAM or VRAM; on a smaller machine use a smaller model of the same family
 or an external provider. `LLM_REASONING_EFFORT=none` turns Qwen thinking off, which keeps tool calls fast. Secrets
