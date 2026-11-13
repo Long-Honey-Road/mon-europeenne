@@ -7,6 +7,7 @@ import type { ThreadEvent } from '../../api/events'
 import { blockSchema, escalationStepSchema } from '../../api/schemas'
 import type { Block, EscalationStep, ThreadType } from '../../api/schemas'
 import { useSession } from '../auth/session'
+import { applyRequestStatus } from '../requests/useRequests'
 
 /** How long to wait for the event stream before sending, and for the answer after sending. */
 export const CONNECT_TIMEOUT_MS = 5_000
@@ -122,6 +123,9 @@ export function useChat() {
           void qc.invalidateQueries({ queryKey: messagesKey(threadId) })
           break
         }
+        case 'request_status':
+          applyRequestStatus(qc, e.data)
+          break
         case 'error': {
           stopTimer()
           const escalation = escalationStepSchema.array().safeParse(e.data.escalation)

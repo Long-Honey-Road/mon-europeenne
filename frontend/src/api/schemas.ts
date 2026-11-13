@@ -191,6 +191,45 @@ export const personSchema = z.object({
 })
 
 export const listPeopleResponseSchema = z.object({ people: z.array(personSchema) })
+export const requestStatusSchema = z.enum([
+  'REQUEST_STATUS_UNSPECIFIED',
+  'REQUEST_STATUS_PENDING',
+  'REQUEST_STATUS_APPROVED',
+  'REQUEST_STATUS_REJECTED',
+])
+
+export const approverSchema = z.object({
+  role: z.string(),
+  person_id: z.string().optional(),
+  name: z.string().optional(),
+})
+
+export const requestTypeSchema = z.object({
+  key: z.string(),
+  title: z.string(),
+  category: z.string(),
+  fields_schema: z.record(z.string(), z.unknown()),
+  approval_chain: z.array(z.object({ resolver: z.string(), object: z.string() })),
+  sla_hours: z.number(),
+})
+
+export const serviceRequestSchema = z.object({
+  id: z.string(),
+  type_key: z.string(),
+  title: z.string(),
+  status: requestStatusSchema,
+  approver: approverSchema.nullish().transform((v) => v ?? undefined),
+  next_step: z.string(),
+  reason: z.string(),
+  fields: z.record(z.string(), z.unknown()).nullish().transform((v) => v ?? {}),
+  history: z.array(z.object({ at: z.string(), status: requestStatusSchema, by: z.string(), note: z.string() })),
+  thread_id: z.string(),
+  updated_at: z.string(),
+})
+
+export const listRequestTypesResponseSchema = z.object({ types: z.array(requestTypeSchema) })
+export const listRequestsResponseSchema = z.object({ requests: z.array(serviceRequestSchema) })
+export const requestResponseSchema = z.object({ request: serviceRequestSchema })
 
 export type Role = z.infer<typeof roleSchema>
 export type User = z.infer<typeof userSchema>
@@ -208,3 +247,8 @@ export type PlanItem = z.infer<typeof planItemSchema>
 export type Blocker = z.infer<typeof blockerSchema>
 export type Today = z.infer<typeof todaySchema>
 export type Person = z.infer<typeof personSchema>
+export type RequestStatus = z.infer<typeof requestStatusSchema>
+export type Approver = z.infer<typeof approverSchema>
+export type RequestType = z.infer<typeof requestTypeSchema>
+/** A request in the company's request system (named so it does not clash with the fetch Request). */
+export type ServiceRequest = z.infer<typeof serviceRequestSchema>

@@ -5,6 +5,7 @@ import { useSession } from '../features/auth/session'
 import { server } from './api'
 import { chat } from './chat'
 import { resetPanels } from './panels'
+import { requests } from './requests'
 
 // The chat loads threads, then history and its stream; coverage runs make that slower than the 1 s default.
 configure({ asyncUtilTimeout: 3000 })
@@ -17,6 +18,7 @@ afterEach(() => {
   localStorage.clear()
   chat.reset()
   resetPanels()
+  requests.reset()
 })
 afterAll(() => server.close())
 

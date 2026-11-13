@@ -3,6 +3,7 @@ import { setupServer } from 'msw/node'
 import type { LoginResponse, Me, User } from '../api/schemas'
 import { chatHandlers } from './chat'
 import { panelHandlers } from './panels'
+import { requestHandlers } from './requests'
 
 // Mirrors the backend contract in buddy-api.yaml with synthetic data.
 export const API = 'http://api.test'
@@ -48,6 +49,7 @@ export const handlers = [
   }),
   ...chatHandlers,
   ...panelHandlers,
+  ...requestHandlers,
 ]
 
 export const server = setupServer(...handlers)

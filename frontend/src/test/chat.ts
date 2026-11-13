@@ -77,6 +77,11 @@ export const answer = (text: string): ScriptEvent[] => [
   { event: 'done', data: { job_id: 'j', text } },
 ]
 
+/** Sends an event to the open stream of a thread, outside any turn (e.g. request_status). */
+export function emit(threadId: string, e: ScriptEvent) {
+  push(threadId, e)
+}
+
 function push(threadId: string, e: ScriptEvent) {
   streams.get(threadId)?.enqueue(encoder.encode(`event: ${e.event}\ndata: ${JSON.stringify(e.data)}\n\n`))
 }

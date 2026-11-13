@@ -5,6 +5,7 @@ import type { AnswerMode } from '../../api/client'
 import type { ChatMessage, Thread, ThreadType } from '../../api/schemas'
 import { useCurrentUser } from '../auth/useMe'
 import type { AppSection } from '../nav/sections'
+import { ChatThreadContext } from '../requests/thread'
 import { Blocks, Escalation } from './Blocks'
 import { useChat } from './useChat'
 import type { LiveTurn } from './useChat'
@@ -232,6 +233,7 @@ export function ChatPanel({
         disabled={chat.busy}
       />
 
+      <ChatThreadContext.Provider value={chat.threadId}>
       <ol className="chat__log" aria-live="polite" ref={log}>
         {empty && (
           <li className="msg msg--buddy">
@@ -261,6 +263,7 @@ export function ChatPanel({
         })}
         {chat.live && <Live turn={chat.live} />}
       </ol>
+      </ChatThreadContext.Provider>
 
       <form className="chat__form" onSubmit={send}>
         <div className="chat__bar">

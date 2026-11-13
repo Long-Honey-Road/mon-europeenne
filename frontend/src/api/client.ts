@@ -6,6 +6,9 @@ import {
   getMeResponseSchema,
   listMessagesResponseSchema,
   listPeopleResponseSchema,
+  listRequestTypesResponseSchema,
+  listRequestsResponseSchema,
+  requestResponseSchema,
   listThreadsResponseSchema,
   loginResponseSchema,
   sendMessageResponseSchema,
@@ -13,7 +16,17 @@ import {
   threadResponseSchema,
   todaySchema,
 } from './schemas'
-import type { ChatMessage, LoginResponse, Me, Person, Thread, ThreadType, Today } from './schemas'
+import type {
+  ChatMessage,
+  LoginResponse,
+  Me,
+  Person,
+  RequestType,
+  ServiceRequest,
+  Thread,
+  ThreadType,
+  Today,
+} from './schemas'
 
 export type AnswerMode = 'brief' | 'detailed'
 export type Rating = 'up' | 'down'
@@ -46,6 +59,11 @@ export type Api = {
   today: () => Promise<Today>
   /** Directory, the caller's team first. */
   people: () => Promise<Person[]>
+  requestTypes: () => Promise<RequestType[]>
+  /** The caller's own requests, last updated first. */
+  myRequests: () => Promise<ServiceRequest[]>
+  /** Sends a request the user confirmed; its status changes arrive in `threadId` as request_status events. */
+  submitRequest: (threadId: string, typeKey: string, fields: Record<string, unknown>) => Promise<ServiceRequest>
   threads: () => Promise<Thread[]>
   createThread: (type: ThreadType) => Promise<Thread>
   messages: (threadId: string) => Promise<ChatMessage[]>
@@ -97,6 +115,21 @@ export function createApi({ baseUrl, getToken, onUnauthorized, fetch: fetchImpl 
     me: () => call(() => client.GET('/v1/private/me'), getMeResponseSchema, true),
     today: () => call(() => client.GET('/v1/private/today'), todaySchema, true),
     people: async () => (await call(() => client.GET('/v1/private/people'), listPeopleResponseSchema, true)).people,
+    requestTypes: async () =>
+      (await call(() => client.GET('/v1/private/request-types'), listRequestTypesResponseSchema, true)).types,
+    myRequests: async () =>
+      (await call(() => client.GET('/v1/private/requests'), listRequestsResponseSchema, true)).requests,
+    submitRequest: async (threadId, typeKey, fields) =>
+      (
+        await call(
+          () => // protobuf Struct comes out of the OpenAPI generator as an object without keys.
+          client.POST('/v1/private/requests', {
+            body: { thread_id: threadId, type_key: typeKey, fields: fields as Record<string, never> },
+          }),
+          requestResponseSchema,
+          true,
+        )
+      ).request,
     threads: async () =>
       (await call(() => client.GET('/v1/private/threads'), listThreadsResponseSchema, true)).threads,
     createThread: async (type) =>
