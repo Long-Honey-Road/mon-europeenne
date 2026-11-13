@@ -82,7 +82,13 @@ func runAsk(args []string, stdout io.Writer) error {
 	if *verbose {
 		toolset = loggingTools{Tools: registry, w: stdout}
 	}
-	res, err := agent.New(model, toolset, agent.Config{DetailedEffort: cfg.LLM.DetailedReasoningEffort}).Run(context.Background(), turn, printer{w: stdout})
+	leased, release, err := model.Acquire(context.Background(), func() { fmt.Fprintln(stdout, "[status] В очереди…") })
+	if err != nil {
+		return err
+	}
+	defer release()
+	a := agent.New(model, toolset, agent.Config{DetailedEffort: cfg.LLM.DetailedReasoningEffort, Timeout: cfg.TurnTimeout})
+	res, err := a.RunWith(context.Background(), leased, turn, printer{w: stdout})
 	if err != nil {
 		return err
 	}

@@ -13,27 +13,40 @@ import (
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm/fake"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm/openaicompat"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm/pool"
 )
 
 var errProbesFailed = errors.New("some probes failed")
 
-// newLLM builds the configured model client.
-func newLLM(cfg config.LLM) (llm.Client, error) {
-	switch cfg.Provider {
-	case config.ProviderOpenAICompat:
-		return openaicompat.New(openaicompat.Config{
-			BaseURL:         cfg.BaseURL,
-			Model:           cfg.Model,
-			APIKey:          cfg.APIKey,
-			ReasoningEffort: cfg.ReasoningEffort,
-			Temperature:     cfg.Temperature,
-			MaxRetries:      1,
-		}), nil
-	case config.ProviderFake:
-		return fake.NewEcho(fakeAnswer), nil
-	default:
-		return nil, fmt.Errorf("provider %q: %w", cfg.Provider, errNotImplemented)
+// newLLM builds the model pool: one client per configured endpoint.
+func newLLM(cfg config.LLM) (*pool.Pool, error) {
+	endpoints := cfg.Endpoints
+	if len(endpoints) == 0 {
+		endpoints = []config.Endpoint{{
+			Name: "default", BaseURL: cfg.BaseURL, Model: cfg.Model, APIKey: cfg.APIKey, ReasoningEffort: cfg.ReasoningEffort,
+		}}
 	}
+	eps := make([]pool.Endpoint, 0, len(endpoints))
+	for _, ep := range endpoints {
+		var client llm.Client
+		switch cfg.Provider {
+		case config.ProviderOpenAICompat:
+			client = openaicompat.New(openaicompat.Config{
+				BaseURL:         ep.BaseURL,
+				Model:           ep.Model,
+				APIKey:          ep.APIKey,
+				ReasoningEffort: ep.ReasoningEffort,
+				Temperature:     cfg.Temperature,
+				MaxRetries:      1,
+			})
+		case config.ProviderFake:
+			client = fake.NewEcho(fakeAnswer)
+		default:
+			return nil, fmt.Errorf("provider %q: %w", cfg.Provider, errNotImplemented)
+		}
+		eps = append(eps, pool.Endpoint{Name: ep.Name, Client: client, MaxConcurrency: ep.MaxConcurrency})
+	}
+	return pool.New(eps, pool.Config{})
 }
 
 type probe struct {
@@ -112,18 +125,36 @@ func runLLMCheck(_ []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	client, err := newLLM(cfg.LLM)
+	models, err := newLLM(cfg.LLM)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "model %s at %s, reasoning effort %q\n", cfg.LLM.Model, cfg.LLM.BaseURL, cfg.LLM.ReasoningEffort)
 
 	failed := false
+	for i, ep := range models.Endpoints() {
+		if i < len(cfg.LLM.Endpoints) {
+			c := cfg.LLM.Endpoints[i]
+			fmt.Fprintf(stdout, "endpoint %s: model %s at %s, reasoning effort %q, %d at once\n", ep.Name, c.Model, c.BaseURL, c.ReasoningEffort, ep.MaxConcurrency)
+		}
+		if !probeModel(ep.Client, stdout) {
+			failed = true
+		}
+	}
+	if failed {
+		return errProbesFailed
+	}
+	return nil
+}
+
+// probeModel runs every probe against one endpoint and reports whether all passed.
+func probeModel(client llm.Client, stdout io.Writer) bool {
+	passed := true
 	for _, p := range probes {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		start := time.Now()
 		deltas := 0
 		var resp llm.Response
+		var err error
 		if p.stream {
 			resp, err = client.ChatStream(ctx, p.req, func(string) { deltas++ })
 		} else {
@@ -134,14 +165,11 @@ func runLLMCheck(_ []string, stdout io.Writer) error {
 			err = p.check(resp.Message, deltas)
 		}
 		if err != nil {
-			failed = true
+			passed = false
 			fmt.Fprintf(stdout, "%s: FAIL %v\n", p.name, err)
 			continue
 		}
 		fmt.Fprintf(stdout, "%s: ok %s, %d tokens\n", p.name, time.Since(start).Round(time.Millisecond), resp.Usage.CompletionTokens)
 	}
-	if failed {
-		return errProbesFailed
-	}
-	return nil
+	return passed
 }

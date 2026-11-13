@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -73,19 +74,26 @@ func TestLoadReadsEnvironment(t *testing.T) {
 			Model:           "qwen3.6:35b-a3b",
 			APIKey:          "secret",
 			ReasoningEffort: "none",
+			Endpoints: []Endpoint{{
+				Name: "default", BaseURL: "http://ollama:11434/v1", Model: "qwen3.6:35b-a3b", APIKey: "secret",
+				MaxConcurrency: 1, ReasoningEffort: "none",
+			}},
+			QueueTimeout: 5 * time.Minute,
 		},
-		Embeddings:      Embeddings{Enabled: true, Model: "bge-m3"},
-		DatabaseURL:     "postgres://buddy:buddy@postgres:5432/buddy",
-		RedisAddr:       "redis:6379",
-		MocksAddr:       "mocks:9091",
-		SessionSecret:   "s3",
-		Mocks:           Mocks{GRPCAddr: ":19091", HTTPAddr: ":18090", FailRate: 0.25, MaxLatency: 200 * time.Millisecond},
-		HTTPAddr:        ":18080",
-		GRPCAddr:        ":19090",
-		FeatureRequests: false,
-		PlaybookRef:     "main",
+		TurnTimeout:       80 * time.Second,
+		WorkerConcurrency: 4,
+		Embeddings:        Embeddings{Enabled: true, Model: "bge-m3"},
+		DatabaseURL:       "postgres://buddy:buddy@postgres:5432/buddy",
+		RedisAddr:         "redis:6379",
+		MocksAddr:         "mocks:9091",
+		SessionSecret:     "s3",
+		Mocks:             Mocks{GRPCAddr: ":19091", HTTPAddr: ":18090", FailRate: 0.25, MaxLatency: 200 * time.Millisecond},
+		HTTPAddr:          ":18080",
+		GRPCAddr:          ":19090",
+		FeatureRequests:   false,
+		PlaybookRef:       "main",
 	}
-	if cfg != want {
+	if !reflect.DeepEqual(cfg, want) {
 		t.Fatalf("Load() =\n%+v\nwant\n%+v", cfg, want)
 	}
 }

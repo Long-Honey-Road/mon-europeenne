@@ -78,7 +78,7 @@ func buildAPI(ctx context.Context, cfg config.Config) (http.Handler, func(), err
 		return nil, nil, err
 	}
 	rdb := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr})
-	queue := jobs.NewClient(cfg.RedisAddr)
+	queue := jobs.NewClient(cfg.RedisAddr, jobs.TaskTimeout(cfg.LLM.QueueTimeout, cfg.TurnTimeout))
 	cleanup := func() {
 		_ = queue.Close()
 		_ = rdb.Close()

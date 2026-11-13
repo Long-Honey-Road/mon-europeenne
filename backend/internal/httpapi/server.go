@@ -12,6 +12,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
@@ -47,9 +48,11 @@ type Threads interface {
 	RateMessage(ctx context.Context, userID, messageID, value, note string) error
 }
 
-// Jobs queues background work.
+// Jobs queues background work; a thread has at most one turn reserved or running.
 type Jobs interface {
-	EnqueueChatTurn(ctx context.Context, t jobs.ChatTurn) (jobID string, err error)
+	ReserveChatTurn(ctx context.Context, threadID string) (jobID string, err error)
+	ReleaseChatTurn(ctx context.Context, threadID, jobID string) error
+	EnqueueChatTurn(ctx context.Context, jobID string, t jobs.ChatTurn) error
 }
 
 type Deps struct {
@@ -97,6 +100,7 @@ func New(ctx context.Context, d Deps) (http.Handler, error) {
 			},
 		}),
 		runtime.WithForwardResponseOption(acceptedForQueuedWork),
+		runtime.WithErrorHandler(conflictForFailedPrecondition),
 	)
 	if err := buddyv1.RegisterAuthServiceHandlerServer(ctx, gw, &authService{deps: d}); err != nil {
 		return nil, fmt.Errorf("register auth service: %w", err)
@@ -172,6 +176,18 @@ func ok(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	_, _ = w.Write([]byte("ok"))
 }
+
+// conflictForFailedPrecondition answers 409 instead of the gateway's 400: the request is valid, the state is not.
+func conflictForFailedPrecondition(ctx context.Context, mux *runtime.ServeMux, m runtime.Marshaler, w http.ResponseWriter, r *http.Request, err error) {
+	if status.Code(err) == codes.FailedPrecondition {
+		w = conflictWriter{w}
+	}
+	runtime.DefaultHTTPErrorHandler(ctx, mux, m, w, r, err)
+}
+
+type conflictWriter struct{ http.ResponseWriter }
+
+func (w conflictWriter) WriteHeader(int) { w.ResponseWriter.WriteHeader(http.StatusConflict) }
 
 // acceptedForQueuedWork answers 202 when the work was queued rather than done.
 func acceptedForQueuedWork(_ context.Context, w http.ResponseWriter, m proto.Message) error {

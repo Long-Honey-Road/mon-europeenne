@@ -38,6 +38,10 @@ type LLM struct {
 	DetailedReasoningEffort string
 	// Temperature is nil when LLM_TEMPERATURE is empty: the model default.
 	Temperature *float64
+	// Endpoints are the pool's model sources (LLM_ENDPOINTS, or the fields above as a pool of one).
+	Endpoints []Endpoint
+	// QueueTimeout is how long a turn waits for a free endpoint.
+	QueueTimeout time.Duration
 }
 
 type Embeddings struct {
@@ -70,6 +74,9 @@ type Config struct {
 	// PlaybookRepo is the GitHub repository of the open Avito Playbook; empty turns it off.
 	PlaybookRepo string
 	PlaybookRef  string
+	// TurnTimeout limits one agent turn, counted from getting a model endpoint.
+	TurnTimeout       time.Duration
+	WorkerConcurrency int
 }
 
 // Load builds Config from lookup (os.LookupEnv in production).
@@ -146,6 +153,10 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 	}
 	if cfg.Mocks.MaxLatency, err = time.ParseDuration(str("MOCK_MAX_LATENCY", "0s")); err != nil || cfg.Mocks.MaxLatency < 0 {
 		return Config{}, fmt.Errorf("MOCK_MAX_LATENCY: %w", ErrInvalid)
+	}
+
+	if err := loadPool(&cfg, str); err != nil {
+		return Config{}, err
 	}
 
 	return cfg, nil

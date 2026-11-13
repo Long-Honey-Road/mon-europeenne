@@ -3,40 +3,57 @@ package jobs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/hibiken/asynq"
+	"github.com/redis/go-redis/v9"
 )
 
 const (
 	queueChat   = "chat"
 	queueSystem = "system"
-	// turnTimeout covers the agent's own 60 s limit plus saving the answer.
-	turnTimeout = 90 * time.Second
 )
 
 // Client queues background work.
-type Client struct{ c *asynq.Client }
-
-func NewClient(redisAddr string) *Client {
-	return &Client{c: asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr})}
+type Client struct {
+	c       *asynq.Client
+	rdb     *redis.Client
+	turns   *ActiveTurns
+	timeout time.Duration
 }
 
-// EnqueueChatTurn queues one agent turn; a turn is not retried, the user sees the error and can resend.
-func (c *Client) EnqueueChatTurn(ctx context.Context, t ChatTurn) (string, error) {
+// NewClient queues chat turns with timeout as their deadline (see TaskTimeout); a thread lock lives as long.
+func NewClient(redisAddr string, timeout time.Duration) *Client {
+	rdb := redis.NewClient(&redis.Options{Addr: redisAddr})
+	return &Client{
+		c: asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr}), rdb: rdb,
+		turns: NewActiveTurns(rdb, timeout), timeout: timeout,
+	}
+}
+
+// ReserveChatTurn takes the thread for a new turn and returns its job id; ErrTurnRunning if one is running.
+func (c *Client) ReserveChatTurn(ctx context.Context, threadID string) (string, error) {
+	return c.turns.Reserve(ctx, threadID)
+}
+
+// ReleaseChatTurn frees the thread when the turn could not be queued.
+func (c *Client) ReleaseChatTurn(ctx context.Context, threadID, jobID string) error {
+	return c.turns.Release(ctx, threadID, jobID)
+}
+
+// EnqueueChatTurn queues a reserved turn; a turn is not retried, the user sees the error and can resend.
+func (c *Client) EnqueueChatTurn(ctx context.Context, jobID string, t ChatTurn) error {
 	payload, err := json.Marshal(t)
 	if err != nil {
-		return "", err
+		return err
 	}
-	info, err := c.c.EnqueueContext(ctx, asynq.NewTask(TypeChatTurn, payload),
-		asynq.Queue(queueChat), asynq.MaxRetry(0), asynq.Timeout(turnTimeout))
-	if err != nil {
-		return "", err
-	}
-	return info.ID, nil
+	_, err = c.c.EnqueueContext(ctx, asynq.NewTask(TypeChatTurn, payload),
+		asynq.TaskID(jobID), asynq.Queue(queueChat), asynq.MaxRetry(0), asynq.Timeout(c.timeout))
+	return err
 }
 
-func (c *Client) Close() error { return c.c.Close() }
+func (c *Client) Close() error { return errors.Join(c.c.Close(), c.rdb.Close()) }
 
 // NewServer runs tasks with chat turns ahead of system work.
 func NewServer(redisAddr string, concurrency int) *asynq.Server {

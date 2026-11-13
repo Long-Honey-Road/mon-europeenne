@@ -17,6 +17,10 @@ type State = {
   created: { type: ThreadType; title?: string; pin?: Thread['pin'] }[]
   failEvents: boolean
   failSend: boolean
+  /** A turn is still running in the thread: sending answers 409. */
+  busy: boolean
+  /** Play the turn before the send returns, as a fast worker may. */
+  eager: boolean
   seq: number
 }
 
@@ -29,6 +33,8 @@ const fresh = (): State => ({
   created: [],
   failEvents: false,
   failSend: false,
+  busy: false,
+  eager: false,
   seq: 0,
 })
 
@@ -74,14 +80,14 @@ export function addMessage(threadId: string, role: 'user' | 'assistant', text: s
 
 /** A typical answer: a status, two deltas, a person block, then done with the saved text. */
 export const answer = (text: string): ScriptEvent[] => [
-  { event: 'status', data: { job_id: 'j', text: 'ищу, к кому обратиться' } },
-  { event: 'delta', data: { job_id: 'j', text: text.slice(0, 5) } },
-  { event: 'delta', data: { job_id: 'j', text: text.slice(5) } },
+  { event: 'status', data: { text: 'ищу, к кому обратиться' } },
+  { event: 'delta', data: { text: text.slice(0, 5) } },
+  { event: 'delta', data: { text: text.slice(5) } },
   {
     event: 'block',
-    data: { job_id: 'j', block: { type: 'person', person_id: 'p-igor', name: 'Игорь Волков', reason: 'деплой', contact: '@igor' } },
+    data: { block: { type: 'person', person_id: 'p-igor', name: 'Игорь Волков', reason: 'деплой', contact: '@igor' } },
   },
-  { event: 'done', data: { job_id: 'j', text } },
+  { event: 'done', data: { text } },
 ]
 
 /** Sends an event to the open stream of a thread, outside any turn (e.g. request_status). */
@@ -93,15 +99,15 @@ function push(threadId: string, e: ScriptEvent) {
   streams.get(threadId)?.enqueue(encoder.encode(`event: ${e.event}\ndata: ${JSON.stringify(e.data)}\n\n`))
 }
 
-function play(threadId: string) {
+/** Plays the script as the turn jobId; events with their own job_id belong to another, older turn. */
+function play(threadId: string, jobId: string) {
   const blocks: ChatMessage['blocks'] = []
   for (const e of chat.script) {
-    if (e.event === 'block') blocks.push(e.data.block as ChatMessage['blocks'][number])
-    if (e.event === 'done') {
-      const saved = addMessage(threadId, 'assistant', String(e.data.text), blocks)
-      e.data.message_id = saved.id
-    }
-    push(threadId, e)
+    const own = e.data.job_id === undefined
+    const data: Record<string, unknown> = { ...e.data, job_id: e.data.job_id ?? jobId }
+    if (own && e.event === 'block') blocks.push(e.data.block as ChatMessage['blocks'][number])
+    if (own && e.event === 'done') data.message_id = addMessage(threadId, 'assistant', String(e.data.text), blocks).id
+    push(threadId, { event: e.event, data })
   }
 }
 
@@ -137,13 +143,20 @@ export const chatHandlers = [
   }),
   http.post(`${API}/v1/private/threads/:id/messages`, async ({ params, request }) => {
     if (chat.failSend) return HttpResponse.json({ code: 14, message: 'down', details: [] }, { status: 503 })
+    if (chat.busy)
+      return HttpResponse.json({ code: 9, message: 'the previous answer is still being prepared', details: [] }, { status: 409 })
     const id = String(params.id)
     const body = (await request.json()) as { content: string; mode: string }
     chat.sent.push({ threadId: id, content: body.content, mode: body.mode })
     const msg = addMessage(id, 'user', body.content)
-    const scheduled = generation
-    setTimeout(() => scheduled === generation && play(id), 10)
-    return HttpResponse.json({ message_id: msg.id, job_id: 'j' }, { status: 202 })
+    const jobId = `job-${chat.sent.length}`
+    if (chat.eager) {
+      play(id, jobId)
+    } else {
+      const scheduled = generation
+      setTimeout(() => scheduled === generation && play(id, jobId), 10)
+    }
+    return HttpResponse.json({ message_id: msg.id, job_id: jobId }, { status: 202 })
   }),
   http.post(`${API}/v1/private/messages/:id/feedback`, async ({ params, request }) => {
     const body = (await request.json()) as { value: string }

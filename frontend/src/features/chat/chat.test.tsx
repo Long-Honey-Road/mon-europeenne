@@ -213,6 +213,49 @@ describe('chat turn', () => {
     expect(screen.getByRole('button', { name: 'Отправить' })).toBeEnabled()
   })
 
+  it('ignores the end of an older turn and stays locked until its own', async () => {
+    addThread()
+    chat.script = [
+      { event: 'error', data: { job_id: 'job-old', code: 'model_unavailable', message: 'чужая ошибка', escalation: [] } },
+      { event: 'done', data: { job_id: 'job-old', text: 'чужой ответ', message_id: 'm-old' } },
+      { event: 'delta', data: { job_id: 'job-old', text: 'чужой текст' } },
+      { event: 'status', data: { text: 'ищу в документах' } },
+    ]
+    renderApp('/')
+
+    await ask('Как поднять dev?')
+    expect(await screen.findByText('buddy ищу в документах…')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText('чужой текст')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Сообщение для buddy')).toHaveAttribute('placeholder', 'buddy отвечает…')
+    expect(screen.getByRole('button', { name: 'Отправить' })).toBeDisabled()
+  })
+
+  it('keeps events that arrive before the send returns', async () => {
+    addThread()
+    chat.eager = true
+    chat.script = answer('Спроси Игоря, он отвечает за стенды.')
+    renderApp('/')
+
+    await ask('Кто поможет с деплоем?')
+    const log = within(await panel())
+    await waitFor(() => expect(log.getAllByRole('button', { name: 'Полезно' })).toHaveLength(1))
+    expect(log.getAllByText('Спроси Игоря, он отвечает за стенды.')).toHaveLength(1)
+    expect(screen.getByLabelText('Сообщение для buddy')).not.toHaveAttribute('placeholder', 'buddy отвечает…')
+  })
+
+  it('says the answer is still coming when the thread is busy', async () => {
+    const t = addThread()
+    addMessage(t.id, 'user', 'Первый вопрос')
+    chat.busy = true
+    renderApp('/')
+
+    await ask('Второй вопрос')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Ответ ещё готовится')
+    expect(within(await panel()).getByText('Первый вопрос')).toBeInTheDocument()
+    expect(chat.sent).toHaveLength(0)
+  })
+
   it('says so when the message cannot be sent', async () => {
     addThread()
     chat.failSend = true
