@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	authrolesv1 "github.com/Long-Honey-Road/mon-europeenne/backend/gen/mocks/authroles/v1"
 	corprequestsv1 "github.com/Long-Honey-Road/mon-europeenne/backend/gen/mocks/corprequests/v1"
@@ -91,12 +92,19 @@ func Gateway(ctx context.Context, grpcAddr string) (http.Handler, func(), error)
 	if err != nil {
 		return nil, nil, err
 	}
-	mux := runtime.NewServeMux(runtime.WithIncomingHeaderMatcher(func(key string) (string, bool) {
-		if strings.EqualFold(key, FailHeader) {
-			return FailHeader, true
-		}
-		return runtime.DefaultHeaderMatcher(key)
-	}))
+	mux := runtime.NewServeMux(
+		// Same JSON as the buddy API: snake_case field names, empty fields present.
+		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
+			MarshalOptions:   protojson.MarshalOptions{UseProtoNames: true, EmitUnpopulated: true},
+			UnmarshalOptions: protojson.UnmarshalOptions{DiscardUnknown: true},
+		}),
+		runtime.WithIncomingHeaderMatcher(func(key string) (string, bool) {
+			if strings.EqualFold(key, FailHeader) {
+				return FailHeader, true
+			}
+			return runtime.DefaultHeaderMatcher(key)
+		}),
+	)
 	for _, reg := range []func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error{
 		authrolesv1.RegisterAuthRolesServiceHandler,
 		peoplev1.RegisterDirectoryServiceHandler,

@@ -2,9 +2,11 @@ package mocks_test
 
 import (
 	"context"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -234,6 +236,15 @@ func TestGatewayServesRESTWithChaos(t *testing.T) {
 	}
 	if code := get("/people?team_id=t-messenger", ""); code != http.StatusOK {
 		t.Errorf("GET /people = %d", code)
+	}
+	resp, err := http.Get(web.URL + "/people/p-liza") //nolint:noctx // test
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if !strings.Contains(string(body), `"user_id"`) || !strings.Contains(string(body), `"responsibilities"`) {
+		t.Errorf("GET /people/p-liza = %s, want snake_case with empty fields", body)
 	}
 	if code := get("/auth/accounts/u-ghost", ""); code != http.StatusNotFound {
 		t.Errorf("GET unknown account = %d, want 404", code)
