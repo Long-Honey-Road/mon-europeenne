@@ -16,7 +16,10 @@ docker compose -f deploy/docker-compose.yml up -d --build --wait
 ```
 
 Open http://localhost:3000 and sign in with a test account. `deploy/smoke.sh` checks the running stack: login,
-profile, one chat turn over SSE.
+profile, plan, people, an access request approved by the mock request system, one chat turn over SSE.
+
+The mock company services answer REST on http://localhost:8090 for checking by hand, e.g.
+`curl localhost:8090/people` or `curl -H 'x-mock-fail: 503' localhost:8090/teams` to see a failure.
 
 The `docs/` submodule is a private repository with the product and design documents (in Russian); the app and
 this README work without it. With access to it, clone with `--recurse-submodules`.
@@ -83,7 +86,8 @@ flowchart LR
   api --> pg[("PostgreSQL<br/>threads, plan, requests, events")]
   worker --> pg
   worker -->|OpenAI-compatible API| llm["LLM<br/>Ollama or external"]
-  worker --> corp["request system<br/>simulated, behind requests.Service"]
+  api -->|gRPC| mocks["mocks<br/>auth-roles, people, corp-requests"]
+  worker -->|gRPC| mocks
   mcp["buddy mcp<br/>the same tools over MCP"] -.-> pg
 ```
 
@@ -95,7 +99,11 @@ flowchart LR
   blocks (sources, person, action form) are built by the server from this turn's tool results.
 - **Tools** are the agent's only way to act, each with a JSON Schema, roles and thread types; `buddy mcp` serves
   the same registry over MCP. Sending a request is never a model action: the user confirms the form.
-- **Company services** sit behind interfaces, so a real system replaces the simulation without touching the agent.
+- **Company services** buddy cannot reach are imitated by `buddy mocks`: auth-roles, people and corp-requests, each
+  with a gRPC contract in `backend/api/proto/mocks` (REST and `backend/api/openapi/mocks-api.yaml` for manual checks),
+  random failures and delays (`MOCK_FAIL_RATE`, `MOCK_MAX_LATENCY`). Buddy talks to them like to real services:
+  deadlines, retries of reads, the last good copy of the directory during an outage. Pointing `MOCKS_ADDR` at a
+  real service replaces a mock without touching the agent.
 
 ## Intern journey
 
