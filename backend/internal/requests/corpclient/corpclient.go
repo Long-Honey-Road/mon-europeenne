@@ -54,6 +54,11 @@ func (c *Client) Updates(ctx context.Context) ([]requests.Ticket, error) {
 		return nil, fmt.Errorf("corp-requests cursor: %w", err)
 	}
 	resp, err := c.c.ListUpdates(ctx, &corprequestsv1.ListUpdatesRequest{After: after})
+	if err == nil && resp.GetCursor() < after {
+		// The service restarted and lost its history: read everything it has now.
+		after = 0
+		resp, err = c.c.ListUpdates(ctx, &corprequestsv1.ListUpdatesRequest{})
+	}
 	if err != nil {
 		return nil, fmt.Errorf("corp-requests: updates: %w", err)
 	}

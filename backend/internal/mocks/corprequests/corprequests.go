@@ -129,16 +129,13 @@ func (s *Service) ListRequests(_ context.Context, req *corprequestsv1.ListReques
 func (s *Service) ListUpdates(_ context.Context, req *corprequestsv1.ListUpdatesRequest) (*corprequestsv1.ListUpdatesResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	out := &corprequestsv1.ListUpdatesResponse{Cursor: max(req.GetAfter(), 0)}
+	out := &corprequestsv1.ListUpdatesResponse{Cursor: s.version}
 	for _, r := range s.byID {
 		if r.GetVersion() > req.GetAfter() {
 			out.Requests = append(out.Requests, clone(r))
 		}
 	}
 	slices.SortFunc(out.Requests, func(a, b *corprequestsv1.Request) int { return cmp.Compare(a.GetVersion(), b.GetVersion()) })
-	if n := len(out.Requests); n > 0 {
-		out.Cursor = out.Requests[n-1].GetVersion()
-	}
 	return out, nil
 }
 

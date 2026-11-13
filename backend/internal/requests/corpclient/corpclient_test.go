@@ -85,6 +85,19 @@ func TestSubmitErrors(t *testing.T) {
 	}
 }
 
+func TestUpdatesStartOverAfterServiceRestart(t *testing.T) {
+	conn, _ := mockstest.Start(t, mocks.Chaos{})
+	cur := &memCursor{v: 50}
+	c := corpclient.New(conn, cur)
+	if _, err := c.Submit(t.Context(), sub); err != nil {
+		t.Fatal(err)
+	}
+	got, err := c.Updates(t.Context())
+	if err != nil || len(got) != 1 || cur.v != 1 {
+		t.Errorf("Updates after a restart = %d tickets, %v, cursor %d; want the new request and cursor 1", len(got), err, cur.v)
+	}
+}
+
 func TestUpdatesKeepsCursorOnFailure(t *testing.T) {
 	conn, _ := mockstest.Start(t, mocks.Chaos{FailRate: 1})
 	cur := &memCursor{v: 7}

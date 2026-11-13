@@ -38,7 +38,8 @@ type CorpRequestsServiceClient interface {
 	GetRequest(ctx context.Context, in *GetRequestRequest, opts ...grpc.CallOption) (*GetRequestResponse, error)
 	// ListRequests returns the requests of one requester, newest first.
 	ListRequests(ctx context.Context, in *ListRequestsRequest, opts ...grpc.CallOption) (*ListRequestsResponse, error)
-	// ListUpdates returns requests changed after a cursor, oldest change first, and the cursor to pass next.
+	// ListUpdates returns requests changed after a cursor, oldest change first, and the cursor to pass next. A
+	// cursor below the one passed means the service lost its state: the client starts over from 0.
 	ListUpdates(ctx context.Context, in *ListUpdatesRequest, opts ...grpc.CallOption) (*ListUpdatesResponse, error)
 }
 
@@ -103,7 +104,8 @@ type CorpRequestsServiceServer interface {
 	GetRequest(context.Context, *GetRequestRequest) (*GetRequestResponse, error)
 	// ListRequests returns the requests of one requester, newest first.
 	ListRequests(context.Context, *ListRequestsRequest) (*ListRequestsResponse, error)
-	// ListUpdates returns requests changed after a cursor, oldest change first, and the cursor to pass next.
+	// ListUpdates returns requests changed after a cursor, oldest change first, and the cursor to pass next. A
+	// cursor below the one passed means the service lost its state: the client starts over from 0.
 	ListUpdates(context.Context, *ListUpdatesRequest) (*ListUpdatesResponse, error)
 	mustEmbedUnimplementedCorpRequestsServiceServer()
 }

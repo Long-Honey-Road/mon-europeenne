@@ -186,7 +186,9 @@ paths:
         get:
             tags:
                 - CorpRequestsService
-            description: ListUpdates returns requests changed after a cursor, oldest change first, and the cursor to pass next.
+            description: |-
+                ListUpdates returns requests changed after a cursor, oldest change first, and the cursor to pass next. A
+                 cursor below the one passed means the service lost its state: the client starts over from 0.
             operationId: CorpRequestsService_ListUpdates
             parameters:
                 - name: after
@@ -384,6 +386,7 @@ components:
                         $ref: '#/components/schemas/Request'
                 cursor:
                     type: string
+                    description: Version of the latest change of any request.
         Person:
             type: object
             properties:
