@@ -86,7 +86,7 @@ flowchart LR
   api --> pg[("PostgreSQL<br/>threads, plan, requests, events")]
   worker --> pg
   worker -->|OpenAI-compatible API| llm["LLM<br/>Ollama or external"]
-  api -->|gRPC| mocks["mocks<br/>auth-roles, people, corp-requests, documents"]
+  api -->|gRPC| mocks["mocks<br/>auth-roles, people, corp-requests,<br/>documents, team-repo"]
   worker -->|gRPC| mocks
   mcp["buddy mcp<br/>the same tools over MCP"] -.-> pg
 ```
@@ -103,7 +103,7 @@ flowchart LR
   reaches the model; a general and a team rule on one topic come back as a conflict with both sources.
 - **Tools** are the agent's only way to act, each with a JSON Schema, roles and thread types; `buddy mcp` serves
   the same registry over MCP. Sending a request is never a model action: the user confirms the form.
-- **Company services** buddy cannot reach are imitated by `buddy mocks`: auth-roles, people, corp-requests and documents, each
+- **Company services** buddy cannot reach are imitated by `buddy mocks`: auth-roles, people, corp-requests, documents and team-repo, each
   with a gRPC contract in `backend/api/proto/mocks` (REST and `backend/api/openapi/mocks-api.yaml` for manual checks),
   random failures and delays (`MOCK_FAIL_RATE`, `MOCK_MAX_LATENCY`). Buddy talks to them like to real services:
   deadlines, retries of reads, the last good copy of the directory during an outage. Pointing `MOCKS_ADDR` at a
