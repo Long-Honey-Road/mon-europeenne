@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { HttpResponse, http } from 'msw'
-import { API, TOKEN, intern, me, server } from '../test/api'
+import { API, TOKEN, intern, me } from '../test/api'
+import { server } from '../test/server'
 import { ApiError, createApi } from './client'
 
 function apiWith(token: string | null, onUnauthorized = vi.fn()) {

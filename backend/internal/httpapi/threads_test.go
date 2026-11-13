@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/codes"
+
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/jobs"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/store"
@@ -99,19 +101,44 @@ func (m *memStore) RateMessage(_ context.Context, userID, messageID, value, note
 }
 
 type memJobs struct {
-	mu    sync.Mutex
-	turns []jobs.ChatTurn
-	fail  bool
+	mu     sync.Mutex
+	turns  []jobs.ChatTurn
+	active map[string]string
+	fail   bool
+	n      int
 }
 
-func (j *memJobs) EnqueueChatTurn(_ context.Context, t jobs.ChatTurn) (string, error) {
+func (j *memJobs) ReserveChatTurn(_ context.Context, threadID string) (string, error) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.active == nil {
+		j.active = map[string]string{}
+	}
+	if _, busy := j.active[threadID]; busy {
+		return "", jobs.ErrTurnRunning
+	}
+	j.n++
+	j.active[threadID] = fmt.Sprintf("job-%d", j.n)
+	return j.active[threadID], nil
+}
+
+func (j *memJobs) ReleaseChatTurn(_ context.Context, threadID, jobID string) error {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.active[threadID] == jobID {
+		delete(j.active, threadID)
+	}
+	return nil
+}
+
+func (j *memJobs) EnqueueChatTurn(_ context.Context, _ string, t jobs.ChatTurn) error {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	if j.fail {
-		return "", errors.New("redis down")
+		return errors.New("redis down")
 	}
 	j.turns = append(j.turns, t)
-	return fmt.Sprintf("job-%d", len(j.turns)), nil
+	return nil
 }
 
 func threadServer(t *testing.T) (*memStore, *memJobs, func(method, path, user, body string) (int, map[string]any)) {
@@ -253,6 +280,36 @@ func TestSendMessageWhenQueueIsDown(t *testing.T) {
 
 	if code, _ := do(http.MethodPost, "/v1/private/threads/"+id+"/messages", "intern", `{"content":"привет"}`); code != http.StatusServiceUnavailable {
 		t.Fatalf("status %d, want 503", code)
+	}
+	if len(jb.active) != 0 {
+		t.Errorf("thread stays locked after a failed enqueue: %v", jb.active)
+	}
+}
+
+func TestSecondMessageWhileTurnRunsIsConflict(t *testing.T) {
+	st, jb, do := threadServer(t)
+	_, body := do(http.MethodPost, "/v1/private/threads", "intern", `{"type":"THREAD_TYPE_GENERAL"}`)
+	id := body["thread"].(map[string]any)["id"].(string)
+	send := func() (int, map[string]any) {
+		return do(http.MethodPost, "/v1/private/threads/"+id+"/messages", "intern", `{"content":"привет"}`)
+	}
+
+	if code, _ := send(); code != http.StatusAccepted {
+		t.Fatalf("first message: %d", code)
+	}
+	code, resp := send()
+	if code != http.StatusConflict || resp["code"] != float64(codes.FailedPrecondition) {
+		t.Fatalf("second message: %d %v, want 409 FAILED_PRECONDITION", code, resp)
+	}
+	if len(st.messages[id]) != 1 || len(jb.turns) != 1 {
+		t.Errorf("rejected message was kept: %d messages, %d turns", len(st.messages[id]), len(jb.turns))
+	}
+
+	if err := jb.ReleaseChatTurn(context.Background(), id, "job-1"); err != nil {
+		t.Fatal(err)
+	}
+	if code, resp := send(); code != http.StatusAccepted || resp["job_id"] != "job-2" {
+		t.Fatalf("message after the turn ended: %d %v", code, resp)
 	}
 }
 

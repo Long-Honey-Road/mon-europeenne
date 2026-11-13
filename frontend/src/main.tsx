@@ -10,6 +10,12 @@ import { createAppRouter } from './app/router'
 const router = createAppRouter()
 const queryClient = createQueryClient()
 
+// `npm run dev:mock`: the fake API from the tests, for frontend work without the backend.
+if (import.meta.env.VITE_MOCK_API === '1') {
+  const { worker } = await import('./test/browser')
+  await worker.start({ onUnhandledFrame: 'bypass' })
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppProviders client={queryClient}>

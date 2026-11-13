@@ -71,6 +71,7 @@ const (
 	SourceDoc SourceKind = iota + 1
 	SourceRepo
 	SourcePlan
+	SourcePlaybook
 )
 
 const (
@@ -117,7 +118,7 @@ var (
 		ItemTodo: "todo", ItemDoing: "doing", ItemBlocked: "blocked", ItemDone: "done",
 	}
 	sourceKindNames = map[SourceKind]string{
-		SourceDoc: "doc", SourceRepo: "repo", SourcePlan: "plan",
+		SourceDoc: "doc", SourceRepo: "repo", SourcePlan: "plan", SourcePlaybook: "playbook",
 	}
 	conflictStatusNames = map[ConflictStatus]string{
 		ConflictOpen: "open", ConflictReported: "reported", ConflictResolved: "resolved",

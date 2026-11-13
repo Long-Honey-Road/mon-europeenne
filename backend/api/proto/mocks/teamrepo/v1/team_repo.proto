@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package mocks.teamrepo.v1;
+
+import "google/api/annotations.proto";
+
+// TeamRepoService imitates the team's repository host (Bitbucket): one synthetic repository per team and the
+// team's process read from it. Buddy applies team rights itself; the mock answers any team it has.
+service TeamRepoService {
+  // GetTree lists entries under a path, depth levels deep (1 to 3); NOT_FOUND for an unknown team or path.
+  rpc GetTree(GetTreeRequest) returns (GetTreeResponse) {
+    option (google.api.http) = {get: "/repos/{team_id}/tree"};
+  }
+  // GetFile returns a file's text; NOT_FOUND for an unknown team or file, INVALID_ARGUMENT for a directory.
+  rpc GetFile(GetFileRequest) returns (GetFileResponse) {
+    option (google.api.http) = {get: "/repos/{team_id}/file"};
+  }
+  // GetProcess returns the sections of CONTRIBUTING.md the team works by.
+  rpc GetProcess(GetProcessRequest) returns (GetProcessResponse) {
+    option (google.api.http) = {get: "/repos/{team_id}/process"};
+  }
+}
+
+message Entry {
+  string path = 1;
+  bool dir = 2;
+}
+
+message GetTreeRequest {
+  string team_id = 1;
+  // Empty for the repository root.
+  string path = 2;
+  int32 depth = 3;
+}
+
+message GetTreeResponse {
+  string repo = 1;
+  repeated Entry entries = 2;
+}
+
+message GetFileRequest {
+  string team_id = 1;
+  string path = 2;
+}
+
+message GetFileResponse {
+  string repo = 1;
+  string path = 2;
+  string text = 3;
+}
+
+message ProcessSection {
+  // dor, code_style, pr, review or run.
+  string key = 1;
+  string title = 2;
+  string markdown = 3;
+  // File the section comes from, e.g. CONTRIBUTING.md.
+  string file = 4;
+}
+
+message GetProcessRequest {
+  string team_id = 1;
+}
+
+message GetProcessResponse {
+  string repo = 1;
+  repeated ProcessSection sections = 2;
+}

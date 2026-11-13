@@ -48,6 +48,26 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Mock corporate services (auth-roles, people, corp-requests): gRPC for buddy, REST on MOCKS_PORT for checks.
+  mocks:
+    image: buddy-backend:local
+    command: ["mocks"]
+    environment:
+      MOCKS_GRPC_ADDR: ":9091"
+      MOCKS_HTTP_ADDR: ":8090"
+      MOCK_FAIL_RATE: ${MOCK_FAIL_RATE:-0}
+      MOCK_MAX_LATENCY: ${MOCK_MAX_LATENCY:-0s}
+    ports:
+      - "${MOCKS_PORT:-8090}:8090"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8090/teams"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   api:
     image: buddy-backend:local
     command: ["api"]
@@ -55,13 +75,19 @@ services:
       HTTP_ADDR: ":8080"
       DATABASE_URL: *database_url
       REDIS_ADDR: redis:6379
+      MOCKS_ADDR: &mocks_addr mocks:9091
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in deploy/.env, see deploy/.env.example}
+      # The API sets the chat task deadline from these two; keep them equal to the worker's.
+      LLM_QUEUE_TIMEOUT: ${LLM_QUEUE_TIMEOUT:-5m}
+      TURN_TIMEOUT: ${TURN_TIMEOUT:-80s}
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:
       seed:
         condition: service_completed_successfully
       redis:
+        condition: service_healthy
+      mocks:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
@@ -75,6 +101,9 @@ services:
     environment:
       DATABASE_URL: *database_url
       REDIS_ADDR: redis:6379
+      MOCKS_ADDR: *mocks_addr
+      # The open Avito Playbook is fetched from GitHub at a fixed commit; empty turns it off (offline runs).
+      PLAYBOOK_REPO: ${PLAYBOOK_REPO-avito-tech/playbook}
       LLM_PROVIDER: ${LLM_PROVIDER:-openai_compat}
       LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:11434/v1}
       LLM_MODEL: ${LLM_MODEL:-qwen3.6:35b-a3b}
@@ -82,6 +111,11 @@ services:
       LLM_REASONING_EFFORT: ${LLM_REASONING_EFFORT:-none}
       LLM_REASONING_EFFORT_DETAILED: ${LLM_REASONING_EFFORT_DETAILED:-low}
       LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0.3}
+      LLM_ENDPOINTS: ${LLM_ENDPOINTS:-}
+      LLM_MAX_CONCURRENCY: ${LLM_MAX_CONCURRENCY:-1}
+      LLM_QUEUE_TIMEOUT: ${LLM_QUEUE_TIMEOUT:-5m}
+      TURN_TIMEOUT: ${TURN_TIMEOUT:-80s}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
     # Lets the container reach Ollama on the host on Linux too.
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -90,6 +124,12 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      mocks:
+        condition: service_healthy
+      # Only with the ollama profile: wait until the models are pulled.
+      ollama-pull:
+        condition: service_completed_successfully
+        required: false
 
   frontend:
     build: ../frontend
@@ -105,6 +145,38 @@ services:
       timeout: 3s
       retries: 10
 
+  # Profile `ollama`: the model runs in compose, no Ollama on the host needed.
+  # Enable with COMPOSE_PROFILES=ollama and LLM_BASE_URL=http://ollama:11434/v1 in deploy/.env.
+  ollama:
+    profiles: [ollama]
+    image: ollama/ollama:0.40.13
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ollama-pull:
+    profiles: [ollama]
+    image: ollama/ollama:0.40.13
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      LLM_MODEL: ${LLM_MODEL:-qwen3.6:35b-a3b}
+      EMBEDDINGS_ENABLED: ${EMBEDDINGS_ENABLED:-false}
+      EMBEDDINGS_MODEL: ${EMBEDDINGS_MODEL:-bge-m3}
+    entrypoint: ["/bin/sh", "-c"]
+    # Pulls are cached in the volume: only the first start downloads.
+    command:
+      - ollama pull "$$LLM_MODEL" && if [ "$$EMBEDDINGS_ENABLED" = true ]; then ollama pull "$$EMBEDDINGS_MODEL"; fi
+    depends_on:
+      ollama:
+        condition: service_healthy
+
 volumes:
   postgres-data:
   redis-data:
+  ollama-data:

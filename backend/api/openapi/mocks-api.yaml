@@ -1,0 +1,750 @@
+# Generated with protoc-gen-openapi
+# https://github.com/google/gnostic/tree/master/cmd/protoc-gen-openapi
+
+openapi: 3.0.3
+info:
+    title: AI-buddy mock corporate services
+    version: 0.1.0
+paths:
+    /auth/accounts/{user_id}:
+        get:
+            tags:
+                - AuthRolesService
+            description: GetAccount fails with NOT_FOUND for an unknown user.
+            operationId: AuthRolesService_GetAccount
+            parameters:
+                - name: user_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetAccountResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /auth/authenticate:
+        post:
+            tags:
+                - AuthRolesService
+            description: Authenticate fails with UNAUTHENTICATED for an unknown login and for a wrong password alike.
+            operationId: AuthRolesService_Authenticate
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AuthenticateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AuthenticateResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /documents:
+        get:
+            tags:
+                - DocumentsService
+            description: 'ListDocuments filters by team (empty: all) and topic (empty: all).'
+            operationId: DocumentsService_ListDocuments
+            parameters:
+                - name: team_id
+                  in: query
+                  schema:
+                    type: string
+                - name: topic
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListDocumentsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /documents/{document_id}:
+        get:
+            tags:
+                - DocumentsService
+            description: GetDocument fails with NOT_FOUND for an unknown id.
+            operationId: DocumentsService_GetDocument
+            parameters:
+                - name: document_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetDocumentResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /people:
+        get:
+            tags:
+                - DirectoryService
+            description: ListPeople filters by team and by words in name, role, responsibilities and topics.
+            operationId: DirectoryService_ListPeople
+            parameters:
+                - name: team_id
+                  in: query
+                  schema:
+                    type: string
+                - name: q
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListPeopleResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /people/relations/{user_id}:
+        get:
+            tags:
+                - DirectoryService
+            description: GetRelations returns empty relations for a user without mentor, manager or HR BP.
+            operationId: DirectoryService_GetRelations
+            parameters:
+                - name: user_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetRelationsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /people/{person_id}:
+        get:
+            tags:
+                - DirectoryService
+            description: GetPerson fails with NOT_FOUND for an unknown id.
+            operationId: DirectoryService_GetPerson
+            parameters:
+                - name: person_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetPersonResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /repos/{team_id}/file:
+        get:
+            tags:
+                - TeamRepoService
+            description: GetFile returns a file's text; NOT_FOUND for an unknown team or file, INVALID_ARGUMENT for a directory.
+            operationId: TeamRepoService_GetFile
+            parameters:
+                - name: team_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: path
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetFileResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /repos/{team_id}/process:
+        get:
+            tags:
+                - TeamRepoService
+            description: GetProcess returns the sections of CONTRIBUTING.md the team works by.
+            operationId: TeamRepoService_GetProcess
+            parameters:
+                - name: team_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetProcessResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /repos/{team_id}/tree:
+        get:
+            tags:
+                - TeamRepoService
+            description: GetTree lists entries under a path, depth levels deep (1 to 3); NOT_FOUND for an unknown team or path.
+            operationId: TeamRepoService_GetTree
+            parameters:
+                - name: team_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: path
+                  in: query
+                  description: Empty for the repository root.
+                  schema:
+                    type: string
+                - name: depth
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetTreeResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /requests:
+        get:
+            tags:
+                - CorpRequestsService
+            description: ListRequests returns the requests of one requester, newest first.
+            operationId: CorpRequestsService_ListRequests
+            parameters:
+                - name: requester_id
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListRequestsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        post:
+            tags:
+                - CorpRequestsService
+            description: SubmitRequest registers a request with its approval chain; an empty chain is INVALID_ARGUMENT.
+            operationId: CorpRequestsService_SubmitRequest
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/SubmitRequestRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SubmitRequestResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /requests/updates:
+        get:
+            tags:
+                - CorpRequestsService
+            description: |-
+                ListUpdates returns requests changed after a cursor, oldest change first, and the cursor to pass next. A
+                 cursor below the one passed means the service lost its state: the client starts over from 0.
+            operationId: CorpRequestsService_ListUpdates
+            parameters:
+                - name: after
+                  in: query
+                  description: Version of the last change the client has seen; 0 for everything.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListUpdatesResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /requests/{request_id}:
+        get:
+            tags:
+                - CorpRequestsService
+            description: GetRequest fails with NOT_FOUND for an unknown id.
+            operationId: CorpRequestsService_GetRequest
+            parameters:
+                - name: request_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetRequestResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /teams:
+        get:
+            tags:
+                - DirectoryService
+            operationId: DirectoryService_ListTeams
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListTeamsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+components:
+    schemas:
+        Account:
+            type: object
+            properties:
+                user_id:
+                    type: string
+                login:
+                    type: string
+                display_name:
+                    type: string
+                role:
+                    type: string
+                    description: intern, mentor, manager, hr_bp or hr_admin.
+                direction:
+                    type: string
+                    description: backend, frontend or qa; empty when not set.
+                team_id:
+                    type: string
+                manager_id:
+                    type: string
+                mentor_id:
+                    type: string
+                repos:
+                    type: array
+                    items:
+                        type: string
+                jira_projects:
+                    type: array
+                    items:
+                        type: string
+                location:
+                    type: string
+                start_date:
+                    type: string
+                    description: YYYY-MM-DD; empty when not set.
+        Approver:
+            type: object
+            properties:
+                role:
+                    type: string
+                    description: object_owner, manager, devops or hr_admin.
+                person_id:
+                    type: string
+                name:
+                    type: string
+        AuthenticateRequest:
+            type: object
+            properties:
+                login:
+                    type: string
+                password:
+                    type: string
+        AuthenticateResponse:
+            type: object
+            properties:
+                account:
+                    $ref: '#/components/schemas/Account'
+        Change:
+            type: object
+            properties:
+                at:
+                    type: string
+                    format: date-time
+                status:
+                    enum:
+                        - STATUS_UNSPECIFIED
+                        - STATUS_PENDING
+                        - STATUS_APPROVED
+                        - STATUS_REJECTED
+                    type: string
+                    format: enum
+                by:
+                    type: string
+                note:
+                    type: string
+        DocumentInfo:
+            type: object
+            properties:
+                id:
+                    type: string
+                title:
+                    type: string
+                team_id:
+                    type: string
+                    description: Empty for a general document visible to everyone.
+                topic:
+                    type: string
+                test_instruction:
+                    type: boolean
+                    description: 'Always true here: the documents are training instructions, not Avito regulations.'
+        Entry:
+            type: object
+            properties:
+                path:
+                    type: string
+                dir:
+                    type: boolean
+        GetAccountResponse:
+            type: object
+            properties:
+                account:
+                    $ref: '#/components/schemas/Account'
+        GetDocumentResponse:
+            type: object
+            properties:
+                info:
+                    $ref: '#/components/schemas/DocumentInfo'
+                markdown:
+                    type: string
+        GetFileResponse:
+            type: object
+            properties:
+                repo:
+                    type: string
+                path:
+                    type: string
+                text:
+                    type: string
+        GetPersonResponse:
+            type: object
+            properties:
+                person:
+                    $ref: '#/components/schemas/Person'
+        GetProcessResponse:
+            type: object
+            properties:
+                repo:
+                    type: string
+                sections:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/ProcessSection'
+        GetRelationsResponse:
+            type: object
+            properties:
+                relations:
+                    $ref: '#/components/schemas/Relations'
+        GetRequestResponse:
+            type: object
+            properties:
+                request:
+                    $ref: '#/components/schemas/Request'
+        GetTreeResponse:
+            type: object
+            properties:
+                repo:
+                    type: string
+                entries:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Entry'
+        GoogleProtobufAny:
+            type: object
+            properties:
+                '@type':
+                    type: string
+                    description: The type of the serialized message.
+            additionalProperties: true
+            description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+        ListDocumentsResponse:
+            type: object
+            properties:
+                documents:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/DocumentInfo'
+        ListPeopleResponse:
+            type: object
+            properties:
+                people:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Person'
+        ListRequestsResponse:
+            type: object
+            properties:
+                requests:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Request'
+        ListTeamsResponse:
+            type: object
+            properties:
+                teams:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Team'
+        ListUpdatesResponse:
+            type: object
+            properties:
+                requests:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Request'
+                cursor:
+                    type: string
+                    description: Version of the latest change of any request.
+        Person:
+            type: object
+            properties:
+                id:
+                    type: string
+                user_id:
+                    type: string
+                    description: Account id when the person can sign in.
+                name:
+                    type: string
+                role_title:
+                    type: string
+                team_id:
+                    type: string
+                responsibilities:
+                    type: array
+                    items:
+                        type: string
+                ask_me_about:
+                    type: array
+                    items:
+                        type: string
+                contact:
+                    type: string
+        ProcessSection:
+            type: object
+            properties:
+                key:
+                    type: string
+                    description: dor, code_style, pr, review or run.
+                title:
+                    type: string
+                markdown:
+                    type: string
+                file:
+                    type: string
+                    description: File the section comes from, e.g. CONTRIBUTING.md.
+        Relations:
+            type: object
+            properties:
+                mentor_id:
+                    type: string
+                manager_id:
+                    type: string
+                hr_bp_id:
+                    type: string
+            description: Relations are person ids.
+        Request:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: REQ-<n>.
+                type_key:
+                    type: string
+                requester_id:
+                    type: string
+                fields:
+                    type: object
+                status:
+                    enum:
+                        - STATUS_UNSPECIFIED
+                        - STATUS_PENDING
+                        - STATUS_APPROVED
+                        - STATUS_REJECTED
+                    type: string
+                    format: enum
+                approvers:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Approver'
+                    description: The whole chain; step points at the current approver.
+                step:
+                    type: integer
+                    format: int32
+                reason:
+                    type: string
+                    description: Why it was rejected.
+                history:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Change'
+                updated_at:
+                    type: string
+                    format: date-time
+                version:
+                    type: string
+                    description: Grows with every change of any request; ListUpdates pages by it.
+        Status:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+                    format: int32
+                message:
+                    type: string
+                    description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+                details:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/GoogleProtobufAny'
+                    description: A list of messages that carry the error details.  There is a common set of message types for APIs to use.
+            description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
+        SubmitRequestRequest:
+            type: object
+            properties:
+                type_key:
+                    type: string
+                requester_id:
+                    type: string
+                fields:
+                    type: object
+                approvers:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Approver'
+        SubmitRequestResponse:
+            type: object
+            properties:
+                request:
+                    $ref: '#/components/schemas/Request'
+        Team:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                unit:
+                    type: string
+                cluster:
+                    type: string
+                mattermost_channel:
+                    type: string
+tags:
+    - name: AuthRolesService
+      description: |-
+        AuthRolesService imitates the company's sign-in and role directory: it checks credentials and returns the
+         account with its role and attributes (RBAC + ABAC). Buddy issues its own session tokens on top of it.
+    - name: CorpRequestsService
+      description: |-
+        CorpRequestsService imitates the company's request system for access requests. Approvers decide on their
+         own schedule (demo outcomes from seed); clients learn about decisions by polling ListUpdates.
+    - name: DirectoryService
+      description: |-
+        DirectoryService imitates the company's employee directory: teams, people and who supports whom.
+         Data is synthetic; no real employees.
+    - name: DocumentsService
+      description: |-
+        DocumentsService imitates the team wiki (Confluence): general and team documents in markdown. Every document is
+         a synthetic training instruction. Buddy reads it with a service account and applies team rights itself.
+    - name: TeamRepoService
+      description: |-
+        TeamRepoService imitates the team's repository host (Bitbucket): one synthetic repository per team and the
+         team's process read from it. Buddy applies team rights itself; the mock answers any team it has.

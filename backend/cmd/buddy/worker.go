@@ -17,8 +17,6 @@ import (
 	"github.com/Long-Honey-Road/mon-europeenne/backend/seed"
 )
 
-const workerConcurrency = 4
-
 // runWorker processes queued agent turns until SIGINT or SIGTERM.
 func runWorker(_ []string, stdout io.Writer) error {
 	cfg, err := config.Load(os.LookupEnv)
@@ -30,15 +28,16 @@ func runWorker(_ []string, stdout io.Writer) error {
 		return err
 	}
 	defer cleanup()
-	if cfg.FeatureRequests {
-		sched, err := newRequestsScheduler(cfg.RedisAddr)
-		if err != nil {
-			return err
-		}
-		if err := sched.Start(); err != nil {
-			return err
-		}
-		defer sched.Shutdown()
+	sched, err := newScheduler(cfg)
+	if err != nil {
+		return err
+	}
+	if err := sched.Start(); err != nil {
+		return err
+	}
+	defer sched.Shutdown()
+	if err := enqueueSync(cfg.RedisAddr); err != nil {
+		return err
 	}
 	fmt.Fprintf(stdout, "worker started, model provider %s\n", cfg.LLM.Provider)
 	return srv.Run(mux)
@@ -59,29 +58,45 @@ func buildWorker(cfg config.Config) (*asynq.Server, *asynq.ServeMux, func(), err
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	src, closeSrc, err := openSources(cfg, data)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	pool, err := store.Open(context.Background(), cfg.DatabaseURL)
 	if err != nil {
+		closeSrc()
 		return nil, nil, nil, err
 	}
 	st := store.New(pool)
-	registry, err := agentTools(data, st, cfg.FeatureRequests)
-	if err != nil {
-		pool.Close()
-		return nil, nil, nil, err
-	}
 	rdb := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr})
 	cleanup := func() {
 		_ = rdb.Close()
 		pool.Close()
+		closeSrc()
+	}
+	know := newKnowledge(cfg, data, src, st)
+	registry, err := agentTools(data, src.directory, st, know, src.teamRepo(), cfg.FeatureRequests)
+	if err != nil {
+		cleanup()
+		return nil, nil, nil, err
 	}
 
 	h := jobs.NewHandler(jobs.Deps{
 		Store: st, Publisher: stream.NewRedisBus(rdb),
-		Agent: agent.New(model, registry, agent.Config{DetailedEffort: cfg.LLM.DetailedReasoningEffort}), Users: seedUsers(data), Directory: data.Directory(),
+		Agent: agent.New(model, registry, agent.Config{DetailedEffort: cfg.LLM.DetailedReasoningEffort, Timeout: cfg.TurnTimeout}),
+		Users: src.accounts, Directory: src.directory,
+		Models: model, Turns: jobs.NewActiveTurns(rdb, jobs.TaskTimeout(cfg.LLM.QueueTimeout, cfg.TurnTimeout)),
+		QueueTimeout: cfg.LLM.QueueTimeout,
 	})
 	mux := jobs.Mux(h)
+	handleKnowledgeJobs(mux, know)
 	if cfg.FeatureRequests {
-		handleRequestJobs(mux, newDesk(data, st, rdb))
+		desk, err := newDesk(data, src, st, rdb)
+		if err != nil {
+			cleanup()
+			return nil, nil, nil, err
+		}
+		handleRequestJobs(mux, desk)
 	}
-	return jobs.NewServer(cfg.RedisAddr, workerConcurrency), mux, cleanup, nil
+	return jobs.NewServer(cfg.RedisAddr, cfg.WorkerConcurrency), mux, cleanup, nil
 }

@@ -1,0 +1,33 @@
+.qs {
+  align-self: stretch;
+  padding: 12px 0;
+  border-top: 1px solid var(--hairline);
+  font-size: var(--text-small);
+  color: var(--text-soft);
+}
+.qs--loading {
+  animation: qs-breathe 1.2s ease-in-out infinite alternate;
+}
+.qs--error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #ffb3bb;
+}
+.qs__retry {
+  flex: none;
+  padding: 6px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  color: var(--text);
+  font-weight: 600;
+}
+.qs__retry:hover {
+  border-color: rgb(255 255 255 / 0.4);
+}
+@keyframes qs-breathe {
+  from {
+    opacity: 0.45;
+  }
+}

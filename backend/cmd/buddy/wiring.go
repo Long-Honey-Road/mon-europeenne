@@ -6,6 +6,8 @@ import (
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/knowledge"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/people"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/requests"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/store"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/tools"
@@ -17,7 +19,8 @@ const fakeAnswer = "Тестовый режим: модель не подклю�
 
 // agentTools builds the tool set; without a store (buddy ask without DATABASE_URL) only directory tools exist.
 // The requests module is added only when FEATURE_REQUESTS is on.
-func agentTools(data seed.Data, st *store.Store, requestsOn bool) (*tools.Registry, error) {
+// repo is nil without the team-repo service: the task thread then has no repository tools.
+func agentTools(data seed.Data, dir people.Directory, st *store.Store, search tools.Searcher, repo tools.TeamRepo, requestsOn bool) (*tools.Registry, error) {
 	var list []tools.Tool
 	add := func(t tools.Tool, err error) error {
 		if err != nil {
@@ -26,19 +29,30 @@ func agentTools(data seed.Data, st *store.Store, requestsOn bool) (*tools.Regist
 		list = append(list, t)
 		return nil
 	}
-	if err := add(tools.WhoToAsk(data.Directory())); err != nil {
+	if err := add(tools.WhoToAsk(dir)); err != nil {
 		return nil, err
 	}
-	if err := add(tools.ReportNotFound(data.Directory())); err != nil {
+	if err := add(tools.ReportNotFound(dir)); err != nil {
 		return nil, err
 	}
 	if err := add(tools.GeneralKnowledge()); err != nil {
 		return nil, err
 	}
-	if err := add(tools.TeamMembers(data.Directory())); err != nil {
+	if err := add(tools.TeamMembers(dir)); err != nil {
 		return nil, err
 	}
+	if repo != nil {
+		if err := add(tools.ReadRepo(repo)); err != nil {
+			return nil, err
+		}
+		if err := add(tools.TeamProcess(repo)); err != nil {
+			return nil, err
+		}
+	}
 	if st != nil {
+		if err := add(tools.SearchDocs(search)); err != nil {
+			return nil, err
+		}
 		if err := add(tools.GetPlan(st)); err != nil {
 			return nil, err
 		}
@@ -46,7 +60,7 @@ func agentTools(data seed.Data, st *store.Store, requestsOn bool) (*tools.Regist
 			return nil, err
 		}
 		if requestsOn {
-			reqTools, err := requests.Tools(requests.CatalogFromSeed(data), st, data.Directory())
+			reqTools, err := requests.Tools(requests.CatalogFromSeed(data), st, dir)
 			if err != nil {
 				return nil, err
 			}
@@ -56,7 +70,7 @@ func agentTools(data seed.Data, st *store.Store, requestsOn bool) (*tools.Regist
 	return tools.NewRegistry(list...)
 }
 
-// localTools builds the tool set for dev commands: with DATABASE_URL the plan and requests tools work too,
+// localTools builds the tool set for dev commands: with DATABASE_URL the plan, search and requests tools work too,
 // without it only the directory ones.
 func localTools(ctx context.Context, cfg config.Config, data seed.Data) (*tools.Registry, func(), error) {
 	var st *store.Store
@@ -68,18 +82,29 @@ func localTools(ctx context.Context, cfg config.Config, data seed.Data) (*tools.
 		}
 		st, closeFn = store.New(pool), pool.Close
 	}
-	reg, err := agentTools(data, st, cfg.FeatureRequests)
+	var search tools.Searcher
+	if st != nil {
+		search = knowledge.New(st)
+	}
+	// With MOCKS_ADDR the directory and the repository come from the services, as in the worker.
+	src, closeSrc, err := openSources(cfg, data)
 	if err != nil {
 		closeFn()
 		return nil, nil, err
 	}
-	return reg, closeFn, nil
+	closeAll := func() { closeSrc(); closeFn() }
+	reg, err := agentTools(data, src.directory, st, search, src.teamRepo(), cfg.FeatureRequests)
+	if err != nil {
+		closeAll()
+		return nil, nil, err
+	}
+	return reg, closeAll, nil
 }
 
 // seedUsers looks up test users by id without hashing passwords.
 type seedUsers seed.Data
 
-func (s seedUsers) User(id string) (domain.User, error) {
+func (s seedUsers) User(_ context.Context, id string) (domain.User, error) {
 	for _, c := range seed.Data(s).Credentials() {
 		if c.User.ID == id {
 			return c.User, nil

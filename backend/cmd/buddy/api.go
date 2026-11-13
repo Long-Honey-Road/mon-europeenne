@@ -51,7 +51,7 @@ func runAPI(_ []string, stdout io.Writer) error {
 	return serve(ctx, ln, h)
 }
 
-// buildAPI wires the API: accounts and directory from seed until the mocks take over (A-02), threads in
+// buildAPI wires the API: accounts and directory from the corporate services (see sources), threads in
 // Postgres, jobs and live events in Redis. cleanup closes the connections.
 func buildAPI(ctx context.Context, cfg config.Config) (http.Handler, func(), error) {
 	tokens, err := auth.NewTokens(cfg.SessionSecret, sessionTTL)
@@ -68,29 +68,35 @@ func buildAPI(ctx context.Context, cfg config.Config) (http.Handler, func(), err
 	if err != nil {
 		return nil, nil, err
 	}
-	accounts, err := auth.NewAccounts(data.Credentials())
+	src, closeSrc, err := openSources(cfg, data)
 	if err != nil {
 		return nil, nil, err
 	}
 	pool, err := store.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
+		closeSrc()
 		return nil, nil, err
 	}
 	rdb := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr})
-	queue := jobs.NewClient(cfg.RedisAddr)
+	queue := jobs.NewClient(cfg.RedisAddr, jobs.TaskTimeout(cfg.LLM.QueueTimeout, cfg.TurnTimeout))
 	cleanup := func() {
 		_ = queue.Close()
 		_ = rdb.Close()
 		pool.Close()
+		closeSrc()
 	}
 
 	st := store.New(pool)
 	deps := httpapi.Deps{
-		Accounts: accounts, Tokens: tokens, Directory: data.Directory(),
+		Accounts: src.accounts, Tokens: tokens, Directory: src.directory,
 		Threads: st, Plans: st, Jobs: queue, Bus: stream.NewRedisBus(rdb),
 	}
 	if cfg.FeatureRequests {
-		desk := newDesk(data, st, rdb)
+		desk, err := newDesk(data, src, st, rdb)
+		if err != nil {
+			cleanup()
+			return nil, nil, err
+		}
 		deps.Requests, deps.Blockers = requests.NewAPI(desk), []httpapi.BlockerSource{desk}
 	}
 	h, err := httpapi.New(ctx, deps)

@@ -109,3 +109,21 @@ func TestLLMCheckReportsInvalidConfig(t *testing.T) {
 		t.Fatalf("exit %d, want %d", code, exitError)
 	}
 }
+
+func TestLLMCheckProbesEveryEndpoint(t *testing.T) {
+	t.Setenv("LLM_PROVIDER", "openai_compat")
+	t.Setenv("LLM_ENDPOINTS", `[{"name":"pc","base_url":"`+modelServer(t, true)+`","model":"m"},`+
+		`{"name":"uni","base_url":"`+modelServer(t, false)+`","model":"m","max_concurrency":2}]`)
+	var stdout, stderr bytes.Buffer
+
+	code := run([]string{"llm-check"}, &stdout, &stderr)
+
+	if code != exitError {
+		t.Fatalf("exit %d, want %d: the second endpoint skips tools", code, exitError)
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "endpoint pc:") || !strings.Contains(out, "endpoint uni:") || !strings.Contains(out, "2 at once") ||
+		strings.Count(out, "tool call: ok") != 1 || strings.Count(out, "tool call: FAIL") != 1 {
+		t.Errorf("stdout = %q", out)
+	}
+}

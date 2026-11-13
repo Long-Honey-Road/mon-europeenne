@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,7 +24,8 @@ var (
 	spacesRe = regexp.MustCompile(`[ \t]+([.,;:!?])`)
 	// Two or more spaces inside a line, left where a marker was removed; indentation is kept.
 	doubleSpaceRe = regexp.MustCompile(`(\S)[ \t]{2,}`)
-	// A marker without a number, e.g. [ref] or [источник 2]; a markdown link right after it keeps it.
+	// A marker in the model's own style, e.g. [ref], [ref1] or [источник 2]; a markdown link right after it keeps it.
+	digitsRe    = regexp.MustCompile(`\d+`)
 	pseudoRefRe = regexp.MustCompile(`(?i)\[(?:ref|refs|source|sources|src|cite|источник|ссылка)[^\]\n]{0,6}\](\()?`)
 )
 
@@ -36,6 +38,7 @@ type turnState struct {
 	notFound   *tools.NotFoundReport
 	general    *tools.GeneralKnowledgeNote
 	actions    []json.RawMessage
+	conflicts  []Block
 	violations []string
 	events     []Event
 }
@@ -70,6 +73,8 @@ func (s *turnState) absorb(tool string, raw []byte) []byte {
 		s.actions = append(s.actions, a)
 	}
 	switch tool {
+	case "search_docs":
+		s.absorbConflicts(obj)
 	case "who_to_ask":
 		var people []tools.PersonHint
 		if json.Unmarshal(obj["people"], &people) == nil {
@@ -110,6 +115,10 @@ func (s *turnState) finishText(text string, thread domain.ThreadType) (string, m
 	text = pseudoRefRe.ReplaceAllStringFunc(text, func(m string) string {
 		if strings.HasSuffix(m, "(") {
 			return m
+		}
+		// [ref1] means [1]: keep the citation, the marker check below validates the number.
+		if n := digitsRe.FindString(m); n != "" {
+			return "[" + n + "]"
 		}
 		s.violations = append(s.violations, "pseudo marker "+m)
 		removed = true
@@ -160,6 +169,45 @@ func (s *turnState) finishText(text string, thread domain.ThreadType) (string, m
 	return text, cited
 }
 
+// absorbConflicts turns conflict candidates into blocks with the two numbered fragments, one per topic, and tells
+// the model which ref is the general rule and which the team's, so it cannot mix them up.
+func (s *turnState) absorbConflicts(obj map[string]json.RawMessage) {
+	var frags []struct {
+		Ref   int    `json:"ref"`
+		DocID string `json:"doc_id"`
+	}
+	var pairs []domain.ConflictCandidate
+	if json.Unmarshal(obj["sources"], &frags) != nil || json.Unmarshal(obj["conflict_candidates"], &pairs) != nil {
+		return
+	}
+	byDoc := map[string]Source{}
+	for _, f := range frags {
+		if _, ok := byDoc[f.DocID]; !ok && f.Ref >= 1 && f.Ref <= len(s.refs) {
+			byDoc[f.DocID] = s.refs[f.Ref-1]
+		}
+	}
+	type annotated struct {
+		Topic      string `json:"topic"`
+		GeneralRef int    `json:"general_ref"`
+		TeamRef    int    `json:"team_ref"`
+	}
+	var seen []annotated
+	for _, p := range pairs {
+		a, okA := byDoc[p.DocA]
+		b, okB := byDoc[p.DocB]
+		if !okA || !okB {
+			continue
+		}
+		seen = append(seen, annotated{Topic: p.Topic, GeneralRef: a.Ref, TeamRef: b.Ref})
+		if !slices.ContainsFunc(s.conflicts, func(c Block) bool { return c.Topic == p.Topic }) {
+			s.conflicts = append(s.conflicts, Block{Type: "conflict", Topic: p.Topic, Items: []Source{a, b}})
+		}
+	}
+	if b, err := json.Marshal(seen); err == nil {
+		obj["conflict_candidates"] = b
+	}
+}
+
 func (s *turnState) blocks(cited map[int]bool) []Block {
 	var out []Block
 	if len(s.refs) > 0 {
@@ -172,6 +220,7 @@ func (s *turnState) blocks(cited map[int]bool) []Block {
 		sort.Slice(items, func(i, j int) bool { return items[i].Ref < items[j].Ref })
 		out = append(out, Block{Type: "sources", Items: items})
 	}
+	out = append(out, s.conflicts...)
 	seen := map[string]bool{}
 	for _, p := range s.people {
 		if seen[p.PersonID] || len(seen) == maxPersonBlocks {
@@ -206,6 +255,8 @@ func (s *turnState) closingEvents(blocks []Block) {
 			s.event(domain.EventAnswerWithSources, map[string]any{"sources": len(b.Items)})
 		case "not_found":
 			s.event(domain.EventNotFound, map[string]any{"topic": b.Topic})
+		case "conflict":
+			s.event(domain.EventConflictDetected, map[string]any{"topic": b.Topic, "docs": []string{b.Items[0].SourceID, b.Items[1].SourceID}})
 		case "general_knowledge":
 			s.event(domain.EventGeneralKnowledge, map[string]any{"topic": b.Topic})
 		}

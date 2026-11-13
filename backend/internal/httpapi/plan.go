@@ -72,7 +72,7 @@ func (s *planService) GetToday(ctx context.Context, _ *buddyv1.GetTodayRequest) 
 	if err != nil {
 		return nil, err
 	}
-	user, err := s.deps.Accounts.User(p.UserID)
+	user, err := s.deps.Accounts.User(ctx, p.UserID)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "authentication required")
 	}

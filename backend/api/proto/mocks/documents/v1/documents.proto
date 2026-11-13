@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package mocks.documents.v1;
+
+import "google/api/annotations.proto";
+
+// DocumentsService imitates the team wiki (Confluence): general and team documents in markdown. Every document is
+// a synthetic training instruction. Buddy reads it with a service account and applies team rights itself.
+service DocumentsService {
+  // ListDocuments filters by team (empty: all) and topic (empty: all).
+  rpc ListDocuments(ListDocumentsRequest) returns (ListDocumentsResponse) {
+    option (google.api.http) = {get: "/documents"};
+  }
+  // GetDocument fails with NOT_FOUND for an unknown id.
+  rpc GetDocument(GetDocumentRequest) returns (GetDocumentResponse) {
+    option (google.api.http) = {get: "/documents/{document_id}"};
+  }
+}
+
+message DocumentInfo {
+  string id = 1;
+  string title = 2;
+  // Empty for a general document visible to everyone.
+  string team_id = 3;
+  string topic = 4;
+  // Always true here: the documents are training instructions, not Avito regulations.
+  bool test_instruction = 5;
+}
+
+message ListDocumentsRequest {
+  string team_id = 1;
+  string topic = 2;
+}
+
+message ListDocumentsResponse {
+  repeated DocumentInfo documents = 1;
+}
+
+message GetDocumentRequest {
+  string document_id = 1;
+}
+
+message GetDocumentResponse {
+  DocumentInfo info = 1;
+  string markdown = 2;
+}

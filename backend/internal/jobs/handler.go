@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -22,6 +23,11 @@ import (
 // historyWindow messages are read so the agent's own limit (12) still has a full tail before the question.
 const historyWindow = 40
 
+const (
+	queuedStatus        = "В очереди…"
+	defaultQueueTimeout = 5 * time.Minute
+)
+
 type Store interface {
 	Thread(ctx context.Context, userID, id string) (domain.Thread, error)
 	Messages(ctx context.Context, threadID string, limit int) ([]domain.Message, error)
@@ -35,11 +41,21 @@ type Publisher interface {
 }
 
 type Runner interface {
-	Run(ctx context.Context, t agent.Turn, emit agent.Emitter) (agent.Result, error)
+	RunWith(ctx context.Context, model llm.Client, t agent.Turn, emit agent.Emitter) (agent.Result, error)
+}
+
+// Models hands out one model endpoint for a whole turn; onWait is called if the turn has to queue.
+type Models interface {
+	Acquire(ctx context.Context, onWait func()) (llm.Client, func(), error)
+}
+
+// Turns frees the thread for the next message once the turn ends.
+type Turns interface {
+	Release(ctx context.Context, threadID, jobID string) error
 }
 
 type Users interface {
-	User(id string) (domain.User, error)
+	User(ctx context.Context, id string) (domain.User, error)
 }
 
 type Deps struct {
@@ -48,6 +64,10 @@ type Deps struct {
 	Agent     Runner
 	Users     Users
 	Directory tools.PeopleDirectory
+	Models    Models
+	Turns     Turns
+	// QueueTimeout limits waiting for a free model; 5 min if zero.
+	QueueTimeout time.Duration
 }
 
 // Handler answers one user message: runs the agent, streams events, saves the answer.
@@ -61,7 +81,16 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 		return fmt.Errorf("chat_turn payload: %w", err)
 	}
 	jobID, _ := asynq.GetTaskID(ctx)
-	emit := &busEmitter{ctx: ctx, pub: h.d.Publisher, threadID: turn.ThreadID, jobID: jobID}
+	var once sync.Once
+	free := func() {
+		once.Do(func() {
+			if err := h.d.Turns.Release(context.WithoutCancel(ctx), turn.ThreadID, jobID); err != nil {
+				slog.Error("free thread after turn", "thread", turn.ThreadID, "err", err)
+			}
+		})
+	}
+	defer free()
+	emit := &busEmitter{ctx: ctx, pub: h.d.Publisher, threadID: turn.ThreadID, jobID: jobID, beforeEnd: free}
 
 	thread, err := h.d.Store.Thread(ctx, turn.UserID, turn.ThreadID)
 	if errors.Is(err, store.ErrNotFound) {
@@ -71,7 +100,7 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	if err != nil {
 		return err
 	}
-	user, err := h.d.Users.User(turn.UserID)
+	user, err := h.d.Users.User(ctx, turn.UserID)
 	if err != nil {
 		return err
 	}
@@ -96,10 +125,21 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 		return err
 	}
 
-	res, err := h.d.Agent.Run(ctx, agent.Turn{
+	model, release, err := h.acquire(ctx, emit)
+	if err != nil {
+		if !errors.Is(err, context.DeadlineExceeded) {
+			return err
+		}
+		h.saveTrace(ctx, domain.TurnTrace{ThreadID: thread.ID, QuestionID: turn.MessageID, JobID: jobID, Mode: turn.Mode,
+			Error: "queue: no free model: " + err.Error(), Steps: []byte("[]")})
+		h.fail(emit, p, "model_busy", "Модель занята другими ответами и не освободилась. Попробуй ещё раз через пару минут или спроси у людей ниже.")
+		return nil
+	}
+	res, err := h.d.Agent.RunWith(ctx, model, agent.Turn{
 		Principal: p, Thread: thread.Type, Mode: agent.Mode(turn.Mode), Profile: prof, Today: agent.TodayLine(time.Now(), user.StartDate),
 		Pinned: pinText(thread.Pin), Summary: thread.Summary, History: history(msgs[:idx]), Message: msgs[idx].Content,
 	}, emit)
+	release()
 	trace := domain.TurnTrace{
 		ThreadID: thread.ID, QuestionID: turn.MessageID, JobID: jobID, Mode: string(res.Mode), Duration: res.Trace.Duration,
 		SystemPrompt: res.Trace.SystemPrompt, RawText: res.Trace.RawText, FinalText: res.Text, Violations: res.Trace.Violations,
@@ -140,6 +180,22 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	// The saved text may differ from the stream: invariants remove invented links and markers.
 	emit.publish("done", map[string]any{"message_id": saved.ID, "text": saved.Content})
 	return nil
+}
+
+// acquire waits for a model endpoint, telling the user the turn is queued; the turn timeout starts after it.
+func (h *Handler) acquire(ctx context.Context, emit *busEmitter) (llm.Client, func(), error) {
+	timeout := h.d.QueueTimeout
+	if timeout == 0 {
+		timeout = defaultQueueTimeout
+	}
+	waitCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	started := time.Now()
+	model, release, err := h.d.Models.Acquire(waitCtx, func() { emit.Status(queuedStatus) })
+	if wait := time.Since(started); wait > time.Second {
+		slog.Info("turn waited for a model", "thread", emit.threadID, "wait", wait.Round(time.Millisecond), "err", err)
+	}
+	return model, release, err
 }
 
 // saveTrace keeps the turn for debugging; losing a trace never fails the turn.
@@ -200,9 +256,14 @@ type busEmitter struct {
 	pub      Publisher
 	threadID string
 	jobID    string
+	// beforeEnd frees the thread before done or error, so the client can send the next message at once.
+	beforeEnd func()
 }
 
 func (e *busEmitter) publish(typ string, data map[string]any) {
+	if (typ == "done" || typ == "error") && e.beforeEnd != nil {
+		e.beforeEnd()
+	}
 	data["job_id"] = e.jobID
 	if err := e.pub.Publish(e.ctx, e.threadID, stream.Event{Type: typ, Data: data}); err != nil {
 		slog.Error("publish stream event", "type", typ, "thread", e.threadID, "err", err)

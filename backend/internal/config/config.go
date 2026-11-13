@@ -5,11 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 )
 
 var (
 	ErrInvalid = errors.New("invalid config value")
 	ErrMissing = errors.New("missing config value")
+)
+
+// The Playbook is read at a fixed commit, so answers do not change under the user's feet.
+const (
+	DefaultPlaybookRepo = "avito-tech/playbook"
+	DefaultPlaybookRef  = "0c1d2aa1501ca6889357908f54b12695f0534e48"
 )
 
 type Provider string
@@ -31,6 +38,10 @@ type LLM struct {
 	DetailedReasoningEffort string
 	// Temperature is nil when LLM_TEMPERATURE is empty: the model default.
 	Temperature *float64
+	// Endpoints are the pool's model sources (LLM_ENDPOINTS, or the fields above as a pool of one).
+	Endpoints []Endpoint
+	// QueueTimeout is how long a turn waits for a free endpoint.
+	QueueTimeout time.Duration
 }
 
 type Embeddings struct {
@@ -38,18 +49,34 @@ type Embeddings struct {
 	Model   string
 }
 
+// Mocks configures the buddy mocks process.
+type Mocks struct {
+	GRPCAddr string
+	HTTPAddr string
+	// FailRate is the share of calls that fail; MaxLatency is a random delay added to every call.
+	FailRate   float64
+	MaxLatency time.Duration
+}
+
 type Config struct {
-	LLM           LLM
-	Embeddings    Embeddings
-	DatabaseURL   string
-	RedisAddr     string
-	MocksBaseURL  string
+	LLM         LLM
+	Embeddings  Embeddings
+	DatabaseURL string
+	RedisAddr   string
+	// MocksAddr is the gRPC address of the corporate services (buddy mocks); empty serves seed in memory.
+	MocksAddr     string
 	SessionSecret string
-	MockFailRate  float64
+	Mocks         Mocks
 	HTTPAddr      string
 	GRPCAddr      string
 	// FeatureRequests turns on the access requests module.
 	FeatureRequests bool
+	// PlaybookRepo is the GitHub repository of the open Avito Playbook; empty turns it off.
+	PlaybookRepo string
+	PlaybookRef  string
+	// TurnTimeout limits one agent turn, counted from getting a model endpoint.
+	TurnTimeout       time.Duration
+	WorkerConcurrency int
 }
 
 // Load builds Config from lookup (os.LookupEnv in production).
@@ -75,10 +102,13 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 		Embeddings:    Embeddings{Model: str("EMBEDDINGS_MODEL", "")},
 		DatabaseURL:   str("DATABASE_URL", ""),
 		RedisAddr:     str("REDIS_ADDR", ""),
-		MocksBaseURL:  str("MOCKS_BASE_URL", ""),
+		MocksAddr:     str("MOCKS_ADDR", ""),
+		Mocks:         Mocks{GRPCAddr: str("MOCKS_GRPC_ADDR", ":9091"), HTTPAddr: str("MOCKS_HTTP_ADDR", ":8090")},
 		SessionSecret: str("SESSION_SECRET", ""),
 		HTTPAddr:      str("HTTP_ADDR", ":8080"),
 		GRPCAddr:      str("GRPC_ADDR", ":9090"),
+		PlaybookRepo:  str("PLAYBOOK_REPO", DefaultPlaybookRepo),
+		PlaybookRef:   str("PLAYBOOK_REF", DefaultPlaybookRef),
 	}
 
 	switch cfg.LLM.Provider {
@@ -115,11 +145,18 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 		return Config{}, fmt.Errorf("FEATURE_REQUESTS: %w", ErrInvalid)
 	}
 
-	if cfg.MockFailRate, err = strconv.ParseFloat(str("MOCK_FAIL_RATE", "0"), 64); err != nil {
+	if cfg.Mocks.FailRate, err = strconv.ParseFloat(str("MOCK_FAIL_RATE", "0"), 64); err != nil {
 		return Config{}, fmt.Errorf("MOCK_FAIL_RATE: %w", ErrInvalid)
 	}
-	if cfg.MockFailRate < 0 || cfg.MockFailRate > 1 {
-		return Config{}, fmt.Errorf("MOCK_FAIL_RATE=%v outside [0, 1]: %w", cfg.MockFailRate, ErrInvalid)
+	if cfg.Mocks.FailRate < 0 || cfg.Mocks.FailRate > 1 {
+		return Config{}, fmt.Errorf("MOCK_FAIL_RATE=%v outside [0, 1]: %w", cfg.Mocks.FailRate, ErrInvalid)
+	}
+	if cfg.Mocks.MaxLatency, err = time.ParseDuration(str("MOCK_MAX_LATENCY", "0s")); err != nil || cfg.Mocks.MaxLatency < 0 {
+		return Config{}, fmt.Errorf("MOCK_MAX_LATENCY: %w", ErrInvalid)
+	}
+
+	if err := loadPool(&cfg, str); err != nil {
+		return Config{}, err
 	}
 
 	return cfg, nil

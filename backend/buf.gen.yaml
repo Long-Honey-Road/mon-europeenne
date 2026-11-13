@@ -19,11 +19,3 @@ plugins:
   - local: [go, tool, -modfile=tools.mod, protoc-gen-grpc-gateway]
     out: gen
     opt: paths=source_relative
-  - local: [go, tool, -modfile=tools.mod, protoc-gen-openapi]
-    out: api/openapi
-    strategy: all
-    opt:
-      - naming=proto
-      - enum_type=string
-      - title=AI-buddy API
-      - version=0.1.0

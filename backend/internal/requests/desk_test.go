@@ -22,7 +22,7 @@ import (
 
 var errDown = errors.New("down")
 
-// fakeService approves or rejects on Advance, by type: types with "sentry" are rejected.
+// fakeService approves or rejects on Updates, by type: types with "sentry" are rejected.
 type fakeService struct {
 	tickets map[string]Ticket
 	order   []string
@@ -41,7 +41,8 @@ func (f *fakeService) Submit(_ context.Context, s Submission) (Ticket, error) {
 	return t, nil
 }
 
-func (f *fakeService) Advance(_ context.Context, now time.Time) ([]Ticket, error) {
+func (f *fakeService) Updates(context.Context) ([]Ticket, error) {
+	now := time.Unix(100, 0)
 	var out []Ticket
 	for _, id := range f.order {
 		t := f.tickets[id]
@@ -209,7 +210,7 @@ func TestSyncUpdatesMirrorAndThread(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	n, err := f.desk.Sync(ctx, time.Now())
+	n, err := f.desk.Sync(ctx)
 	if err != nil || n != 2 {
 		t.Fatalf("sync: %d %v", n, err)
 	}
@@ -231,12 +232,12 @@ func TestSyncKeepsGoingAfterMirrorFailure(t *testing.T) {
 	ctx := context.Background()
 	_, _ = f.desk.Submit(ctx, liza, "", "access.vpn", map[string]any{"justification": "работа из дома"})
 	f.mirror.failOn = "save"
-	if n, err := f.desk.Sync(ctx, time.Now()); n != 0 || err != nil {
+	if n, err := f.desk.Sync(ctx); n != 0 || err != nil {
 		t.Fatalf("sync = %d %v", n, err)
 	}
 	f.mirror.failOn = ""
 	f.svc.failOn = "advance"
-	if _, err := f.desk.Sync(ctx, time.Now()); !errors.Is(err, errDown) {
+	if _, err := f.desk.Sync(ctx); !errors.Is(err, errDown) {
 		t.Fatalf("service error must surface: %v", err)
 	}
 }
@@ -271,7 +272,7 @@ func TestBlockers(t *testing.T) {
 
 	_, _ = f.desk.Submit(ctx, liza, "", "access.sentry_project", map[string]any{"project": "messenger-api", "justification": "разбор ошибок первой задачи"})
 	_, _ = f.desk.Submit(ctx, liza, "", "access.vpn", map[string]any{"justification": "работа из дома"})
-	_, _ = f.desk.Sync(ctx, time.Now())
+	_, _ = f.desk.Sync(ctx)
 	_, _ = f.desk.Submit(ctx, liza, "", "access.jira_project", jira)
 
 	b, _ = f.desk.Blockers(ctx, liza)

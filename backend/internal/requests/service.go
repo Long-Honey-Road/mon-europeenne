@@ -53,6 +53,6 @@ type Submission struct {
 // Service is the company's request system (corp-requests). Buddy only submits and mirrors what it says.
 type Service interface {
 	Submit(ctx context.Context, s Submission) (Ticket, error)
-	// Advance moves requests that are due and returns those that changed.
-	Advance(ctx context.Context, now time.Time) ([]Ticket, error)
+	// Updates returns the requests that changed since the previous call.
+	Updates(ctx context.Context) ([]Ticket, error)
 }

@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package mocks.corprequests.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// CorpRequestsService imitates the company's request system for access requests. Approvers decide on their
+// own schedule (demo outcomes from seed); clients learn about decisions by polling ListUpdates.
+service CorpRequestsService {
+  // SubmitRequest registers a request with its approval chain; an empty chain is INVALID_ARGUMENT.
+  rpc SubmitRequest(SubmitRequestRequest) returns (SubmitRequestResponse) {
+    option (google.api.http) = {
+      post: "/requests"
+      body: "*"
+    };
+  }
+  // GetRequest fails with NOT_FOUND for an unknown id.
+  rpc GetRequest(GetRequestRequest) returns (GetRequestResponse) {
+    option (google.api.http) = {get: "/requests/{request_id}"};
+  }
+  // ListRequests returns the requests of one requester, newest first.
+  rpc ListRequests(ListRequestsRequest) returns (ListRequestsResponse) {
+    option (google.api.http) = {get: "/requests"};
+  }
+  // ListUpdates returns requests changed after a cursor, oldest change first, and the cursor to pass next. A
+  // cursor below the one passed means the service lost its state: the client starts over from 0.
+  rpc ListUpdates(ListUpdatesRequest) returns (ListUpdatesResponse) {
+    option (google.api.http) = {get: "/requests/updates"};
+  }
+}
+
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_PENDING = 1;
+  STATUS_APPROVED = 2;
+  STATUS_REJECTED = 3;
+}
+
+message Approver {
+  // object_owner, manager, devops or hr_admin.
+  string role = 1;
+  string person_id = 2;
+  string name = 3;
+}
+
+message Change {
+  google.protobuf.Timestamp at = 1;
+  Status status = 2;
+  string by = 3;
+  string note = 4;
+}
+
+message Request {
+  // REQ-<n>.
+  string id = 1;
+  string type_key = 2;
+  string requester_id = 3;
+  google.protobuf.Struct fields = 4;
+  Status status = 5;
+  // The whole chain; step points at the current approver.
+  repeated Approver approvers = 6;
+  int32 step = 7;
+  // Why it was rejected.
+  string reason = 8;
+  repeated Change history = 9;
+  google.protobuf.Timestamp updated_at = 10;
+  // Grows with every change of any request; ListUpdates pages by it.
+  int64 version = 11;
+}
+
+message SubmitRequestRequest {
+  string type_key = 1;
+  string requester_id = 2;
+  google.protobuf.Struct fields = 3;
+  repeated Approver approvers = 4;
+}
+
+message SubmitRequestResponse {
+  Request request = 1;
+}
+
+message GetRequestRequest {
+  string request_id = 1;
+}
+
+message GetRequestResponse {
+  Request request = 1;
+}
+
+message ListRequestsRequest {
+  string requester_id = 1;
+}
+
+message ListRequestsResponse {
+  repeated Request requests = 1;
+}
+
+message ListUpdatesRequest {
+  // Version of the last change the client has seen; 0 for everything.
+  int64 after = 1;
+}
+
+message ListUpdatesResponse {
+  repeated Request requests = 1;
+  // Version of the latest change of any request.
+  int64 cursor = 2;
+}

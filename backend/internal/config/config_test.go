@@ -2,7 +2,9 @@ package config
 
 import (
 	"errors"
+	"reflect"
 	"testing"
+	"time"
 )
 
 func envOf(vars map[string]string) func(string) (string, bool) {
@@ -30,8 +32,8 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	if cfg.Embeddings.Enabled {
 		t.Error("Embeddings.Enabled = true, want false by default")
 	}
-	if cfg.MockFailRate != 0 {
-		t.Errorf("MockFailRate = %v, want 0", cfg.MockFailRate)
+	if cfg.Mocks.FailRate != 0 {
+		t.Errorf("Mocks.FailRate = %v, want 0", cfg.Mocks.FailRate)
 	}
 	if !cfg.FeatureRequests {
 		t.Error("FeatureRequests = false, want on by default")
@@ -49,12 +51,17 @@ func TestLoadReadsEnvironment(t *testing.T) {
 		"EMBEDDINGS_MODEL":     "bge-m3",
 		"DATABASE_URL":         "postgres://buddy:buddy@postgres:5432/buddy",
 		"REDIS_ADDR":           "redis:6379",
-		"MOCKS_BASE_URL":       "http://mocks:8090",
+		"MOCKS_ADDR":           "mocks:9091",
+		"MOCKS_GRPC_ADDR":      ":19091",
+		"MOCKS_HTTP_ADDR":      ":18090",
+		"MOCK_MAX_LATENCY":     "200ms",
 		"SESSION_SECRET":       "s3",
 		"MOCK_FAIL_RATE":       "0.25",
 		"HTTP_ADDR":            ":18080",
 		"GRPC_ADDR":            ":19090",
 		"FEATURE_REQUESTS":     "false",
+		"PLAYBOOK_REPO":        "",
+		"PLAYBOOK_REF":         "main",
 	}))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -67,18 +74,26 @@ func TestLoadReadsEnvironment(t *testing.T) {
 			Model:           "qwen3.6:35b-a3b",
 			APIKey:          "secret",
 			ReasoningEffort: "none",
+			Endpoints: []Endpoint{{
+				Name: "default", BaseURL: "http://ollama:11434/v1", Model: "qwen3.6:35b-a3b", APIKey: "secret",
+				MaxConcurrency: 1, ReasoningEffort: "none",
+			}},
+			QueueTimeout: 5 * time.Minute,
 		},
-		Embeddings:      Embeddings{Enabled: true, Model: "bge-m3"},
-		DatabaseURL:     "postgres://buddy:buddy@postgres:5432/buddy",
-		RedisAddr:       "redis:6379",
-		MocksBaseURL:    "http://mocks:8090",
-		SessionSecret:   "s3",
-		MockFailRate:    0.25,
-		HTTPAddr:        ":18080",
-		GRPCAddr:        ":19090",
-		FeatureRequests: false,
+		TurnTimeout:       80 * time.Second,
+		WorkerConcurrency: 4,
+		Embeddings:        Embeddings{Enabled: true, Model: "bge-m3"},
+		DatabaseURL:       "postgres://buddy:buddy@postgres:5432/buddy",
+		RedisAddr:         "redis:6379",
+		MocksAddr:         "mocks:9091",
+		SessionSecret:     "s3",
+		Mocks:             Mocks{GRPCAddr: ":19091", HTTPAddr: ":18090", FailRate: 0.25, MaxLatency: 200 * time.Millisecond},
+		HTTPAddr:          ":18080",
+		GRPCAddr:          ":19090",
+		FeatureRequests:   false,
+		PlaybookRef:       "main",
 	}
-	if cfg != want {
+	if !reflect.DeepEqual(cfg, want) {
 		t.Fatalf("Load() =\n%+v\nwant\n%+v", cfg, want)
 	}
 }
@@ -90,6 +105,8 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		"bad float":                {"MOCK_FAIL_RATE": "often"},
 		"fail rate above one":      {"MOCK_FAIL_RATE": "1.5"},
 		"negative fail rate":       {"MOCK_FAIL_RATE": "-0.1"},
+		"bad latency":              {"MOCK_MAX_LATENCY": "slow"},
+		"negative latency":         {"MOCK_MAX_LATENCY": "-1s"},
 		"empty provider value":     {"LLM_PROVIDER": ""},
 		"unknown reasoning effort": {"LLM_REASONING_EFFORT": "max"},
 		"unknown detailed effort":  {"LLM_REASONING_EFFORT_DETAILED": "max"},

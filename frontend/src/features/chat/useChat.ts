@@ -1,17 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api'
+import { ApiError } from '../../api/client'
 import type { AnswerMode, Rating } from '../../api/client'
 import { openThreadEvents } from '../../api/events'
 import type { ThreadEvent } from '../../api/events'
 import { blockSchema, escalationStepSchema } from '../../api/schemas'
 import type { Block, EscalationStep, ThreadType } from '../../api/schemas'
 import { useSession } from '../auth/session'
+import { applyHighlight } from '../plan/highlight'
+import { applyRequestStatus } from '../requests/useRequests'
+import { useChatRoute } from './route'
 
 /** How long to wait for the event stream before sending, and for the answer after sending. */
 export const CONNECT_TIMEOUT_MS = 5_000
-export const TURN_TIMEOUT_MS = 120_000
+/** The server ends every turn itself; this covers its queue (5 min) and turn (80 s) limits. */
+export const TURN_TIMEOUT_MS = 7 * 60_000
 const RECONNECT_MS = 2_000
+
+/** Events that belong to one turn and carry its job_id. */
+const TURN_EVENTS = new Set(['status', 'delta', 'reset', 'block', 'done', 'error'])
+
+/** The turn this client waits for; its events are held until the send returns the job id. */
+type OwnTurn = { jobId?: string; held: ThreadEvent[] }
 
 export type TurnError = { message: string; escalation: EscalationStep[] }
 
@@ -55,6 +66,7 @@ export function useChat() {
   const [ratings, setRatings] = useState<Record<string, Rating>>({})
   const ready = useRef<Promise<void> | null>(null)
   const turnTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const ownTurn = useRef<OwnTurn | null>(null)
   const creating = useRef(false)
 
   const threads = useQuery({ queryKey: threadsKey, queryFn: api.threads, enabled: token !== null })
@@ -67,29 +79,67 @@ export function useChat() {
   const createThread = useCallback(
     async (type: ThreadType) => {
       const t = await api.createThread(type)
-      await qc.invalidateQueries({ queryKey: threadsKey })
+      // Select before the list refetch, so the default thread effect never sees an empty selection.
+      ownTurn.current = null
       setLive(null)
       setThreadId(t.id)
+      await qc.invalidateQueries({ queryKey: threadsKey })
       return t
     },
     [qc],
   )
 
-  // Open the newest general thread, or start one.
+  // Open the newest general thread, or start one, unless another screen asked for a thread type.
   useEffect(() => {
-    if (threadId || !threads.data || creating.current) return
+    if (threadId || !threads.data || creating.current || useChatRoute.getState().wanted || useChatRoute.getState().wantedId)
+      return
     const general = threads.data.find((t) => t.type === 'THREAD_TYPE_GENERAL')
     if (general) {
       setThreadId(general.id)
       return
     }
     creating.current = true
-    createThread('THREAD_TYPE_GENERAL')
+    // A screen may pick a thread while this one is being created; the default never overrides that choice.
+    api
+      .createThread('THREAD_TYPE_GENERAL')
+      .then((t) => {
+        setThreadId((current) => current ?? t.id)
+        return qc.invalidateQueries({ queryKey: threadsKey })
+      })
       .catch(() => {})
       .finally(() => {
         creating.current = false
       })
-  }, [threadId, threads.data, createThread])
+  }, [threadId, threads.data, qc])
+
+  // Another screen asked for a thread of some type: open the newest one, or start it.
+  const wanted = useChatRoute((s) => s.wanted)
+  const wantedId = useChatRoute((s) => s.wantedId)
+  const clearWanted = useChatRoute((s) => s.clear)
+  useEffect(() => {
+    if (!wantedId) return
+    clearWanted()
+    ownTurn.current = null
+    setLive(null)
+    setThreadId(wantedId)
+  }, [wantedId, clearWanted])
+  useEffect(() => {
+    if (!wanted || !threads.data) return
+    clearWanted()
+    const found = threads.data.find((t) => t.type === wanted)
+    if (found) {
+      ownTurn.current = null
+      setLive(null)
+      setThreadId(found.id)
+      return
+    }
+    creating.current = true
+    createThread(wanted)
+      .catch(() => {})
+      .finally(() => {
+        creating.current = false
+      })
+  }, [wanted, threads.data, createThread, clearWanted])
 
   const stopTimer = () => {
     if (turnTimer.current) clearTimeout(turnTimer.current)
@@ -98,6 +148,16 @@ export function useChat() {
 
   const onEvent = useCallback(
     (e: ThreadEvent) => {
+      if (TURN_EVENTS.has(e.type)) {
+        const own = ownTurn.current
+        if (!own) return
+        if (own.jobId === undefined) {
+          own.held.push(e)
+          return
+        }
+        if (e.data.job_id !== own.jobId) return
+        if (e.type === 'done' || e.type === 'error') ownTurn.current = null
+      }
       const text = typeof e.data.text === 'string' ? e.data.text : ''
       switch (e.type) {
         case 'status':
@@ -122,6 +182,12 @@ export function useChat() {
           void qc.invalidateQueries({ queryKey: messagesKey(threadId) })
           break
         }
+        case 'highlight':
+          applyHighlight(e.data)
+          break
+        case 'request_status':
+          applyRequestStatus(qc, e.data)
+          break
         case 'error': {
           stopTimer()
           const escalation = escalationStepSchema.array().safeParse(e.data.escalation)
@@ -184,19 +250,32 @@ export function useChat() {
         setLive((l) => l && { ...l, error: failed('Нет связи с сервером: ответ не придёт. Попробуй ещё раз.') })
         return
       }
+      const own: OwnTurn = { held: [] }
+      ownTurn.current = own
+      let jobId: string
       try {
-        await api.sendMessage(threadId, text, mode)
-      } catch {
-        setLive((l) => l && { ...l, error: failed('Сообщение не отправилось. Попробуй ещё раз.') })
+        jobId = (await api.sendMessage(threadId, text, mode)).job_id
+      } catch (e) {
+        if (ownTurn.current === own) ownTurn.current = null
+        const message =
+          e instanceof ApiError && e.status === 409
+            ? 'Ответ ещё готовится: дождись его и отправь вопрос снова.'
+            : 'Сообщение не отправилось. Попробуй ещё раз.'
+        setLive((l) => l && { ...l, error: failed(message) })
         return
       }
+      if (ownTurn.current !== own) return
+      own.jobId = jobId
+      for (const e of own.held.splice(0)) onEvent(e)
+      if (ownTurn.current !== own) return
       stopTimer()
       turnTimer.current = setTimeout(() => {
+        if (ownTurn.current === own) ownTurn.current = null
         setLive((l) => l && !l.error ? { ...l, status: undefined, error: failed('Ответ не пришёл вовремя. Попробуй ещё раз.') } : l)
         void qc.invalidateQueries({ queryKey: messagesKey(threadId) })
       }, TURN_TIMEOUT_MS)
     },
-    [threadId, busy, qc],
+    [threadId, busy, qc, onEvent],
   )
 
   const rate = useCallback(async (messageId: string, value: Rating) => {
@@ -213,6 +292,7 @@ export function useChat() {
   }, [])
 
   const selectThread = useCallback((id: string) => {
+    ownTurn.current = null
     setLive(null)
     setThreadId(id)
   }, [])

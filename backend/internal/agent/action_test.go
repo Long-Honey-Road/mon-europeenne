@@ -23,6 +23,15 @@ func TestActionsFromToolResultsBecomeBlocks(t *testing.T) {
 	}
 }
 
+func TestNumberedPseudoMarkersBecomeMarkers(t *testing.T) {
+	st := &turnState{}
+	st.refs = []Source{{Ref: 1}, {Ref: 2}}
+	text, cited := st.finishText("Ветка от main [ref1]. Один аппрув [ref 2], ревью за день [Источник 7].", domain.ThreadTask)
+	if text != "Ветка от main [1]. Один аппрув [2], ревью за день." || !cited[1] || !cited[2] {
+		t.Fatalf("text = %q, cited %v", text, cited)
+	}
+}
+
 func TestPseudoMarkersAreRemoved(t *testing.T) {
 	st := &turnState{}
 	st.refs = []Source{{Ref: 1, URL: "https://x.test"}}

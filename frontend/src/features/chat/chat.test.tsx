@@ -63,8 +63,8 @@ describe('chat threads', () => {
   })
 
   it('labels threads by type and date', () => {
-    expect(threadLabel({ id: '1', type: 'THREAD_TYPE_PLAN', title: '', created_at: 'nope' })).toBe('План')
-    expect(threadLabel({ id: '1', type: 'THREAD_TYPE_GENERAL', title: 'Деплой', created_at: '2026-11-13T09:00:00Z' })).toMatch(/^Деплой · 13 нояб/)
+    expect(threadLabel({ id: '1', type: 'THREAD_TYPE_PLAN', title: '', pin: {}, created_at: 'nope' })).toBe('План')
+    expect(threadLabel({ id: '1', type: 'THREAD_TYPE_GENERAL', title: 'Деплой', pin: {}, created_at: '2026-11-13T09:00:00Z' })).toMatch(/^Деплой · 13 нояб/)
   })
 })
 
@@ -130,7 +130,46 @@ describe('chat turn', () => {
     expect(warn).toHaveTextContent('проверь у наставника')
   })
 
-  it('shows a prepared request as a card', async () => {
+  it('shows two disagreeing documents and marks the Playbook', async () => {
+    addThread()
+    chat.script = [
+      {
+        event: 'block',
+        data: {
+          block: {
+            type: 'sources',
+            items: [{ ref: 1, source_id: 'c1', title: 'Ценности', url: 'https://github.com/avito-tech/playbook', kind: 'playbook' }],
+          },
+        },
+      },
+      {
+        event: 'block',
+        data: {
+          block: {
+            type: 'conflict',
+            topic: 'code-review',
+            items: [
+              { ref: 2, source_id: 'c2', title: 'Код-ревью / Аппрувы', kind: 'doc' },
+              { ref: 3, source_id: 'c3', title: 'Ревью в Messenger / Аппрувы', kind: 'doc' },
+            ],
+          },
+        },
+      },
+      { event: 'block', data: { block: { type: 'conflict', items: [] } } },
+      { event: 'done', data: { text: 'Нужен один аппрув [3], общий документ говорит о двух [2].' } },
+    ]
+    renderApp('/')
+
+    await ask('Сколько аппрувов?')
+    const conflict = await screen.findByRole('region', { name: 'Документы расходятся' })
+    expect(conflict).toHaveTextContent('Документы расходятся: code-review')
+    expect(conflict).toHaveTextContent('Общее правило Код-ревью / Аппрувы')
+    expect(conflict).toHaveTextContent('Правило команды Ревью в Messenger / Аппрувы')
+    expect(screen.getAllByRole('region', { name: 'Документы расходятся' })).toHaveLength(1)
+    expect(within(screen.getByRole('list', { name: 'Источники' })).getByText('открытый Playbook')).toBeInTheDocument()
+  })
+
+  it('shows a prepared request as a form', async () => {
     addThread('THREAD_TYPE_REQUEST')
     chat.script = [
       {
@@ -153,8 +192,8 @@ describe('chat turn', () => {
     renderApp('/')
 
     await ask('Нужен VPN')
-    const card = await screen.findByRole('region', { name: 'Заявка: Доступ к VPN' })
-    expect(card).toHaveTextContent('работа из дома')
+    const card = await screen.findByRole('form', { name: 'Заявка: Доступ к VPN' })
+    expect(await within(card).findByLabelText(/Обоснование/)).toHaveValue('работа из дома')
     expect(card).toHaveTextContent('Согласует: Артём, руководитель')
   })
 
@@ -172,6 +211,49 @@ describe('chat turn', () => {
     expect(screen.getByRole('button', { name: 'Отправить' })).toBeDisabled()
     await userEvent.setup().type(screen.getByLabelText('Сообщение для buddy'), 'ещё раз')
     expect(screen.getByRole('button', { name: 'Отправить' })).toBeEnabled()
+  })
+
+  it('ignores the end of an older turn and stays locked until its own', async () => {
+    addThread()
+    chat.script = [
+      { event: 'error', data: { job_id: 'job-old', code: 'model_unavailable', message: 'чужая ошибка', escalation: [] } },
+      { event: 'done', data: { job_id: 'job-old', text: 'чужой ответ', message_id: 'm-old' } },
+      { event: 'delta', data: { job_id: 'job-old', text: 'чужой текст' } },
+      { event: 'status', data: { text: 'ищу в документах' } },
+    ]
+    renderApp('/')
+
+    await ask('Как поднять dev?')
+    expect(await screen.findByText('buddy ищу в документах…')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText('чужой текст')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Сообщение для buddy')).toHaveAttribute('placeholder', 'buddy отвечает…')
+    expect(screen.getByRole('button', { name: 'Отправить' })).toBeDisabled()
+  })
+
+  it('keeps events that arrive before the send returns', async () => {
+    addThread()
+    chat.eager = true
+    chat.script = answer('Спроси Игоря, он отвечает за стенды.')
+    renderApp('/')
+
+    await ask('Кто поможет с деплоем?')
+    const log = within(await panel())
+    await waitFor(() => expect(log.getAllByRole('button', { name: 'Полезно' })).toHaveLength(1))
+    expect(log.getAllByText('Спроси Игоря, он отвечает за стенды.')).toHaveLength(1)
+    expect(screen.getByLabelText('Сообщение для buddy')).not.toHaveAttribute('placeholder', 'buddy отвечает…')
+  })
+
+  it('says the answer is still coming when the thread is busy', async () => {
+    const t = addThread()
+    addMessage(t.id, 'user', 'Первый вопрос')
+    chat.busy = true
+    renderApp('/')
+
+    await ask('Второй вопрос')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Ответ ещё готовится')
+    expect(within(await panel()).getByText('Первый вопрос')).toBeInTheDocument()
+    expect(chat.sent).toHaveLength(0)
   })
 
   it('says so when the message cannot be sent', async () => {

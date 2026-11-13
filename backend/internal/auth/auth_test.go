@@ -22,7 +22,7 @@ func accounts(t *testing.T) *Accounts {
 }
 
 func TestAuthenticateAcceptsRightPassword(t *testing.T) {
-	u, err := accounts(t).Authenticate("intern", "intern-demo")
+	u, err := accounts(t).Authenticate(t.Context(), "intern", "intern-demo")
 	if err != nil || u.ID != "u-liza" {
 		t.Fatalf("Authenticate = %+v, %v", u, err)
 	}
@@ -31,7 +31,7 @@ func TestAuthenticateAcceptsRightPassword(t *testing.T) {
 func TestAuthenticateHidesWhichPartIsWrong(t *testing.T) {
 	a := accounts(t)
 	for _, c := range [][2]string{{"intern", "wrong"}, {"nobody", "intern-demo"}, {"", ""}} {
-		if _, err := a.Authenticate(c[0], c[1]); !errors.Is(err, ErrInvalidCredentials) {
+		if _, err := a.Authenticate(t.Context(), c[0], c[1]); !errors.Is(err, ErrInvalidCredentials) {
 			t.Errorf("Authenticate(%q, %q) error = %v, want ErrInvalidCredentials", c[0], c[1], err)
 		}
 	}
@@ -39,10 +39,10 @@ func TestAuthenticateHidesWhichPartIsWrong(t *testing.T) {
 
 func TestUserByID(t *testing.T) {
 	a := accounts(t)
-	if u, err := a.User("u-liza"); err != nil || u.Login != "intern" {
+	if u, err := a.User(t.Context(), "u-liza"); err != nil || u.Login != "intern" {
 		t.Fatalf("User(u-liza) = %+v, %v", u, err)
 	}
-	if _, err := a.User("u-ghost"); !errors.Is(err, ErrUnknownUser) {
+	if _, err := a.User(t.Context(), "u-ghost"); !errors.Is(err, ErrUnknownUser) {
 		t.Fatalf("User(u-ghost) error = %v, want ErrUnknownUser", err)
 	}
 }

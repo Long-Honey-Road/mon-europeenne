@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package mocks.authroles.v1;
+
+import "google/api/annotations.proto";
+
+// AuthRolesService imitates the company's sign-in and role directory: it checks credentials and returns the
+// account with its role and attributes (RBAC + ABAC). Buddy issues its own session tokens on top of it.
+service AuthRolesService {
+  // Authenticate fails with UNAUTHENTICATED for an unknown login and for a wrong password alike.
+  rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {
+    option (google.api.http) = {
+      post: "/auth/authenticate"
+      body: "*"
+    };
+  }
+  // GetAccount fails with NOT_FOUND for an unknown user.
+  rpc GetAccount(GetAccountRequest) returns (GetAccountResponse) {
+    option (google.api.http) = {get: "/auth/accounts/{user_id}"};
+  }
+}
+
+message Account {
+  string user_id = 1;
+  string login = 2;
+  string display_name = 3;
+  // intern, mentor, manager, hr_bp or hr_admin.
+  string role = 4;
+  // backend, frontend or qa; empty when not set.
+  string direction = 5;
+  string team_id = 6;
+  string manager_id = 7;
+  string mentor_id = 8;
+  repeated string repos = 9;
+  repeated string jira_projects = 10;
+  string location = 11;
+  // YYYY-MM-DD; empty when not set.
+  string start_date = 12;
+}
+
+message AuthenticateRequest {
+  string login = 1;
+  string password = 2;
+}
+
+message AuthenticateResponse {
+  Account account = 1;
+}
+
+message GetAccountRequest {
+  string user_id = 1;
+}
+
+message GetAccountResponse {
+  Account account = 1;
+}

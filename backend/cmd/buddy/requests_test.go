@@ -17,6 +17,7 @@ import (
 func TestRequestSubmissionEndToEnd(t *testing.T) {
 	cfg := stackConfig(t)
 	cfg.FeatureRequests = true
+	cfg.MocksAddr = startMocks(t)
 	ctx := context.Background()
 
 	h, cleanAPI, err := buildAPI(ctx, cfg)
@@ -89,7 +90,7 @@ func TestRequestSubmissionEndToEnd(t *testing.T) {
 	if err := mux.ProcessTask(ctx, asynq.NewTask(taskAdvanceRequests, nil)); err != nil {
 		t.Fatalf("advance_requests: %v", err)
 	}
-	sched, err := newRequestsScheduler(cfg.RedisAddr)
+	sched, err := newScheduler(cfg)
 	if err != nil {
 		t.Fatalf("scheduler: %v", err)
 	}

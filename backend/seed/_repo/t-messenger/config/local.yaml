@@ -1,0 +1,3 @@
+http_addr: ":8080"
+postgres_dsn: "postgres://messenger:messenger@localhost:5432/messenger"
+kafka_brokers: ["localhost:9092"]

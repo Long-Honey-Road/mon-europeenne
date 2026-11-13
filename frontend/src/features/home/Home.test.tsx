@@ -30,7 +30,7 @@ describe('scene', () => {
     expect(router.state.location.pathname).toBe('/plan')
     expect(within(nav).getByRole('link', { name: /План/ })).toHaveAttribute('data-state', 'main')
     expect(within(nav).getByRole('link', { name: /Команда/ })).toHaveAttribute('data-state', 'mini')
-    expect(screen.getByText('Рабочие инструменты')).toBeInTheDocument()
+    expect(await screen.findByText('Запросить доступы')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /Привет/ })).not.toBeInTheDocument()
   })
 

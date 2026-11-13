@@ -392,6 +392,23 @@ func TestTurnTimeout(t *testing.T) {
 	}
 }
 
+func TestTurnTimeoutDefaultsTo80Seconds(t *testing.T) {
+	if got := New(fake.New(), registry(t, &stubs{}), Config{}).cfg.Timeout; got != 80*time.Second {
+		t.Errorf("default timeout = %v", got)
+	}
+}
+
+func TestRunWithUsesTheTurnsModel(t *testing.T) {
+	own, leased := fake.New(), fake.New(fake.Text("из пула"))
+	res, err := New(own, registry(t, &stubs{}), Config{}).RunWith(context.Background(), leased, turn("привет"), &recorder{})
+	if err != nil || res.Text != "из пула" {
+		t.Fatalf("RunWith = %q, %v", res.Text, err)
+	}
+	if len(own.Calls()) != 0 {
+		t.Error("the agent's own model answered a leased turn")
+	}
+}
+
 func TestToolErrorsBecomeCodesForTheModel(t *testing.T) {
 	cases := map[string]struct {
 		call fake.Step
