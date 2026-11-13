@@ -47,15 +47,17 @@ type searchDocsOut struct {
 const (
 	playbookNote = "Fragments of kind playbook come from the public Avito Playbook on GitHub: say so and that it may " +
 		"be outdated. "
-	conflictNote = "conflict_candidates: a general and a team document of one topic disagree or may disagree. Name " +
-		"both, say the team rule applies to the user's team, and suggest confirming with the mentor."
+	conflictNote = "conflict_candidates: a general rule (general_ref) and the team's rule (team_ref) of one topic may " +
+		"disagree. Cite each with its own ref, say the team rule applies to the user's team, and suggest " +
+		"confirming with the mentor."
 )
 
 // SearchDocs searches the team wiki and the Avito Playbook.
 func SearchDocs(s Searcher) (Tool, error) {
 	return Define("search_docs",
-		"Search the company's documents (team wiki, the public Avito Playbook) for processes, tools, rules and "+
-			"how-to questions. Cite fragments with [ref].",
+		"Search the company's documents: the team wiki and the public Avito Playbook (mission, values, culture, "+
+			"structure, roles and levels, processes, tools, rules, how-to). Call it for any question about Avito or "+
+			"the team before saying you found nothing. Cite fragments with [ref].",
 		allRoles, allThreads,
 		func(ctx context.Context, p domain.Principal, in searchDocsIn) (searchDocsOut, error) {
 			limit := in.Limit

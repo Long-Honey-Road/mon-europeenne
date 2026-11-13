@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
@@ -16,8 +17,11 @@ const reviewResult = `{"sources":[
 // Golden dialog 3 of spec 003: a general and a team rule of one topic give a conflict block with both fragments.
 func TestConflictCandidatesBecomeOneBlockPerTopic(t *testing.T) {
 	st := &turnState{}
+	seen := st.absorb("search_docs", []byte(reviewResult))
 	st.absorb("search_docs", []byte(reviewResult))
-	st.absorb("search_docs", []byte(reviewResult))
+	if !strings.Contains(string(seen), `"conflict_candidates":[{"topic":"code-review","general_ref":2,"team_ref":1}]`) {
+		t.Errorf("model sees %s, want refs of the general and the team rule", seen)
+	}
 
 	var conflicts []Block
 	for _, b := range st.blocks(map[int]bool{1: true}) {

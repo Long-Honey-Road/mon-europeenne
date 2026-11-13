@@ -164,7 +164,8 @@ func (s *turnState) finishText(text string, thread domain.ThreadType) (string, m
 	return text, cited
 }
 
-// absorbConflicts turns conflict candidates into blocks with the two numbered fragments, one per topic.
+// absorbConflicts turns conflict candidates into blocks with the two numbered fragments, one per topic, and tells
+// the model which ref is the general rule and which the team's, so it cannot mix them up.
 func (s *turnState) absorbConflicts(obj map[string]json.RawMessage) {
 	var frags []struct {
 		Ref   int    `json:"ref"`
@@ -180,13 +181,25 @@ func (s *turnState) absorbConflicts(obj map[string]json.RawMessage) {
 			byDoc[f.DocID] = s.refs[f.Ref-1]
 		}
 	}
+	type annotated struct {
+		Topic      string `json:"topic"`
+		GeneralRef int    `json:"general_ref"`
+		TeamRef    int    `json:"team_ref"`
+	}
+	var seen []annotated
 	for _, p := range pairs {
 		a, okA := byDoc[p.DocA]
 		b, okB := byDoc[p.DocB]
-		if !okA || !okB || slices.ContainsFunc(s.conflicts, func(c Block) bool { return c.Topic == p.Topic }) {
+		if !okA || !okB {
 			continue
 		}
-		s.conflicts = append(s.conflicts, Block{Type: "conflict", Topic: p.Topic, Items: []Source{a, b}})
+		seen = append(seen, annotated{Topic: p.Topic, GeneralRef: a.Ref, TeamRef: b.Ref})
+		if !slices.ContainsFunc(s.conflicts, func(c Block) bool { return c.Topic == p.Topic }) {
+			s.conflicts = append(s.conflicts, Block{Type: "conflict", Topic: p.Topic, Items: []Source{a, b}})
+		}
+	}
+	if b, err := json.Marshal(seen); err == nil {
+		obj["conflict_candidates"] = b
 	}
 }
 

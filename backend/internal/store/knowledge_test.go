@@ -73,13 +73,27 @@ func TestReplaceAndSearchDocuments(t *testing.T) {
 		t.Errorf("version %d, chunks %d; want 2 and 2", version, chunks)
 	}
 
+	// The team's own document outranks a general one of the same words; the company name is noise.
+	if hits, _ := s.SearchChunks(ctx, "t-messenger", "аппрув", 5); len(hits) != 1 {
+		t.Fatalf("hits = %+v", hits)
+	}
+	if err := s.ReplaceDocuments(ctx, domain.SourceDoc, knowledgeDocs()); err != nil {
+		t.Fatal(err)
+	}
+	if hits, _ := s.SearchChunks(ctx, "t-messenger", "аппрув в Авито?", 5); len(hits) != 2 || hits[0].DocID != "team-review" {
+		t.Errorf("ranking = %+v, want the team document first", hits)
+	}
+	if hits, _ := s.SearchChunks(ctx, "t-messenger", "Авито", 5); len(hits) != 0 {
+		t.Errorf("company name alone = %+v", hits)
+	}
+
 	// Other kinds are left alone; a wrong kind is refused.
 	pb := []domain.KnowledgeDoc{{Kind: domain.SourcePlaybook, ExternalID: "values.md", Title: "Ценности", URL: "https://github.com/x", FetchedAt: time.Now(),
 		Chunks: []domain.Chunk{{Heading: "Ценности", Text: "Упрощай."}}}}
 	if err := s.ReplaceDocuments(ctx, domain.SourcePlaybook, pb); err != nil {
 		t.Fatal(err)
 	}
-	if hits, _ := s.SearchChunks(ctx, "t-messenger", "упрощай аппрув", 5); len(hits) != 2 {
+	if hits, _ := s.SearchChunks(ctx, "t-messenger", "упрощай аппрув", 5); len(hits) != 3 {
 		t.Errorf("both kinds = %+v", hits)
 	}
 	if err := s.ReplaceDocuments(ctx, domain.SourceDoc, pb); err == nil {

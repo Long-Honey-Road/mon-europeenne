@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 
@@ -56,22 +57,26 @@ func (s *Store) ReplaceDocuments(ctx context.Context, kind domain.SourceKind, do
 	})
 }
 
-// SearchChunks finds chunks for a free-text query, best first. Any word may match; chunks matching more words
-// rank higher. A team document is visible only to its team: the filter is part of the query.
+// SearchChunks finds chunks for a free-text query, best first. Any word may match. Chunks with every word come
+// first, then by rank; the user's own team documents weigh double, as they are the most specific. A team
+// document is visible only to its team: the filter is part of the query.
 func (s *Store) SearchChunks(ctx context.Context, teamID, query string, limit int) ([]domain.Hit, error) {
 	rows, err := s.pool.Query(ctx, `
 		WITH q AS (
-			-- Cast, not to_tsquery: the lexemes are already stemmed and must not be stemmed twice.
-			SELECT replace(websearch_to_tsquery('russian', $2)::text, ' & ', ' | ')::tsquery AS q
+			SELECT websearch_to_tsquery('russian', $2) AS q_all,
+			       -- Cast, not to_tsquery: the lexemes are already stemmed and must not be stemmed twice.
+			       replace(websearch_to_tsquery('russian', $2)::text, ' & ', ' | ')::tsquery AS q_any
 		)
 		SELECT c.id, d.external_id, d.source_kind_id, d.title, c.heading, c.text, d.url, d.topic,
 		       d.team_id IS NOT NULL, d.is_test_instruction, d.fetched_at
 		FROM q, buddy.chunks c
 		JOIN buddy.documents d ON d.id = c.document_id
 		LEFT JOIN buddy.teams t ON t.id = d.team_id
-		WHERE c.tsv @@ q.q AND (d.team_id IS NULL OR t.external_id = $1)
-		ORDER BY ts_rank_cd(c.tsv, q.q, 32) DESC, c.id
-		LIMIT $3`, teamID, query, limit)
+		WHERE c.tsv @@ q.q_any AND (d.team_id IS NULL OR t.external_id = $1)
+		ORDER BY c.tsv @@ q.q_all DESC,
+		         ts_rank_cd(c.tsv, q.q_any, 32) * CASE WHEN d.team_id IS NULL THEN 1 ELSE 2 END DESC,
+		         c.id
+		LIMIT $3`, teamID, withoutCompanyName(query), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -83,4 +88,22 @@ func (s *Store) SearchChunks(ctx context.Context, teamID, query string, limit in
 		h.Kind = domain.SourceKind(kind)
 		return h, err
 	})
+}
+
+// companyWords are in nearly every document, so they rank noise above the asked topic.
+var companyWords = map[string]bool{"авито": true, "авите": true, "авиту": true, "avito": true}
+
+// withoutCompanyName drops the company's name from a query that has other words.
+func withoutCompanyName(query string) string {
+	words := strings.Fields(query)
+	kept := make([]string, 0, len(words))
+	for _, w := range words {
+		if !companyWords[strings.ToLower(strings.Trim(w, "?!.,:;«»\"'()"))] {
+			kept = append(kept, w)
+		}
+	}
+	if len(kept) == 0 {
+		return query
+	}
+	return strings.Join(kept, " ")
 }
