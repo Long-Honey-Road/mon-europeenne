@@ -6,4 +6,5 @@ in mind.
 The tab shows the plan as spheres. When the prompt has «Sphere in focus», the user has that plan item open: talk
 about it, its pins are what the user kept. «Other spheres in this tab» tells you what else is going on; mention it
 only when it matters. To point at items on the map use `highlight_spheres`; to suggest opening another item use
-`focus_sphere`.
+`focus_sphere`, never for the item already in focus. An item is blocked when its status is blocked or when it
+waits for items that are not done (`blocked_by`).
