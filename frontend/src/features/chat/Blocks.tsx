@@ -23,6 +23,13 @@ export function Escalation({ steps }: { steps: EscalationStep[] }) {
 
 type SourceItem = NonNullable<Block['items']>[number]
 
+// Sources that are not the team wiki are marked, so the intern sees where a fact comes from.
+const kindBadges: Record<string, string> = {
+  playbook: 'открытый Playbook',
+  checklist: 'чек-лист Авито',
+  guide: 'о buddy',
+}
+
 function SourceLink({ source }: { source: SourceItem }) {
   const label = source.title || source.source_id
   return (
@@ -34,7 +41,7 @@ function SourceLink({ source }: { source: SourceItem }) {
       ) : (
         <span>{label}</span>
       )}
-      {source.kind === 'playbook' && <span className="badge">открытый Playbook</span>}
+      {source.kind && kindBadges[source.kind] && <span className="badge">{kindBadges[source.kind]}</span>}
     </>
   )
 }

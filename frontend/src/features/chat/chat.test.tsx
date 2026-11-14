@@ -138,7 +138,11 @@ describe('chat turn', () => {
         data: {
           block: {
             type: 'sources',
-            items: [{ ref: 1, source_id: 'c1', title: 'Ценности', url: 'https://github.com/avito-tech/playbook', kind: 'playbook' }],
+            items: [
+              { ref: 1, source_id: 'c1', title: 'Ценности', url: 'https://github.com/avito-tech/playbook', kind: 'playbook' },
+              { ref: 4, source_id: 'c4', title: 'Чек-лист / Настрой avito-cli', kind: 'checklist' },
+              { ref: 5, source_id: 'c5', title: 'buddy / Треды', kind: 'guide' },
+            ],
           },
         },
       },
@@ -166,7 +170,10 @@ describe('chat turn', () => {
     expect(conflict).toHaveTextContent('Общее правило Код-ревью / Аппрувы')
     expect(conflict).toHaveTextContent('Правило команды Ревью в Messenger / Аппрувы')
     expect(screen.getAllByRole('region', { name: 'Документы расходятся' })).toHaveLength(1)
-    expect(within(screen.getByRole('list', { name: 'Источники' })).getByText('открытый Playbook')).toBeInTheDocument()
+    const sources = within(screen.getByRole('list', { name: 'Источники' }))
+    expect(sources.getByText('открытый Playbook')).toBeInTheDocument()
+    expect(sources.getByText('чек-лист Авито')).toBeInTheDocument()
+    expect(sources.getByText('о buddy')).toBeInTheDocument()
   })
 
   it('shows a prepared request as a form', async () => {
@@ -311,5 +318,43 @@ describe('answer mode and feedback', () => {
     await user.click(down)
     expect(down).toHaveAttribute('aria-pressed', 'true')
     await waitFor(() => expect(chat.ratings).toEqual([{ messageId: reply.id, value: 'RATING_DOWN' }]))
+  })
+
+  it('sends a comment with the rating', async () => {
+    const t = addThread()
+    addMessage(t.id, 'user', 'вопрос')
+    const reply = addMessage(t.id, 'assistant', 'ответ')
+    const user = userEvent.setup()
+    renderApp('/')
+
+    expect(screen.queryByRole('textbox', { name: 'Комментарий к оценке' })).not.toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'Не помогло' }))
+    const note = await screen.findByRole('textbox', { name: 'Комментарий к оценке' })
+    expect(note).toHaveAttribute('placeholder', expect.stringContaining('Что не так'))
+    await user.type(note, '  выдумал человека ')
+    await user.click(screen.getByRole('button', { name: 'Отправить отзыв' }))
+
+    expect(await screen.findByText('Спасибо, отзыв ушёл разработчикам.')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(chat.ratings).toEqual([
+        { messageId: reply.id, value: 'RATING_DOWN' },
+        { messageId: reply.id, value: 'RATING_DOWN', note: 'выдумал человека' },
+      ]),
+    )
+  })
+
+  it('asks what helped after a thumbs up and ignores an empty comment', async () => {
+    const t = addThread()
+    addMessage(t.id, 'user', 'вопрос')
+    addMessage(t.id, 'assistant', 'ответ')
+    const user = userEvent.setup()
+    renderApp('/')
+
+    await user.click(await screen.findByRole('button', { name: 'Полезно' }))
+    const note = await screen.findByRole('textbox', { name: 'Комментарий к оценке' })
+    expect(note).toHaveAttribute('placeholder', 'Что помогло?')
+    expect(screen.getByRole('button', { name: 'Отправить отзыв' })).toBeDisabled()
+    await user.type(note, '   {Enter}')
+    expect(chat.ratings).toHaveLength(1)
   })
 })

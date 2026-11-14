@@ -278,10 +278,10 @@ export function useChat() {
     [threadId, busy, qc, onEvent],
   )
 
-  const rate = useCallback(async (messageId: string, value: Rating) => {
+  const rate = useCallback(async (messageId: string, value: Rating, note?: string) => {
     setRatings((r) => ({ ...r, [messageId]: value }))
     try {
-      await api.rateMessage(messageId, value)
+      await api.rateMessage(messageId, value, note)
     } catch {
       setRatings((r) => {
         const next = { ...r }

@@ -75,6 +75,8 @@ type Deps struct {
 	Turns     Turns
 	// Spheres is nil where tabs have no spheres: the turn then sees the plain thread tail.
 	Spheres Spheres
+	// StandRules returns a test stand's extra prompt rules for each turn; nil or "" means none.
+	StandRules func() string
 	// QueueTimeout limits waiting for a free model; 5 min if zero.
 	QueueTimeout time.Duration
 }
@@ -147,6 +149,9 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	at := agent.Turn{
 		Principal: p, Thread: thread.Type, Mode: agent.Mode(turn.Mode), Profile: prof, Today: agent.TodayLine(time.Now(), user.StartDate),
 		Pinned: pinText(thread.Pin), Summary: thread.Summary, History: history(msgs[:idx]), Message: msgs[idx].Content,
+	}
+	if h.d.StandRules != nil {
+		at.StandRules = h.d.StandRules()
 	}
 	if err := h.withSphere(ctx, &at, thread, msgs[idx]); err != nil {
 		release()

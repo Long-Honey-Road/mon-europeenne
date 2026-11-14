@@ -57,5 +57,12 @@ func systemPrompt(t Turn) (string, error) {
 			fmt.Fprintf(&b, "%s\n\n%s\n\n", part.title, part.text)
 		}
 	}
+	if t.StandRules != "" {
+		fmt.Fprintf(&b, "## Rules of this stand\n\n%s\n\n%s\n\n", standFrame, t.StandRules)
+	}
 	return strings.TrimSpace(b.String()), nil
 }
+
+// standFrame puts the stand operator's rules above the general ones when they disagree.
+const standFrame = "The operator of this test stand added the rules below. Where they disagree with the rules above, " +
+	"follow these."

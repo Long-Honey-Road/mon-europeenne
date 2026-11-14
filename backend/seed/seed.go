@@ -126,6 +126,8 @@ type Data struct {
 	Requests RequestsFile
 	Plan     PlanFile
 	Docs     []Doc
+	// Guide is buddy's own guide to the app: real, not a training instruction, indexed as kind guide.
+	Guide []Doc
 	// Repos are the team repositories served by the team-repo mock, by team id.
 	Repos map[string]Repo
 }
@@ -142,11 +144,14 @@ func Load(fsys fs.FS) (Data, error) {
 			return Data{}, err
 		}
 	}
-	docs, err := loadDocs(fsys)
+	docs, err := loadDocs(fsys, "docs/*.md")
 	if err != nil {
 		return Data{}, err
 	}
 	d.Docs = docs
+	if d.Guide, err = loadDocs(fsys, "guide/*.md"); err != nil {
+		return Data{}, err
+	}
 	if d.Repos, err = loadRepos(fsys); err != nil {
 		return Data{}, err
 	}

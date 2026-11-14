@@ -108,6 +108,8 @@ services:
       MOCKS_ADDR: *mocks_addr
       # The open Avito Playbook is fetched from GitHub at a fixed commit; empty turns it off (offline runs).
       PLAYBOOK_REPO: ${PLAYBOOK_REPO-avito-tech/playbook}
+      # The public Avito intern checklist (Google Sheet, read as CSV); empty turns it off (offline runs).
+      CHECKLIST_SHEET_URL: ${CHECKLIST_SHEET_URL-https://docs.google.com/spreadsheets/d/1qKFqOzfSZ2jEz57jBSmq7rukDXi_tRfWohgemViceV0/edit}
       LLM_PROVIDER: ${LLM_PROVIDER:-openai_compat}
       LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:11434/v1}
       LLM_MODEL: ${LLM_MODEL:-qwen3.6:35b-a3b}

@@ -91,6 +91,7 @@ func buildWorker(cfg config.Config) (*asynq.Server, *asynq.ServeMux, func(), err
 		Users: src.accounts, Directory: src.directory,
 		Models: model, Turns: jobs.NewActiveTurns(rdb, jobs.TaskTimeout(cfg.LLM.QueueTimeout, cfg.TurnTimeout)),
 		QueueTimeout: cfg.LLM.QueueTimeout, Spheres: spheres.New(st, st, st, st, queue),
+		StandRules: standRules(cfg.PromptExtraFile),
 	})
 	mux := jobs.Mux(h)
 	handleSphereJobs(mux, spheres.NewSummarizer(st, model))
@@ -104,4 +105,12 @@ func buildWorker(cfg config.Config) (*asynq.Server, *asynq.ServeMux, func(), err
 		handleRequestJobs(mux, desk)
 	}
 	return jobs.NewServer(cfg.RedisAddr, cfg.WorkerConcurrency), mux, cleanup, nil
+}
+
+// standRules reads a stand's extra prompt rules when the stand has them.
+func standRules(path string) func() string {
+	if path == "" {
+		return nil
+	}
+	return jobs.FileRules(path)
 }

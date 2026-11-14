@@ -19,13 +19,18 @@ const (
 	syncTimeout     = 2 * time.Minute
 )
 
-// newKnowledge indexes the team wiki (the documents service, or seed without MOCKS_ADDR) and the Playbook.
+// newKnowledge indexes the team wiki (the documents service, or seed without MOCKS_ADDR), buddy's guide, the Playbook
+// and the intern checklist.
 func newKnowledge(cfg config.Config, data seed.Data, src sources, st *store.Store) *knowledge.Service {
 	var list []knowledge.Source
 	if src.conn != nil {
 		list = append(list, knowledge.NewMockDocs(src.conn))
 	} else {
 		list = append(list, knowledge.SeedDocs(data.Docs))
+	}
+	list = append(list, knowledge.Guide(data.Guide))
+	if cfg.ChecklistSheet != "" {
+		list = append(list, knowledge.Checklist{SheetID: knowledge.SheetID(cfg.ChecklistSheet)})
 	}
 	if cfg.PlaybookRepo != "" {
 		list = append(list, knowledge.Playbook{Repo: cfg.PlaybookRepo, Ref: cfg.PlaybookRef})

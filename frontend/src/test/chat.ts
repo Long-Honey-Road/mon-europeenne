@@ -12,7 +12,7 @@ type State = {
   /** Events sent after each message; a done event also saves the answer into the history. */
   script: ScriptEvent[]
   sent: { threadId: string; content: string; mode: string }[]
-  ratings: { messageId: string; value: string }[]
+  ratings: { messageId: string; value: string; note?: string }[]
   /** Bodies of POST /threads, to check what a screen asked to create. */
   created: { type: ThreadType; title?: string; pin?: Thread['pin'] }[]
   failEvents: boolean
@@ -159,8 +159,8 @@ export const chatHandlers = [
     return HttpResponse.json({ message_id: msg.id, job_id: jobId }, { status: 202 })
   }),
   http.post(`${API}/v1/private/messages/:id/feedback`, async ({ params, request }) => {
-    const body = (await request.json()) as { value: string }
-    chat.ratings.push({ messageId: String(params.id), value: body.value })
+    const body = (await request.json()) as { value: string; note?: string }
+    chat.ratings.push({ messageId: String(params.id), value: body.value, ...(body.note ? { note: body.note } : {}) })
     return HttpResponse.json({})
   }),
 ]

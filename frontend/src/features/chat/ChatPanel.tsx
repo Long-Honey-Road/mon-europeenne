@@ -31,6 +31,35 @@ export function threadLabel(t: Thread): string {
   return `${t.title || threadTypeNames[t.type]}${date}`
 }
 
+/** A comment for the developers after a rating: what was wrong or what helped. */
+function RatingNote({ value, onSend }: { value: 'up' | 'down'; onSend: (note: string) => void }) {
+  const [note, setNote] = useState('')
+  const [sent, setSent] = useState(false)
+  if (sent) return <p className="msg__note-done">Спасибо, отзыв ушёл разработчикам.</p>
+  return (
+    <form
+      className="msg__note"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (!note.trim()) return
+        onSend(note.trim())
+        setSent(true)
+      }}
+    >
+      <input
+        aria-label="Комментарий к оценке"
+        placeholder={value === 'down' ? 'Что не так? Пара слов поможет найти ошибку' : 'Что помогло?'}
+        value={note}
+        maxLength={1000}
+        onChange={(e) => setNote(e.target.value)}
+      />
+      <button type="submit" disabled={!note.trim()}>
+        Отправить отзыв
+      </button>
+    </form>
+  )
+}
+
 function AssistantMessage({
   message,
   rating,
@@ -39,9 +68,15 @@ function AssistantMessage({
 }: {
   message: ChatMessage
   rating?: 'up' | 'down'
-  onRate: (value: 'up' | 'down') => void
+  onRate: (value: 'up' | 'down', note?: string) => void
   onMore?: () => void
 }) {
+  // The comment field opens only after a click in this visit, not for ratings made earlier.
+  const [asked, setAsked] = useState(false)
+  const rate = (value: 'up' | 'down') => {
+    setAsked(true)
+    onRate(value)
+  }
   return (
     <li className="msg msg--buddy">
       <Answer text={message.text} />
@@ -57,7 +92,7 @@ function AssistantMessage({
           className="msg__rate"
           aria-label="Полезно"
           aria-pressed={rating === 'up'}
-          onClick={() => onRate('up')}
+          onClick={() => rate('up')}
         >
           👍
         </button>
@@ -66,11 +101,12 @@ function AssistantMessage({
           className="msg__rate"
           aria-label="Не помогло"
           aria-pressed={rating === 'down'}
-          onClick={() => onRate('down')}
+          onClick={() => rate('down')}
         >
           👎
         </button>
       </div>
+      {asked && rating && <RatingNote key={rating} value={rating} onSend={(note) => onRate(rating, note)} />}
     </li>
   )
 }
@@ -232,7 +268,7 @@ export function ChatPanel({
           <li className="msg msg--buddy">
             {chat.loadError
               ? 'Не получилось загрузить переписку. Обнови страницу чуть позже.'
-              : `Привет${me?.firstName ? `, ${me.firstName}` : ''}! Спроси про задачи, доступы или процессы команды.`}
+              : `Привет${me?.firstName ? `, ${me.firstName}` : ''}! Спроси про задачи, доступы или процессы команды. Если ты здесь впервые, спроси «Как тобой пользоваться?».`}
           </li>
         )}
         {chat.messages.map((m, i) => {
@@ -249,7 +285,7 @@ export function ChatPanel({
               key={m.id}
               message={m}
               rating={chat.ratings[m.id]}
-              onRate={(v) => void chat.rate(m.id, v)}
+              onRate={(v, note) => void chat.rate(m.id, v, note)}
               onMore={question && !chat.busy ? () => void chat.send(question, 'detailed') : undefined}
             />
           )

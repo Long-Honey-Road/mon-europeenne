@@ -87,3 +87,22 @@ func TestSearchDocsDefaultsAndErrors(t *testing.T) {
 		t.Error("searcher error swallowed")
 	}
 }
+
+func TestSearchDocsNotesForChecklistAndGuide(t *testing.T) {
+	at := time.Date(2026, 11, 14, 0, 0, 0, 0, time.UTC)
+	f := &fakeSearcher{hits: []domain.Hit{
+		{ChunkID: "c1", DocID: "buddy-guide", Kind: domain.SourceGuide, Heading: "buddy / Заявки на доступ", Text: "Напиши"},
+		{ChunkID: "c2", DocID: "checklist-backend-w1", Kind: domain.SourceChecklist, Heading: "Чек-лист / Настрой avito-cli", URL: "https://docs.google.com/x", FetchedAt: at},
+	}}
+	out, err := callSearch(t, f, `{"query":"как пользоваться"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	guide, list := out.Sources[0], out.Sources[1]
+	if guide.Kind != "guide" || guide.FetchedAt != "" || list.Kind != "checklist" || list.FetchedAt != "2026-11-14" {
+		t.Errorf("fragments = %+v", out.Sources)
+	}
+	if out.Note != checklistNote+guideNote {
+		t.Errorf("note = %q, want the checklist note, then the guide note", out.Note)
+	}
+}

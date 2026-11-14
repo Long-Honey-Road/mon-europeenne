@@ -79,6 +79,8 @@ const (
 	SourceRepo
 	SourcePlan
 	SourcePlaybook
+	SourceChecklist
+	SourceGuide
 )
 
 const (
@@ -126,6 +128,7 @@ var (
 	}
 	sourceKindNames = map[SourceKind]string{
 		SourceDoc: "doc", SourceRepo: "repo", SourcePlan: "plan", SourcePlaybook: "playbook",
+		SourceChecklist: "checklist", SourceGuide: "guide",
 	}
 	conflictStatusNames = map[ConflictStatus]string{
 		ConflictOpen: "open", ConflictReported: "reported", ConflictResolved: "resolved",

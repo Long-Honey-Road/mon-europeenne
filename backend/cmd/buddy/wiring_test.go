@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -57,5 +58,14 @@ func TestAgentToolsDependOnDatabaseAndFlag(t *testing.T) {
 	}
 	if got := toolNames(t, st, true, domain.ThreadPlan); !slices.Contains(got, "update_item_status") || !slices.Contains(got, "pin_note") {
 		t.Errorf("plan thread: %v", got)
+	}
+}
+
+func TestStandRulesOnlyWithAFile(t *testing.T) {
+	if standRules("") != nil {
+		t.Error("rules without a file")
+	}
+	if r := standRules(filepath.Join(t.TempDir(), "none.md")); r == nil || r() != "" {
+		t.Error("a missing file must give empty rules")
 	}
 }

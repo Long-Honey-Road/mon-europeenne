@@ -63,3 +63,35 @@ func TestTracePrintsTurns(t *testing.T) {
 		t.Errorf("without database: exit %d", code)
 	}
 }
+
+func TestFeedbackPrintsRatings(t *testing.T) {
+	cfg := stackConfig(t)
+	ctx := context.Background()
+	pool, err := store.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := store.New(pool)
+	th, _ := st.CreateThread(ctx, "u-liza", domain.ThreadGeneral, "", domain.ThreadPin{})
+	_, _ = st.AddMessage(ctx, domain.Message{ThreadID: th.ID, Role: domain.MessageUser, Content: "Нужен VPN"})
+	a, _ := st.AddMessage(ctx, domain.Message{ThreadID: th.ID, Role: domain.MessageAssistant, Content: "Форма\nслева."})
+	_ = st.RateMessage(ctx, "u-liza", a.ID, "down", "выдумал форму")
+
+	var out, errOut bytes.Buffer
+	if code := run([]string{"feedback", "-notes"}, &out, &errOut); code != exitOK {
+		t.Fatalf("exit %d: %s", code, errOut.String())
+	}
+	for _, want := range []string{"· intern · 👎 · thread " + th.ID, "Q: Нужен VPN", "A: Форма слева.", "note: выдумал форму"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("output misses %q:\n%s", want, out.String())
+		}
+	}
+	if code := run([]string{"feedback", "-nope"}, &out, &errOut); code != exitError {
+		t.Errorf("bad flag: exit %d", code)
+	}
+	t.Setenv("DATABASE_URL", "")
+	if code := run([]string{"feedback"}, &out, &errOut); code != exitError {
+		t.Errorf("no database: exit %d", code)
+	}
+}
