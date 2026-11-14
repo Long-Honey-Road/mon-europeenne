@@ -46,23 +46,40 @@ type Chaos struct {
 
 type Server struct {
 	GRPC     *grpc.Server
+	Auth     *authroles.Service
 	Requests *corprequests.Service
 }
 
+type options struct{ stateFile string }
+
+// Option tunes the mock server.
+type Option func(*options)
+
+// WithStateFile keeps interns hired through auth-roles in a JSON file, so they survive a restart.
+func WithStateFile(path string) Option {
+	return func(o *options) { o.stateFile = path }
+}
+
 // New registers all mock services on one gRPC server with chaos applied to every call.
-func New(data seed.Data, chaos Chaos) (*Server, error) {
-	auth, err := authroles.New(data.Credentials())
+func New(data seed.Data, chaos Chaos, opts ...Option) (*Server, error) {
+	var o options
+	for _, opt := range opts {
+		opt(&o)
+	}
+	// auth-roles and people share the directory: a hired intern appears in both at once.
+	dir := data.Directory()
+	auth, err := authroles.New(data.Credentials(), dir, o.stateFile)
 	if err != nil {
 		return nil, err
 	}
 	reqs := corprequests.New(corprequests.OutcomesFromSeed(data), nil)
 	g := grpc.NewServer(grpc.UnaryInterceptor(chaos.intercept))
 	authrolesv1.RegisterAuthRolesServiceServer(g, auth)
-	peoplev1.RegisterDirectoryServiceServer(g, directory.New(data.Directory(), data.Teams()))
+	peoplev1.RegisterDirectoryServiceServer(g, directory.New(dir, data.Teams()))
 	corprequestsv1.RegisterCorpRequestsServiceServer(g, reqs)
 	documentsv1.RegisterDocumentsServiceServer(g, documents.New(data.Docs))
 	teamrepov1.RegisterTeamRepoServiceServer(g, teamrepo.New(data.Repos))
-	return &Server{GRPC: g, Requests: reqs}, nil
+	return &Server{GRPC: g, Auth: auth, Requests: reqs}, nil
 }
 
 func (c Chaos) intercept(ctx context.Context, req any, _ *grpc.UnaryServerInfo, next grpc.UnaryHandler) (any, error) {

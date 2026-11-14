@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, RefObject } from 'react'
-import Markdown from 'react-markdown'
 import type { AnswerMode } from '../../api/client'
 import type { ChatMessage, Thread, ThreadType } from '../../api/schemas'
 import { useCurrentUser } from '../auth/useMe'
 import type { AppSection } from '../nav/sections'
 import { ChatThreadContext } from '../requests/thread'
+import { Answer } from './Answer'
 import { Blocks, Escalation } from './Blocks'
 import { useChat } from './useChat'
 import type { LiveTurn } from './useChat'
@@ -17,6 +17,7 @@ const threadTypeNames: Record<ThreadType, string> = {
   THREAD_TYPE_PLAN: 'План',
   THREAD_TYPE_REQUEST: 'Заявки',
   THREAD_TYPE_TASK: 'Задача',
+  THREAD_TYPE_VAULT: 'Хранилище',
 }
 
 // Thread types a user can start from the chat; task threads start from a task (S-08).
@@ -28,14 +29,6 @@ export function threadLabel(t: Thread): string {
   const created = new Date(t.created_at)
   const date = Number.isNaN(created.getTime()) ? '' : ` · ${when.format(created)}`
   return `${t.title || threadTypeNames[t.type]}${date}`
-}
-
-function Answer({ text }: { text: string }) {
-  return (
-    <div className="msg__text">
-      <Markdown>{text}</Markdown>
-    </div>
-  )
 }
 
 function AssistantMessage({

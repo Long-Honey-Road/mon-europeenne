@@ -6,6 +6,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -356,5 +358,140 @@ func TestRunStopsWithContext(t *testing.T) {
 	cancel()
 	if err := <-errs; err != nil {
 		t.Errorf("Run() = %v", err)
+	}
+}
+
+func hire(login string) *authrolesv1.CreateAccountRequest {
+	return &authrolesv1.CreateAccountRequest{
+		RequesterId: "u-dmitry", DisplayName: "Вера Новикова", Login: login, Direction: "backend", MentorId: "p-anna",
+		StartDate: "2026-11-16",
+	}
+}
+
+func TestCreateAccount(t *testing.T) {
+	conn, _ := mockstest.Start(t, mocks.Chaos{})
+	c := authrolesv1.NewAuthRolesServiceClient(conn)
+	dir := peoplev1.NewDirectoryServiceClient(conn)
+	ctx := t.Context()
+
+	resp, err := c.CreateAccount(ctx, hire("vnovikova"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, pw := resp.GetAccount(), resp.GetTemporaryPassword()
+	if a.GetRole() != "intern" || a.GetTeamId() != "t-messenger" || a.GetMentorId() != "p-anna" ||
+		a.GetManagerId() != "p-dmitry" || a.GetDirection() != "backend" || a.GetStartDate() != "2026-11-16" ||
+		a.GetLogin() != "vnovikova" || a.GetDisplayName() != "Вера Новикова" || a.GetUserId() == "" {
+		t.Errorf("account = %+v", a)
+	}
+	if len(pw) != 12 {
+		t.Errorf("temporary password %q, want 12 characters", pw)
+	}
+
+	signed, err := c.Authenticate(ctx, &authrolesv1.AuthenticateRequest{Login: "vnovikova", Password: pw})
+	if err != nil || signed.GetAccount().GetUserId() != a.GetUserId() {
+		t.Fatalf("sign-in with the new password = %+v, %v", signed, err)
+	}
+	_, err = c.Authenticate(ctx, &authrolesv1.AuthenticateRequest{Login: "vnovikova", Password: pw + "x"})
+	wantCode(t, err, codes.Unauthenticated)
+	if got, err := c.GetAccount(ctx, &authrolesv1.GetAccountRequest{UserId: a.GetUserId()}); err != nil || got.GetAccount().GetLogin() != "vnovikova" {
+		t.Errorf("GetAccount(new) = %+v, %v", got, err)
+	}
+
+	team, _ := dir.ListPeople(ctx, &peoplev1.ListPeopleRequest{TeamId: "t-messenger"})
+	var found *peoplev1.Person
+	for _, p := range team.GetPeople() {
+		if p.GetUserId() == a.GetUserId() {
+			found = p
+		}
+	}
+	if found == nil || found.GetName() != "Вера Новикова" || found.GetRoleTitle() != "Стажёр, backend" {
+		t.Fatalf("directory entry = %+v", found)
+	}
+	rel, err := dir.GetRelations(ctx, &peoplev1.GetRelationsRequest{UserId: a.GetUserId()})
+	if err != nil || rel.GetRelations().GetMentorId() != "p-anna" || rel.GetRelations().GetManagerId() != "p-dmitry" ||
+		rel.GetRelations().GetHrBpId() != "p-elena" {
+		t.Errorf("relations = %+v, %v", rel, err)
+	}
+}
+
+func TestCreateAccountDefaultsToToday(t *testing.T) {
+	conn, _ := mockstest.Start(t, mocks.Chaos{})
+	req := hire("today.intern")
+	req.StartDate = ""
+	resp, err := authrolesv1.NewAuthRolesServiceClient(conn).CreateAccount(t.Context(), req)
+	if err != nil || resp.GetAccount().GetStartDate() == "" {
+		t.Errorf("start date = %q, %v", resp.GetAccount().GetStartDate(), err)
+	}
+}
+
+func TestCreateAccountRefuses(t *testing.T) {
+	conn, _ := mockstest.Start(t, mocks.Chaos{})
+	c := authrolesv1.NewAuthRolesServiceClient(conn)
+	ctx := t.Context()
+	with := func(edit func(r *authrolesv1.CreateAccountRequest)) *authrolesv1.CreateAccountRequest {
+		r := hire("vnovikova")
+		edit(r)
+		return r
+	}
+	cases := []struct {
+		name string
+		req  *authrolesv1.CreateAccountRequest
+		want codes.Code
+	}{
+		{"intern", with(func(r *authrolesv1.CreateAccountRequest) { r.RequesterId = "u-liza" }), codes.PermissionDenied},
+		{"mentor", with(func(r *authrolesv1.CreateAccountRequest) { r.RequesterId = "u-anna" }), codes.PermissionDenied},
+		{"unknown requester", with(func(r *authrolesv1.CreateAccountRequest) { r.RequesterId = "u-ghost" }), codes.PermissionDenied},
+		{"login taken", with(func(r *authrolesv1.CreateAccountRequest) { r.Login = "intern" }), codes.AlreadyExists},
+		{"bad login", with(func(r *authrolesv1.CreateAccountRequest) { r.Login = "Vera N" }), codes.InvalidArgument},
+		{"short login", with(func(r *authrolesv1.CreateAccountRequest) { r.Login = "vn" }), codes.InvalidArgument},
+		{"empty name", with(func(r *authrolesv1.CreateAccountRequest) { r.DisplayName = "  " }), codes.InvalidArgument},
+		{"bad direction", with(func(r *authrolesv1.CreateAccountRequest) { r.Direction = "devops" }), codes.InvalidArgument},
+		{"mentor of another team", with(func(r *authrolesv1.CreateAccountRequest) { r.MentorId = "p-pavel" }), codes.InvalidArgument},
+		{"unknown mentor", with(func(r *authrolesv1.CreateAccountRequest) { r.MentorId = "p-ghost" }), codes.InvalidArgument},
+		{"bad date", with(func(r *authrolesv1.CreateAccountRequest) { r.StartDate = "16.11.2026" }), codes.InvalidArgument},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := c.CreateAccount(ctx, tc.req)
+			wantCode(t, err, tc.want)
+		})
+	}
+	if _, err := c.Authenticate(ctx, &authrolesv1.AuthenticateRequest{Login: "vnovikova", Password: "x"}); status.Code(err) != codes.Unauthenticated {
+		t.Errorf("a refused hire left an account: %v", err)
+	}
+}
+
+func TestCreatedAccountsSurviveRestart(t *testing.T) {
+	data, err := seed.Load(seed.Files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := filepath.Join(t.TempDir(), "state.json")
+	first, err := mocks.New(data, mocks.Chaos{}, mocks.WithStateFile(state))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := first.Auth.CreateAccount(t.Context(), hire("vnovikova"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	second, err := mocks.New(data, mocks.Chaos{}, mocks.WithStateFile(state))
+	if err != nil {
+		t.Fatal(err)
+	}
+	signed, err := second.Auth.Authenticate(t.Context(), &authrolesv1.AuthenticateRequest{
+		Login: "vnovikova", Password: resp.GetTemporaryPassword(),
+	})
+	if err != nil || signed.GetAccount().GetMentorId() != "p-anna" {
+		t.Fatalf("after restart = %+v, %v", signed, err)
+	}
+	if _, err := second.Auth.CreateAccount(t.Context(), hire("vnovikova")); status.Code(err) != codes.AlreadyExists {
+		t.Errorf("login after restart not taken: %v", err)
+	}
+	raw, _ := os.ReadFile(state)
+	if strings.Contains(string(raw), resp.GetTemporaryPassword()) {
+		t.Error("state file keeps the password in clear text")
 	}
 }

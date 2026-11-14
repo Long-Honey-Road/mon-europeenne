@@ -88,3 +88,16 @@ func TestTodayLineAndPrompt(t *testing.T) {
 		t.Fatalf("prompt misses today or name:\n%s", prompt)
 	}
 }
+
+// Golden dialog 4 of spec 008: pinning and saving are the user's call; the rule is in every prompt.
+func TestPromptForbidsPinningOnItsOwn(t *testing.T) {
+	for _, th := range []domain.ThreadType{domain.ThreadGeneral, domain.ThreadPlan} {
+		p, err := systemPrompt(Turn{Thread: th, Mode: ModeBrief})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(p, "Pin notes or save to the vault only when the user asks") {
+			t.Errorf("%s prompt has no pin rule", th)
+		}
+	}
+}

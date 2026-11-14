@@ -2,6 +2,7 @@ import createClient from 'openapi-fetch'
 import type { z } from 'zod'
 import type { paths } from './schema.gen'
 import {
+  addInternResponseSchema,
   emptySchema,
   getMeResponseSchema,
   getPlanResponseSchema,
@@ -19,6 +20,7 @@ import {
   updatePlanItemResponseSchema,
 } from './schemas'
 import type {
+  AddInternResponse,
   ChatMessage,
   LoginResponse,
   Me,
@@ -35,6 +37,14 @@ import type {
 } from './schemas'
 
 export type AnswerMode = 'brief' | 'detailed'
+
+export type NewIntern = {
+  display_name: string
+  login: string
+  direction: 'DIRECTION_BACKEND' | 'DIRECTION_FRONTEND' | 'DIRECTION_QA'
+  mentor_id: string
+  start_date: string
+}
 export type Rating = 'up' | 'down'
 
 export type ApiErrorKind = 'unauthorized' | 'network' | 'invalid_response' | 'server'
@@ -67,6 +77,8 @@ export type Api = {
   updatePlanItem: (itemId: string, status: PlanItemStatus) => Promise<PlanItem>
   /** Directory, the caller's team first. */
   people: () => Promise<Person[]>
+  /** Managers only: creates the intern's account; the one-time password is in this response and nowhere else. */
+  addIntern: (intern: NewIntern) => Promise<AddInternResponse>
   requestTypes: () => Promise<RequestType[]>
   /** The caller's own requests, last updated first. */
   myRequests: () => Promise<ServiceRequest[]>
@@ -136,6 +148,8 @@ export function createApi({ baseUrl, getToken, onUnauthorized, fetch: fetchImpl 
         )
       ).item,
     people: async () => (await call(() => client.GET('/v1/private/people'), listPeopleResponseSchema, true)).people,
+    addIntern: (intern) =>
+      call(() => client.POST('/v1/private/team/interns', { body: intern }), addInternResponseSchema, true),
     requestTypes: async () =>
       (await call(() => client.GET('/v1/private/request-types'), listRequestTypesResponseSchema, true)).types,
     myRequests: async () =>

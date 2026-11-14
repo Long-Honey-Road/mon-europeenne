@@ -121,3 +121,10 @@ func (r *Remote) Relations(ctx context.Context, userID string) (Relations, error
 	}
 	return m.Relations(ctx, userID)
 }
+
+// Forget drops the cached copy, so the next read sees people added a moment ago.
+func (r *Remote) Forget() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.snap = nil
+}

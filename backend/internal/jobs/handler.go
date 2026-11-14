@@ -15,6 +15,7 @@ import (
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/profile"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/spheres"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/store"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/stream"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/tools"
@@ -58,6 +59,12 @@ type Users interface {
 	User(ctx context.Context, id string) (domain.User, error)
 }
 
+// Spheres builds the context of a tab with spheres (design §6.5) and schedules summaries after a turn.
+type Spheres interface {
+	For(ctx context.Context, th domain.Thread, msg domain.Message) (spheres.Context, error)
+	AfterTurn(ctx context.Context, th domain.Thread, f domain.Focus)
+}
+
 type Deps struct {
 	Store     Store
 	Publisher Publisher
@@ -66,6 +73,8 @@ type Deps struct {
 	Directory tools.PeopleDirectory
 	Models    Models
 	Turns     Turns
+	// Spheres is nil where tabs have no spheres: the turn then sees the plain thread tail.
+	Spheres Spheres
 	// QueueTimeout limits waiting for a free model; 5 min if zero.
 	QueueTimeout time.Duration
 }
@@ -135,10 +144,15 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 		h.fail(emit, p, "model_busy", "Модель занята другими ответами и не освободилась. Попробуй ещё раз через пару минут или спроси у людей ниже.")
 		return nil
 	}
-	res, err := h.d.Agent.RunWith(ctx, model, agent.Turn{
+	at := agent.Turn{
 		Principal: p, Thread: thread.Type, Mode: agent.Mode(turn.Mode), Profile: prof, Today: agent.TodayLine(time.Now(), user.StartDate),
 		Pinned: pinText(thread.Pin), Summary: thread.Summary, History: history(msgs[:idx]), Message: msgs[idx].Content,
-	}, emit)
+	}
+	if err := h.withSphere(ctx, &at, thread, msgs[idx]); err != nil {
+		release()
+		return err
+	}
+	res, err := h.d.Agent.RunWith(ctx, model, at, emit)
 	release()
 	trace := domain.TurnTrace{
 		ThreadID: thread.ID, QuestionID: turn.MessageID, JobID: jobID, Mode: string(res.Mode), Duration: res.Trace.Duration,
@@ -168,6 +182,7 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	}
 	saved, err := h.d.Store.AddMessage(ctx, domain.Message{
 		ThreadID: thread.ID, Role: domain.MessageAssistant, Content: res.Text, Blocks: blocks, JobID: jobID,
+		Focus: msgs[idx].Focus,
 	})
 	if err != nil {
 		return err
@@ -177,8 +192,35 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	}
 	trace.AnswerID = saved.ID
 	h.saveTrace(ctx, trace)
+	if h.d.Spheres != nil {
+		h.d.Spheres.AfterTurn(ctx, thread, msgs[idx].Focus)
+	}
+	for _, e := range res.UIEvents {
+		emit.publish(e.Type, e.Data)
+	}
 	// The saved text may differ from the stream: invariants remove invented links and markers.
 	emit.publish("done", map[string]any{"message_id": saved.ID, "text": saved.Content})
+	return nil
+}
+
+// sphereTabs are the thread types shown as a tab with spheres; other threads keep the plain tail and summary.
+var sphereTabs = map[domain.ThreadType]bool{domain.ThreadPlan: true, domain.ThreadVault: true}
+
+// withSphere swaps the thread tail for the sphere's own context: card, memory, overview and its messages.
+func (h *Handler) withSphere(ctx context.Context, t *agent.Turn, th domain.Thread, msg domain.Message) error {
+	if h.d.Spheres == nil || !sphereTabs[th.Type] {
+		return nil
+	}
+	sc, err := h.d.Spheres.For(ctx, th, msg)
+	if err != nil {
+		return err
+	}
+	t.Overview = sc.Overview
+	if !msg.Focus.IsZero() {
+		t.Sphere, t.SphereMemory, t.Summary, t.History = sc.Card, sc.Memory, "", history(sc.History)
+	} else {
+		t.Summary = ""
+	}
 	return nil
 }
 

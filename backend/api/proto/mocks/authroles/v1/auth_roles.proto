@@ -18,6 +18,15 @@ service AuthRolesService {
   rpc GetAccount(GetAccountRequest) returns (GetAccountResponse) {
     option (google.api.http) = {get: "/auth/accounts/{user_id}"};
   }
+  // CreateAccount hires an intern into the requester's team: an account that signs in at once, a directory entry
+  // with mentor, manager and HR BP, and a one-time password returned only here. Only a manager may call it;
+  // PERMISSION_DENIED otherwise, INVALID_ARGUMENT for bad fields, ALREADY_EXISTS for a taken login.
+  rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse) {
+    option (google.api.http) = {
+      post: "/auth/accounts"
+      body: "*"
+    };
+  }
 }
 
 message Account {
@@ -53,4 +62,23 @@ message GetAccountRequest {
 
 message GetAccountResponse {
   Account account = 1;
+}
+
+message CreateAccountRequest {
+  // The manager who hires; the intern joins this manager's team.
+  string requester_id = 1;
+  string display_name = 2;
+  // Lowercase latin, 3 to 32 characters: ^[a-z][a-z0-9._-]{2,31}$.
+  string login = 3;
+  // backend, frontend or qa.
+  string direction = 4;
+  // Person id of a mentor from the same team.
+  string mentor_id = 5;
+  // YYYY-MM-DD; empty means today.
+  string start_date = 6;
+}
+
+message CreateAccountResponse {
+  Account account = 1;
+  string temporary_password = 2;
 }

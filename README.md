@@ -73,6 +73,10 @@ Sign in as `intern`. The screen is four orbs and the buddy chat on the right.
    steps (understand, the service, team conventions, check and hand off). Buddy explains each step; it never writes
    the code for the intern.
 6. **Team.** Click «Команда»: the directory, own team first, and «Спросить buddy» about a person.
+7. **New intern.** Sign in as `manager`, open «Команда», press «Добавить стажёра»: name, login (suggested from the
+   name), direction, mentor from the team, start date. The account is created in the company's account system (the
+   `auth-roles` mock) and the one-time password is shown once. Sign out and sign in with it: the new intern has
+   «Сегодня», the plan and the chat at once. Interns and mentors cannot add anyone.
 
 Permissions are checked in the tools and the API, not in prompts: what a role may not see is neither shown nor done.
 
@@ -93,7 +97,7 @@ flowchart LR
   worker -->|OpenAI-compatible API| llm["LLM<br/>Ollama or external"]
   api -->|gRPC| mocks["mocks<br/>auth-roles, people, corp-requests,<br/>documents, team-repo"]
   worker -->|gRPC| mocks
-  mcp["buddy mcp<br/>the same tools over MCP"] -.-> pg
+  mcpc(["MCP client<br/>Inspector, Claude Code"]) -->|"/v1/private/mcp, session token"| api
 ```
 
 - **frontend**: one screen with four orbs and a permanent chat, the plan map, the task screen. TanStack Query and
@@ -106,8 +110,8 @@ flowchart LR
   open Avito Playbook (read from GitHub at a fixed commit, with links back; not copied into this repository) into
   Postgres full-text search. `search_docs` filters by the user's team in SQL, so another team's document never
   reaches the model; a general and a team rule on one topic come back as a conflict with both sources.
-- **Tools** are the agent's only way to act, each with a JSON Schema, roles and thread types; `buddy mcp` serves
-  the same registry over MCP. Sending a request is never a model action: the user confirms the form.
+- **Tools** are the agent's only way to act, each with a JSON Schema, roles and thread types; the API serves the
+  same registry over MCP at `/v1/private/mcp` as the signed-in user, `buddy mcp` over stdio as a test user. Sending a request is never a model action: the user confirms the form.
 - **Company services** buddy cannot reach are imitated by `buddy mocks`: auth-roles, people, corp-requests, documents and team-repo, each
   with a gRPC contract in `backend/api/proto/mocks` (REST and `backend/api/openapi/mocks-api.yaml` for manual checks),
   random failures and delays (`MOCK_FAIL_RATE`, `MOCK_MAX_LATENCY`). Buddy talks to them like to real services:
@@ -202,8 +206,35 @@ From `backend/`:
 | `make run CMD='ask -v Кто поможет с деплоем?'` | one agent turn as `intern` (`-as`, `-thread`, `-detailed`); `-v` prints tool calls |
 | `make run CMD='trace -n 5 -as intern'` | the latest saved agent turns: prompt (`-prompt`), tool calls with arguments and results, text before cleanup; in compose `docker compose -f deploy/docker-compose.yml exec api buddy trace` |
 
-The agent's tools over MCP (stdio), as a test user in one thread type; with `DATABASE_URL` the plan and
-request tools are there too. For Claude Code, from the repo root:
+### MCP
+
+The API serves the agent's tools over MCP streamable HTTP at `/v1/private/mcp`, as the user of the session
+token, with the same checks as the agent: `tools/list` shows what the role may use in the thread type, `tools/call`
+of anything else answers `{"error": "forbidden" | "not_in_thread" | "unknown_tool"}` with `isError`. The thread type
+is `general` unless the URL says otherwise (`?thread=plan`, `request`, `task`); it is fixed when the session starts.
+Without a token the endpoint answers 401; a session ID presented with another user's token gets 403.
+
+1. Start the stack (`docker compose -f deploy/docker-compose.yml up`) and get a token:
+
+   ```bash
+   curl -s localhost:8080/v1/public/auth/login -d '{"login":"intern","password":"intern-demo"}'
+   ```
+
+2. Run `npx @modelcontextprotocol/inspector`, pick transport **Streamable HTTP**, URL
+   `http://localhost:8080/v1/private/mcp` (or `...?thread=plan`), and in **Authentication** set the header
+   `Authorization` to `Bearer <token>`. Connect, then **List Tools** and run one, for example `get_plan`.
+
+Claude Code takes the same endpoint:
+
+```bash
+claude mcp add --transport http buddy http://localhost:8080/v1/private/mcp --header "Authorization: Bearer <token>"
+```
+
+The token lives 12 hours. Behind a proxy that reaches the API on localhost, keep the original `Host` header: the
+MCP SDK refuses requests that arrive on a loopback address with a foreign host (DNS rebinding protection).
+
+`buddy mcp` serves the same tools over stdio as a test user in one thread type, no API needed; with `DATABASE_URL`
+the plan and request tools are there too. For Claude Code, from the repo root:
 
 ```bash
 claude mcp add buddy -- go -C backend run ./cmd/buddy mcp -as intern -thread plan

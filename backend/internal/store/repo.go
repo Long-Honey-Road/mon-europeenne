@@ -60,7 +60,7 @@ func (s *Store) SeedOrg(ctx context.Context, teams []domain.Team, users []domain
 	})
 }
 
-const threadColumns = `t.id, u.external_id, t.type_id, t.title, t.pin, t.summary, t.created_at`
+const threadColumns = `t.id, u.external_id, t.type_id, t.title, t.pin, t.summary, t.summary_until, t.created_at`
 
 func (s *Store) CreateThread(ctx context.Context, userID string, typ domain.ThreadType, title string, pin domain.ThreadPin) (domain.Thread, error) {
 	pinJSON, err := json.Marshal(pin)
@@ -114,9 +114,10 @@ func (s *Store) AddMessage(ctx context.Context, m domain.Message) (domain.Messag
 		return domain.Message{}, ErrNotFound
 	}
 	err := s.pool.QueryRow(ctx, `
-		INSERT INTO buddy.messages (thread_id, role_id, content, blocks, attachments, job_id)
-		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at`,
+		INSERT INTO buddy.messages (thread_id, role_id, content, blocks, attachments, job_id, focus_kind_id, focus_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, created_at`,
 		m.ThreadID, int16(m.Role), m.Content, orArray(m.Blocks), orArray(m.Attachments), m.JobID,
+		nullFocus(m.Focus.Kind), m.Focus.ID,
 	).Scan(&m.ID, &m.CreatedAt)
 	return m, err
 }
@@ -127,24 +128,46 @@ func (s *Store) Messages(ctx context.Context, threadID string, limit int) ([]dom
 		return nil, ErrNotFound
 	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, thread_id, role_id, content, blocks, attachments, job_id, created_at FROM (
+		SELECT `+messageColumns+` FROM (
 			SELECT * FROM buddy.messages WHERE thread_id = $1 ORDER BY created_at DESC, id LIMIT $2
 		) last ORDER BY created_at, id`, threadID, limit)
 	if err != nil {
 		return nil, err
 	}
+	return collectMessages(rows)
+}
+
+const messageColumns = `id, thread_id, role_id, content, blocks, attachments, job_id, coalesce(focus_kind_id, 0), focus_id, created_at`
+
+// messageColumnsOf is messageColumns qualified by a table alias, for joins.
+func messageColumnsOf(alias string) string {
+	return alias + ".id, " + alias + ".thread_id, " + alias + ".role_id, " + alias + ".content, " + alias + ".blocks, " +
+		alias + ".attachments, " + alias + ".job_id, coalesce(" + alias + ".focus_kind_id, 0), " + alias + ".focus_id, " +
+		alias + ".created_at"
+}
+
+func collectMessages(rows pgx.Rows) ([]domain.Message, error) {
 	defer rows.Close()
 	var out []domain.Message
 	for rows.Next() {
 		var m domain.Message
-		var role int16
-		if err := rows.Scan(&m.ID, &m.ThreadID, &role, &m.Content, &m.Blocks, &m.Attachments, &m.JobID, &m.CreatedAt); err != nil {
+		var role, kind int16
+		if err := rows.Scan(&m.ID, &m.ThreadID, &role, &m.Content, &m.Blocks, &m.Attachments, &m.JobID, &kind,
+			&m.Focus.ID, &m.CreatedAt); err != nil {
 			return nil, err
 		}
-		m.Role = domain.MessageRole(role)
+		m.Role, m.Focus.Kind = domain.MessageRole(role), domain.FocusKind(kind)
 		out = append(out, m)
 	}
 	return out, rows.Err()
+}
+
+func nullFocus(k domain.FocusKind) *int16 {
+	if k == 0 {
+		return nil
+	}
+	v := int16(k)
+	return &v
 }
 
 // RateMessage stores a feedback event for an assistant message in the user's own thread, ErrNotFound otherwise.
@@ -182,7 +205,11 @@ func scanThread(row pgx.Row) (domain.Thread, error) {
 	var t domain.Thread
 	var typ int16
 	var pin []byte
-	err := row.Scan(&t.ID, &t.UserID, &typ, &t.Title, &pin, &t.Summary, &t.CreatedAt)
+	var until *time.Time
+	err := row.Scan(&t.ID, &t.UserID, &typ, &t.Title, &pin, &t.Summary, &until, &t.CreatedAt)
+	if until != nil {
+		t.SummaryUntil = *until
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.Thread{}, ErrNotFound
 	}
@@ -230,4 +257,9 @@ func orObject(raw json.RawMessage) json.RawMessage {
 		return json.RawMessage("{}")
 	}
 	return raw
+}
+
+// EnsureUser creates or refreshes the buddy row of an account, e.g. an intern signing in for the first time.
+func (s *Store) EnsureUser(ctx context.Context, u domain.User) error {
+	return s.SeedOrg(ctx, nil, []domain.User{u})
 }

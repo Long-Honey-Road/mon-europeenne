@@ -53,6 +53,18 @@ func agentTools(data seed.Data, dir people.Directory, st *store.Store, search to
 		if err := add(tools.SearchDocs(search)); err != nil {
 			return nil, err
 		}
+		for _, build := range []func() (tools.Tool, error){
+			func() (tools.Tool, error) { return tools.PinNote(st, st) },
+			func() (tools.Tool, error) { return tools.HighlightSpheres(st) },
+			func() (tools.Tool, error) { return tools.FocusSphere(st) },
+			func() (tools.Tool, error) { return tools.VaultSave(st) },
+			func() (tools.Tool, error) { return tools.VaultUpdate(st) },
+			func() (tools.Tool, error) { return tools.VaultList(st) },
+		} {
+			if err := add(build()); err != nil {
+				return nil, err
+			}
+		}
 		if err := add(tools.GetPlan(st)); err != nil {
 			return nil, err
 		}

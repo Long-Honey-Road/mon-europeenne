@@ -62,18 +62,29 @@ type Task struct {
 }
 
 type Thread struct {
-	ID        string
-	UserID    string
-	Type      ThreadType
-	Title     string
-	Pin       ThreadPin
-	Summary   string
-	CreatedAt time.Time
+	ID      string
+	UserID  string
+	Type    ThreadType
+	Title   string
+	Pin     ThreadPin
+	Summary string
+	// SummaryUntil is the created_at of the newest message Summary covers; zero without a summary.
+	SummaryUntil time.Time
+	CreatedAt    time.Time
 }
+
+// Focus is the sphere a message is about (design §6.5); the zero value is the tab overview.
+type Focus struct {
+	Kind FocusKind
+	ID   string
+}
+
+func (f Focus) IsZero() bool { return f.Kind == 0 }
 
 type Message struct {
 	ID          string
 	ThreadID    string
+	Focus       Focus
 	Role        MessageRole
 	Content     string
 	Blocks      json.RawMessage
@@ -191,4 +202,39 @@ type Event struct {
 	Type    EventType
 	Payload json.RawMessage
 	At      time.Time
+}
+
+// Pin is a short note the user pinned to a sphere; MessageID is the answer it came from, if any.
+type Pin struct {
+	ID        string
+	UserID    string
+	Focus     Focus
+	Title     string
+	Text      string
+	Sources   json.RawMessage
+	MessageID string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// VaultItem is a note in the user's vault; every change makes a new version.
+type VaultItem struct {
+	ID        string
+	UserID    string
+	Title     string
+	Summary   string
+	Tags      []string
+	Sources   json.RawMessage
+	Version   int
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	// Versions are filled only when one item is read with its history, newest first.
+	Versions []VaultItem
+}
+
+// VaultPatch changes the fields that are set; Tags nil keeps the tags.
+type VaultPatch struct {
+	Title   *string
+	Summary *string
+	Tags    []string
 }

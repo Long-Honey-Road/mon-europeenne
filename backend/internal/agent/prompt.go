@@ -16,6 +16,7 @@ var threadPrompts = map[domain.ThreadType]string{
 	domain.ThreadPlan:    "thread_plan.md",
 	domain.ThreadRequest: "thread_request.md",
 	domain.ThreadTask:    "thread_task.md",
+	domain.ThreadVault:   "thread_vault.md",
 }
 
 var modePrompts = map[Mode]string{
@@ -48,6 +49,9 @@ func systemPrompt(t Turn) (string, error) {
 		{"## Profile", t.Profile},
 		{"## Pinned context", t.Pinned},
 		{"## Earlier in this thread", t.Summary},
+		{"## Sphere in focus", t.Sphere},
+		{"## Earlier about this sphere", t.SphereMemory},
+		{"## Other spheres in this tab", t.Overview},
 	} {
 		if part.text != "" {
 			fmt.Fprintf(&b, "%s\n\n%s\n\n", part.title, part.text)

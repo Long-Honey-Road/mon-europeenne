@@ -7,7 +7,7 @@ COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/buddy ./cmd/buddy
 
 FROM alpine:3.23.8
-RUN adduser -D -u 10001 buddy
+RUN adduser -D -u 10001 buddy && mkdir -p /var/lib/buddy && chown buddy /var/lib/buddy
 COPY --from=build /out/buddy /usr/local/bin/buddy
 USER buddy
 EXPOSE 8080

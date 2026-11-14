@@ -29,6 +29,22 @@ curl -fsS "$BASE/v1/private/plan" -H "Authorization: Bearer $TOKEN" \
 curl -fsS "$BASE/v1/private/people?q=staging" -H "Authorization: Bearer $TOKEN" \
   | python3 -c 'import json,sys; p=json.load(sys.stdin)["people"]; assert p, p; print("smoke ok: people,", p[0]["name"])'
 
+# A manager adds an intern; the intern signs in with the one-time password and has a plan at once.
+MPASS=$(python3 -c 'import json,sys; print(next(p["account"]["password"] for p in json.load(open(sys.argv[1]))["people"] if p.get("account", {}).get("login") == "manager"))' "$SEED")
+MTOKEN=$(curl -fsS -X POST "$BASE/v1/public/auth/login" -H 'Content-Type: application/json' \
+  -d "{\"login\":\"manager\",\"password\":\"$MPASS\"}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
+NEW="smoke$(date +%s)$$"
+NEWPASS=$(curl -fsS -X POST "$BASE/v1/private/team/interns" -H "Authorization: Bearer $MTOKEN" \
+  -d "{\"display_name\":\"Смоук Стажёр\",\"login\":\"$NEW\",\"direction\":\"DIRECTION_QA\",\"mentor_id\":\"p-anna\"}" \
+  | python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["user"]["role"] == "ROLE_INTERN", r; print(r["temporary_password"])')
+NTOKEN=$(curl -fsS -X POST "$BASE/v1/public/auth/login" -H 'Content-Type: application/json' \
+  -d "{\"login\":\"$NEW\",\"password\":\"$NEWPASS\"}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
+curl -fsS "$BASE/v1/private/plan" -H "Authorization: Bearer $NTOKEN" \
+  | python3 -c 'import json,sys; p=json.load(sys.stdin); assert p["total"] > 0 and p["done"] == 0, p; print("smoke ok: hired intern signed in, plan of", p["total"])'
+STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/v1/private/team/interns" -H "Authorization: Bearer $TOKEN" \
+  -d '{"display_name":"X","login":"xxx","direction":"DIRECTION_QA","mentor_id":"p-anna"}')
+[ "$STATUS" = "403" ] || { echo "intern adding an intern returned $STATUS, want 403"; exit 1; }
+
 # Access request: submit, then the worker's advance_requests approves it (Mattermost: 15 s plus a 15 s tick).
 REQ=$(curl -fsS -X POST "$BASE/v1/private/requests" -H "Authorization: Bearer $TOKEN" \
   -d '{"type_key":"access.mattermost_channel","fields":{"channel":"~messenger-team"}}' \

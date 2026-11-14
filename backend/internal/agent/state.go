@@ -25,7 +25,11 @@ var (
 	// Two or more spaces inside a line, left where a marker was removed; indentation is kept.
 	doubleSpaceRe = regexp.MustCompile(`(\S)[ \t]{2,}`)
 	// A marker in the model's own style, e.g. [ref], [ref1] or [источник 2]; a markdown link right after it keeps it.
-	digitsRe    = regexp.MustCompile(`\d+`)
+	digitsRe = regexp.MustCompile(`\d+`)
+	// A markdown image: a picture loads its URL in the user's browser, a way to leak data out of the chat.
+	imageRe = regexp.MustCompile(`!\[([^\]\n]*)\]\([^)\n]*\)`)
+	// An internal id in brackets, e.g. [w1-access]: the model's way to point at a plan item, noise for the user.
+	idRefRe     = regexp.MustCompile(`\[[a-z][a-z0-9]*(?:-[a-z0-9]+)+\](\()?`)
 	pseudoRefRe = regexp.MustCompile(`(?i)\[(?:ref|refs|source|sources|src|cite|источник|ссылка)[^\]\n]{0,6}\](\()?`)
 )
 
@@ -39,6 +43,7 @@ type turnState struct {
 	general    *tools.GeneralKnowledgeNote
 	actions    []json.RawMessage
 	conflicts  []Block
+	uiEvents   []tools.UIEvent
 	violations []string
 	events     []Event
 }
@@ -66,6 +71,13 @@ func (s *turnState) absorb(tool string, raw []byte) []byte {
 			if b, err := json.Marshal(items); err == nil {
 				obj["sources"] = b
 			}
+		}
+	}
+	// Any tool may ask the server to update the user's screen (pins, highlights); the agent only passes it on.
+	if raw, ok := obj["ui_event"]; ok {
+		var e tools.UIEvent
+		if json.Unmarshal(raw, &e) == nil && e.Type != "" {
+			s.uiEvents = append(s.uiEvents, e)
 		}
 	}
 	// Any tool may offer a user action (a form to confirm); the agent does not know what it does.
@@ -103,6 +115,11 @@ func (s *turnState) absorb(tool string, raw []byte) []byte {
 func (s *turnState) finishText(text string, thread domain.ThreadType) (string, map[int]bool) {
 	cited := map[int]bool{}
 	removed := false
+	text = imageRe.ReplaceAllStringFunc(text, func(m string) string {
+		s.violations = append(s.violations, "image "+m)
+		removed = true
+		return ""
+	})
 	text = footnoteRe.ReplaceAllStringFunc(text, func(line string) string {
 		n, _ := strconv.Atoi(footnoteRe.FindStringSubmatch(line)[1])
 		if n >= 1 && n <= len(s.refs) {
@@ -121,6 +138,14 @@ func (s *turnState) finishText(text string, thread domain.ThreadType) (string, m
 			return "[" + n + "]"
 		}
 		s.violations = append(s.violations, "pseudo marker "+m)
+		removed = true
+		return ""
+	})
+	text = idRefRe.ReplaceAllStringFunc(text, func(m string) string {
+		if strings.HasSuffix(m, "(") {
+			return m
+		}
+		s.violations = append(s.violations, "internal id "+m)
 		removed = true
 		return ""
 	})

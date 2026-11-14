@@ -36,6 +36,7 @@ var threadTypes = map[buddyv1.ThreadType]domain.ThreadType{
 	buddyv1.ThreadType_THREAD_TYPE_PLAN:    domain.ThreadPlan,
 	buddyv1.ThreadType_THREAD_TYPE_REQUEST: domain.ThreadRequest,
 	buddyv1.ThreadType_THREAD_TYPE_TASK:    domain.ThreadTask,
+	buddyv1.ThreadType_THREAD_TYPE_VAULT:   domain.ThreadVault,
 }
 
 func (s *threadService) ListThreads(ctx context.Context, _ *buddyv1.ListThreadsRequest) (*buddyv1.ListThreadsResponse, error) {
@@ -75,14 +76,14 @@ func (s *threadService) CreateThread(ctx context.Context, req *buddyv1.CreateThr
 		return nil, status.Error(codes.InvalidArgument, "task thread needs pin.task.key")
 	}
 
-	// The plan thread lives on the plan tab: one per user.
-	if typ == domain.ThreadPlan {
+	// The plan and vault threads live on their tabs: one per user.
+	if typ == domain.ThreadPlan || typ == domain.ThreadVault {
 		existing, err := s.deps.Threads.Threads(ctx, p.UserID)
 		if err != nil {
 			return nil, storeError(err)
 		}
 		for _, t := range existing {
-			if t.Type == domain.ThreadPlan {
+			if t.Type == typ {
 				return threadResponse(t)
 			}
 		}
@@ -140,6 +141,10 @@ func (s *threadService) SendMessage(ctx context.Context, req *buddyv1.SendMessag
 	if err != nil {
 		return nil, err
 	}
+	focus, err := s.focusOf(ctx, t, req.GetFocus())
+	if err != nil {
+		return nil, err
+	}
 	jobID, err := s.deps.Jobs.ReserveChatTurn(ctx, t.ID)
 	if errors.Is(err, jobs.ErrTurnRunning) {
 		return nil, status.Error(codes.FailedPrecondition, "the previous answer is still being prepared")
@@ -152,7 +157,7 @@ func (s *threadService) SendMessage(ctx context.Context, req *buddyv1.SendMessag
 			slog.Error("free thread after a failed send", "thread", t.ID, "err", err)
 		}
 	}
-	msg, err := s.deps.Threads.AddMessage(ctx, domain.Message{ThreadID: t.ID, Role: domain.MessageUser, Content: content})
+	msg, err := s.deps.Threads.AddMessage(ctx, domain.Message{ThreadID: t.ID, Role: domain.MessageUser, Content: content, Focus: focus})
 	if err != nil {
 		unreserve()
 		return nil, storeError(err)
@@ -166,6 +171,41 @@ func (s *threadService) SendMessage(ctx context.Context, req *buddyv1.SendMessag
 		return nil, status.Error(codes.Unavailable, "could not queue the answer, try again")
 	}
 	return &buddyv1.SendMessageResponse{MessageId: msg.ID, JobId: jobID}, nil
+}
+
+// focusThreads says which thread type a sphere kind belongs to.
+var focusThreads = map[buddyv1.FocusKind]domain.ThreadType{
+	buddyv1.FocusKind_FOCUS_KIND_PLAN_ITEM:  domain.ThreadPlan,
+	buddyv1.FocusKind_FOCUS_KIND_VAULT_ITEM: domain.ThreadVault,
+}
+
+// focusOf checks the sphere before anything is queued: its kind fits the thread and the user owns it.
+func (s *threadService) focusOf(ctx context.Context, t domain.Thread, f *buddyv1.Focus) (domain.Focus, error) {
+	if f.GetKind() == buddyv1.FocusKind_FOCUS_KIND_UNSPECIFIED {
+		return domain.Focus{}, nil
+	}
+	if want, ok := focusThreads[f.GetKind()]; !ok || want != t.Type || f.GetId() == "" {
+		return domain.Focus{}, status.Error(codes.InvalidArgument, "this kind of focus does not fit the thread")
+	}
+	if f.GetKind() == buddyv1.FocusKind_FOCUS_KIND_VAULT_ITEM {
+		if s.deps.Vault == nil {
+			return domain.Focus{}, status.Error(codes.Unimplemented, "the vault is not available")
+		}
+		if _, err := s.deps.Vault.VaultItem(ctx, t.UserID, f.GetId()); err != nil {
+			return domain.Focus{}, storeError(err)
+		}
+		return domain.Focus{Kind: domain.FocusVaultItem, ID: f.GetId()}, nil
+	}
+	entries, err := s.deps.Plans.Plan(ctx, t.UserID)
+	if err != nil {
+		return domain.Focus{}, storeError(err)
+	}
+	for _, e := range entries {
+		if e.Item.Key == f.GetId() {
+			return domain.Focus{Kind: domain.FocusPlanItem, ID: f.GetId()}, nil
+		}
+	}
+	return domain.Focus{}, status.Errorf(codes.NotFound, "no plan item %q in your plan", f.GetId())
 }
 
 // ownThread returns NotFound for missing threads and for threads of other users alike.
@@ -262,10 +302,18 @@ func threadProto(t domain.Thread) (*buddyv1.Thread, error) {
 	return out, nil
 }
 
+var focusKinds = map[domain.FocusKind]buddyv1.FocusKind{
+	domain.FocusPlanItem:  buddyv1.FocusKind_FOCUS_KIND_PLAN_ITEM,
+	domain.FocusVaultItem: buddyv1.FocusKind_FOCUS_KIND_VAULT_ITEM,
+}
+
 func messageProto(m domain.Message) (*buddyv1.Message, error) {
 	out := &buddyv1.Message{
 		Id: m.ID, ThreadId: m.ThreadID, Text: m.Content, Blocks: []*structpb.Struct{},
 		CreatedAt: m.CreatedAt.UTC().Format(time.RFC3339),
+	}
+	if !m.Focus.IsZero() {
+		out.Focus = &buddyv1.Focus{Kind: focusKinds[m.Focus.Kind], Id: m.Focus.ID}
 	}
 	switch m.Role {
 	case domain.MessageUser:

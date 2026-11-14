@@ -164,3 +164,23 @@ export const chatHandlers = [
     return HttpResponse.json({})
   }),
 ]
+
+/** An answer in the shape the live model writes: inline and display math, a GFM table and a Go block. */
+export const richAnswer = [
+  'Перцентиль $x_p$ считаем так:',
+  '',
+  '$$\\frac{a}{b}$$',
+  '',
+  '| Метрика | Порог |',
+  '| --- | --- |',
+  '| p99 | 200 мс |',
+  '',
+  '```go',
+  'func main() { fmt.Println("ok") }',
+  '```',
+  '',
+  'Команда `make deploy`, подробности в [1]. ~~Старый способ~~ не работает.',
+  '',
+  '- [x] прочитать README',
+  '- [ ] поднять стенд',
+].join('\n')

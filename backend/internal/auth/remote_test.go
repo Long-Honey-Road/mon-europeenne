@@ -4,6 +4,9 @@ import (
 	"errors"
 	"testing"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/auth"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/mocks"
@@ -39,5 +42,25 @@ func TestRemote(t *testing.T) {
 	}
 	if _, err := r.Authenticate(ctx, "intern", "intern-demo"); err == nil || errors.Is(err, auth.ErrInvalidCredentials) {
 		t.Errorf("sign-in during outage: %v", err)
+	}
+}
+
+func TestRemoteHire(t *testing.T) {
+	conn, _ := mockstest.Start(t, mocks.Chaos{})
+	r := auth.NewRemote(conn)
+	ctx := t.Context()
+
+	u, pw, err := r.Hire(ctx, "u-dmitry", auth.Hire{
+		DisplayName: "Вера Новикова", Login: "vnovikova", Direction: domain.DirectionQA, MentorID: "p-anna",
+	})
+	if err != nil || u.Role != domain.RoleIntern || u.Direction != domain.DirectionQA || u.TeamID != "t-messenger" || len(pw) != 12 {
+		t.Fatalf("Hire = %+v, %q, %v", u, pw, err)
+	}
+	if signed, err := r.Authenticate(ctx, "vnovikova", pw); err != nil || signed.ID != u.ID {
+		t.Errorf("sign-in of the hired intern = %+v, %v", signed, err)
+	}
+	_, _, err = r.Hire(ctx, "u-liza", auth.Hire{DisplayName: "X", Login: "xxx", Direction: domain.DirectionQA, MentorID: "p-anna"})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Errorf("intern hiring: %v, want PERMISSION_DENIED as is", err)
 	}
 }

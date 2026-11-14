@@ -74,6 +74,7 @@ export const threadTypeSchema = z.enum([
   'THREAD_TYPE_PLAN',
   'THREAD_TYPE_REQUEST',
   'THREAD_TYPE_TASK',
+  'THREAD_TYPE_VAULT',
 ])
 
 export const taskPinSchema = z.object({
@@ -256,6 +257,12 @@ export const listRequestTypesResponseSchema = z.object({ types: z.array(requestT
 export const listRequestsResponseSchema = z.object({ requests: z.array(serviceRequestSchema) })
 export const requestResponseSchema = z.object({ request: serviceRequestSchema })
 
+export const addInternResponseSchema = z.object({
+  user: userSchema,
+  login: z.string(),
+  temporary_password: z.string().min(1),
+})
+
 export type Role = z.infer<typeof roleSchema>
 export type User = z.infer<typeof userSchema>
 export type LoginResponse = z.infer<typeof loginResponseSchema>
@@ -279,3 +286,4 @@ export type RequestType = z.infer<typeof requestTypeSchema>
 export type ServiceRequest = z.infer<typeof serviceRequestSchema>
 export type Plan = z.infer<typeof getPlanResponseSchema>
 export type TaskPin = z.infer<typeof taskPinSchema>
+export type AddInternResponse = z.infer<typeof addInternResponseSchema>

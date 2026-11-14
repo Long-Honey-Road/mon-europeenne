@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package buddy.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+
+// VaultService is the user's private vault (design §6.5): notes made from conversations, each change a version.
+// Nobody but the owner sees it, mentors and managers neither.
+service VaultService {
+  rpc ListVaultItems(ListVaultItemsRequest) returns (ListVaultItemsResponse) {
+    option (google.api.http) = {get: "/v1/private/vault"};
+  }
+  // GetVaultItem returns the record with its versions, newest first.
+  rpc GetVaultItem(GetVaultItemRequest) returns (GetVaultItemResponse) {
+    option (google.api.http) = {get: "/v1/private/vault/{item_id}"};
+  }
+  // UpdateVaultItem is a manual edit; it makes a new version.
+  rpc UpdateVaultItem(UpdateVaultItemRequest) returns (UpdateVaultItemResponse) {
+    option (google.api.http) = {
+      patch: "/v1/private/vault/{item_id}"
+      body: "*"
+    };
+  }
+  // RestoreVaultVersion makes an old version current again, as a new version.
+  rpc RestoreVaultVersion(RestoreVaultVersionRequest) returns (RestoreVaultVersionResponse) {
+    option (google.api.http) = {
+      post: "/v1/private/vault/{item_id}/restore"
+      body: "*"
+    };
+  }
+  rpc DeleteVaultItem(DeleteVaultItemRequest) returns (DeleteVaultItemResponse) {
+    option (google.api.http) = {delete: "/v1/private/vault/{item_id}"};
+  }
+  // SaveMessageToVault is the button «В хранилище»: the answer becomes a record with itself as the source.
+  rpc SaveMessageToVault(SaveMessageToVaultRequest) returns (SaveMessageToVaultResponse) {
+    option (google.api.http) = {
+      post: "/v1/private/messages/{message_id}/vault"
+      body: "*"
+    };
+  }
+}
+
+message VaultItem {
+  string id = 1;
+  // Up to 80 characters.
+  string title = 2;
+  // Markdown, up to 1200 characters.
+  string summary = 3;
+  repeated string tags = 4;
+  // [{kind, id, title}]: messages, document fragments, plan items.
+  repeated google.protobuf.Struct sources = 5;
+  int32 version = 6;
+  // RFC 3339.
+  string updated_at = 7;
+  // Only in GetVaultItem, newest first.
+  repeated VaultItem versions = 8;
+}
+
+message ListVaultItemsRequest {
+  string tag = 1;
+}
+
+message ListVaultItemsResponse {
+  repeated VaultItem items = 1;
+}
+
+message GetVaultItemRequest {
+  string item_id = 1;
+}
+
+message GetVaultItemResponse {
+  VaultItem item = 1;
+}
+
+message UpdateVaultItemRequest {
+  string item_id = 1;
+  string title = 2;
+  string summary = 3;
+  repeated string tags = 4;
+}
+
+message UpdateVaultItemResponse {
+  VaultItem item = 1;
+}
+
+message RestoreVaultVersionRequest {
+  string item_id = 1;
+  int32 version = 2;
+}
+
+message RestoreVaultVersionResponse {
+  VaultItem item = 1;
+}
+
+message DeleteVaultItemRequest {
+  string item_id = 1;
+}
+
+message DeleteVaultItemResponse {}
+
+message SaveMessageToVaultRequest {
+  string message_id = 1;
+  // Defaults to the first line of the message.
+  string title = 2;
+}
+
+message SaveMessageToVaultResponse {
+  VaultItem item = 1;
+}

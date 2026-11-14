@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package buddy.v1;
+
+import "buddy/v1/threads.proto";
+import "google/api/annotations.proto";
+
+// PinService keeps the notes the user pinned to their spheres (design §6.5). Only the owner sees and changes them.
+service PinService {
+  // PinMessage pins an answer, on the given sphere or the message's own; NOT_FOUND for someone else's message.
+  rpc PinMessage(PinMessageRequest) returns (PinMessageResponse) {
+    option (google.api.http) = {
+      post: "/v1/private/messages/{message_id}/pin"
+      body: "*"
+    };
+  }
+  // ListPins lists the user's pins of one sphere, or all of them without a focus.
+  rpc ListPins(ListPinsRequest) returns (ListPinsResponse) {
+    option (google.api.http) = {get: "/v1/private/pins"};
+  }
+  rpc UpdatePin(UpdatePinRequest) returns (UpdatePinResponse) {
+    option (google.api.http) = {
+      patch: "/v1/private/pins/{pin_id}"
+      body: "*"
+    };
+  }
+  rpc DeletePin(DeletePinRequest) returns (DeletePinResponse) {
+    option (google.api.http) = {delete: "/v1/private/pins/{pin_id}"};
+  }
+}
+
+message Pin {
+  string id = 1;
+  Focus focus = 2;
+  // Up to 60 characters.
+  string title = 3;
+  // Markdown, up to 600 characters.
+  string text = 4;
+  // The answer it came from, if any.
+  string message_id = 5;
+  // RFC 3339.
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+message PinMessageRequest {
+  string message_id = 1;
+  // Defaults to the message's own sphere; a message without one needs it.
+  Focus focus = 2;
+  // Defaults to the first line of the message.
+  string title = 3;
+}
+
+message PinMessageResponse {
+  Pin pin = 1;
+}
+
+message ListPinsRequest {
+  FocusKind kind = 1;
+  string id = 2;
+}
+
+message ListPinsResponse {
+  repeated Pin pins = 1;
+}
+
+message UpdatePinRequest {
+  string pin_id = 1;
+  string title = 2;
+  string text = 3;
+}
+
+message UpdatePinResponse {
+  Pin pin = 1;
+}
+
+message DeletePinRequest {
+  string pin_id = 1;
+}
+
+message DeletePinResponse {}

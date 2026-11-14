@@ -57,6 +57,10 @@ services:
       MOCKS_HTTP_ADDR: ":8090"
       MOCK_FAIL_RATE: ${MOCK_FAIL_RATE:-0}
       MOCK_MAX_LATENCY: ${MOCK_MAX_LATENCY:-0s}
+      # Interns hired by managers survive a restart of the mocks.
+      MOCKS_STATE_FILE: /var/lib/buddy/mocks-state.json
+    volumes:
+      - mocks-data:/var/lib/buddy
     ports:
       - "${MOCKS_PORT:-8090}:8090"
     depends_on:
@@ -180,3 +184,4 @@ volumes:
   postgres-data:
   redis-data:
   ollama-data:
+  mocks-data:

@@ -148,6 +148,9 @@
 }
 
 /* Answers */
+.msg__text {
+  min-width: 0;
+}
 .msg__text > :first-child {
   margin-top: 0;
 }
@@ -167,13 +170,106 @@
   padding: 1px 5px;
   border-radius: 6px;
   background: rgb(255 255 255 / 0.08);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 0.85em;
 }
 .msg__text pre {
   overflow-x: auto;
-  padding: 10px;
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
   border-radius: 10px;
   background: rgb(0 0 0 / 0.35);
+  line-height: 1.5;
+}
+.msg__text pre code {
+  padding: 0;
+  background: none;
+  white-space: pre;
+}
+.msg__text del {
+  color: var(--text-soft);
+}
+.msg__text li:has(> input[type='checkbox']) {
+  list-style: none;
+  margin-left: -20px;
+}
+.msg__text input[type='checkbox'] {
+  margin: 0 6px 0 0;
+  vertical-align: -1px;
+  accent-color: var(--orb-green);
+}
+
+/* Tables scroll inside the bubble */
+.msg__table {
+  overflow-x: auto;
+  margin: 0 0 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+}
+.msg__table table {
+  border-collapse: collapse;
+  min-width: 100%;
+  font-size: 0.95em;
+}
+.msg__table th,
+.msg__table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--hairline);
+  text-align: left;
+  white-space: nowrap;
+}
+.msg__table th {
+  background: rgb(255 255 255 / 0.05);
+  font-weight: 700;
+}
+.msg__table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Math */
+.msg__text .katex {
+  font-size: 1.05em;
+}
+.msg__text .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 0 0 8px;
+  padding: 4px 0;
+}
+
+/* Code tokens (highlight.js classes), tuned for the dark panel */
+.msg__text .hljs-keyword,
+.msg__text .hljs-built_in,
+.msg__text .hljs-type {
+  color: #c792ea;
+}
+.msg__text .hljs-string,
+.msg__text .hljs-regexp {
+  color: #a5e075;
+}
+.msg__text .hljs-number,
+.msg__text .hljs-literal,
+.msg__text .hljs-symbol {
+  color: #f78c6c;
+}
+.msg__text .hljs-title,
+.msg__text .hljs-title.function_ {
+  color: #82aaff;
+}
+.msg__text .hljs-attr,
+.msg__text .hljs-attribute,
+.msg__text .hljs-property,
+.msg__text .hljs-variable {
+  color: #7fdbca;
+}
+.msg__text .hljs-comment,
+.msg__text .hljs-quote {
+  color: var(--text-soft);
+  font-style: italic;
+}
+.msg__text .hljs-meta {
+  color: #ffcb6b;
 }
 .msg__text a {
   color: var(--orb-blue);
@@ -534,4 +630,8 @@ select.request__input option {
 .request--rejected {
   --dot: var(--orb-red);
   border-color: rgb(255 64 83 / 0.45);
+}
+.msg__img-alt {
+  color: var(--text-soft);
+  font-style: italic;
 }

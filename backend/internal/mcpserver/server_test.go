@@ -155,10 +155,14 @@ func TestCallErrors(t *testing.T) {
 	}
 }
 
-func TestToolOutsideThreadIsUnknown(t *testing.T) {
+func TestToolOutsideThreadIsRefusedByRegistry(t *testing.T) {
 	cs := connect(t, New(registry(t), intern, domain.ThreadGeneral, "test"))
 
-	if _, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "plan_only", Arguments: map[string]any{}}); err == nil {
-		t.Fatal("want an error for a tool that is not listed")
+	res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "plan_only", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := errorCode(t, res); code != tools.CodeNotInThread {
+		t.Fatalf("error = %q, want %q", code, tools.CodeNotInThread)
 	}
 }

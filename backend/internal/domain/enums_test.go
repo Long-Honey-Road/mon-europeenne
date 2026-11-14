@@ -59,6 +59,7 @@ func TestParseCoversEveryLookup(t *testing.T) {
 		"source_kinds":       wrap(ParseSourceKind),
 		"conflict_statuses":  wrap(ParseConflictStatus),
 		"event_types":        wrap(ParseEventType),
+		"focus_kinds":        wrap(ParseFocusKind),
 	}
 	lookups := Lookups()
 	if len(parsers) != len(lookups) {
@@ -89,6 +90,7 @@ func TestStringMatchesLookupName(t *testing.T) {
 		"source_kinds":       func(v int16) string { return SourceKind(v).String() },
 		"conflict_statuses":  func(v int16) string { return ConflictStatus(v).String() },
 		"event_types":        func(v int16) string { return EventType(v).String() },
+		"focus_kinds":        func(v int16) string { return FocusKind(v).String() },
 	}
 	for table, names := range Lookups() {
 		for id, name := range names {

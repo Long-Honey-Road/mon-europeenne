@@ -63,14 +63,25 @@ type Deps struct {
 	Plans     Plans
 	// Requests is the removable requests module; nil (FEATURE_REQUESTS off) answers UNIMPLEMENTED.
 	Requests buddyv1.RequestServiceServer
+	// Pins are the sphere pins; nil leaves the pins API unimplemented. Publish sends the pinned event.
+	Pins    Pins
+	Publish Publisher
+	// Vault is the private vault; nil leaves the vault API unimplemented.
+	Vault Vault
 	// Blockers add to the "today" blockers beyond the plan, e.g. access requests.
 	Blockers []BlockerSource
 	Jobs     Jobs
 	Bus      Bus
+	// MCP serves the agent's tools at /v1/private/mcp as the session user; nil leaves the path unrouted.
+	MCP http.Handler
 	// Heartbeat is how often SSE sends a comment so proxies keep the stream open; 15 s if zero.
 	Heartbeat time.Duration
 	// Now is the clock for "today"; time.Now if nil.
 	Now func() time.Time
+	// Hiring creates accounts for new interns; nil (no account system) answers UNIMPLEMENTED.
+	Hiring Hiring
+	// Users gets every signed-in account, so interns hired a minute ago have their own data; nil skips it.
+	Users Users
 }
 
 func (d Deps) now() time.Time {
@@ -117,6 +128,23 @@ func New(ctx context.Context, d Deps) (http.Handler, error) {
 	if err := buddyv1.RegisterPeopleServiceHandlerServer(ctx, gw, &peopleService{deps: d}); err != nil {
 		return nil, fmt.Errorf("register people service: %w", err)
 	}
+	if err := buddyv1.RegisterTeamServiceHandlerServer(ctx, gw, &teamService{deps: d}); err != nil {
+		return nil, fmt.Errorf("register team service: %w", err)
+	}
+	var pins buddyv1.PinServiceServer = buddyv1.UnimplementedPinServiceServer{}
+	if d.Pins != nil {
+		pins = &pinService{deps: d}
+	}
+	if err := buddyv1.RegisterPinServiceHandlerServer(ctx, gw, pins); err != nil {
+		return nil, fmt.Errorf("register pin service: %w", err)
+	}
+	var vault buddyv1.VaultServiceServer = buddyv1.UnimplementedVaultServiceServer{}
+	if d.Vault != nil {
+		vault = &vaultService{deps: d}
+	}
+	if err := buddyv1.RegisterVaultServiceHandlerServer(ctx, gw, vault); err != nil {
+		return nil, fmt.Errorf("register vault service: %w", err)
+	}
 	var requests buddyv1.RequestServiceServer = buddyv1.UnimplementedRequestServiceServer{}
 	if d.Requests != nil {
 		requests = d.Requests
@@ -125,10 +153,16 @@ func New(ctx context.Context, d Deps) (http.Handler, error) {
 		return nil, fmt.Errorf("register request service: %w", err)
 	}
 
+	private := http.NewServeMux()
+	private.Handle(privatePrefix, gw)
+	private.Handle("GET "+privatePrefix+"threads/{id}/events", streamThread(d))
+	if d.MCP != nil {
+		private.Handle(privatePrefix+"mcp", d.MCP)
+	}
+
 	mux := http.NewServeMux()
 	mux.Handle(publicPrefix, gw)
-	mux.Handle(privatePrefix, requireSession(d, gw))
-	mux.Handle("GET "+privatePrefix+"threads/{id}/events", requireSession(d, streamThread(d)))
+	mux.Handle(privatePrefix, requireSession(d, private))
 	mux.HandleFunc("GET /healthz", ok)
 	mux.HandleFunc("GET /readyz", ok)
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {

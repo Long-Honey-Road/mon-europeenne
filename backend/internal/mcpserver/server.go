@@ -18,17 +18,26 @@ type Tools interface {
 	Call(ctx context.Context, p domain.Principal, thread domain.ThreadType, name string, args json.RawMessage) (json.RawMessage, error)
 }
 
-const instructions = "Tools of AI-buddy, the onboarding assistant, acting as one test user in one thread type. " +
+const instructions = "Tools of AI-buddy, the onboarding assistant, acting as one user in one thread type. " +
 	"Errors come back as {\"error\": code, \"message\": text} with isError set."
 
 // New lists only the tools the principal may call in this thread type.
 func New(reg Tools, p domain.Principal, thread domain.ThreadType, version string) *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{Name: "buddy", Title: "AI-buddy tools", Version: version},
 		&mcp.ServerOptions{Instructions: instructions})
+	call := handler(reg, p, thread)
 	for _, t := range reg.Available(p, thread) {
-		srv.AddTool(&mcp.Tool{Name: t.Name, Description: t.Description, InputSchema: t.Parameters},
-			handler(reg, p, thread))
+		srv.AddTool(&mcp.Tool{Name: t.Name, Description: t.Description, InputSchema: t.Parameters}, call)
 	}
+	// Unlisted tools also go to the registry, so the refusal is the agent's (forbidden, not_in_thread), not the SDK's.
+	srv.AddReceivingMiddleware(func(next mcp.MethodHandler) mcp.MethodHandler {
+		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
+			if r, ok := req.(*mcp.CallToolRequest); ok {
+				return call(ctx, r)
+			}
+			return next(ctx, method, req)
+		}
+	})
 	return srv
 }
 

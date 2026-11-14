@@ -41,6 +41,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/private/messages/{message_id}/pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description PinMessage pins an answer, on the given sphere or the message's own; NOT_FOUND for someone else's message. */
+        post: operations["PinService_PinMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/private/messages/{message_id}/vault": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description SaveMessageToVault is the button «В хранилище»: the answer becomes a record with itself as the source. */
+        post: operations["VaultService_SaveMessageToVault"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/private/people": {
         parameters: {
             query?: never;
@@ -71,6 +105,39 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/private/pins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description ListPins lists the user's pins of one sphere, or all of them without a focus. */
+        get: operations["PinService_ListPins"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/private/pins/{pin_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["PinService_DeletePin"];
+        options?: never;
+        head?: never;
+        patch: operations["PinService_UpdatePin"];
         trace?: never;
     };
     "/v1/private/plan": {
@@ -158,6 +225,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/private/team/interns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description AddIntern is for managers only; the intern joins the caller's team. The one-time password is in the response
+         *      and nowhere else: buddy neither logs nor stores it.
+         */
+        post: operations["TeamService_AddIntern"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/private/threads": {
         parameters: {
             query?: never;
@@ -228,6 +315,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/private/vault": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["VaultService_ListVaultItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/private/vault/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GetVaultItem returns the record with its versions, newest first. */
+        get: operations["VaultService_GetVaultItem"];
+        put?: never;
+        post?: never;
+        delete: operations["VaultService_DeleteVaultItem"];
+        options?: never;
+        head?: never;
+        /** @description UpdateVaultItem is a manual edit; it makes a new version. */
+        patch: operations["VaultService_UpdateVaultItem"];
+        trace?: never;
+    };
+    "/v1/private/vault/{item_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description RestoreVaultVersion makes an old version current again, as a new version. */
+        post: operations["VaultService_RestoreVaultVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/auth/login": {
         parameters: {
             query?: never;
@@ -248,6 +386,24 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AddInternRequest: {
+            display_name?: string;
+            login?: string;
+            /**
+             * Format: enum
+             * @enum {string}
+             */
+            direction?: "DIRECTION_UNSPECIFIED" | "DIRECTION_BACKEND" | "DIRECTION_FRONTEND" | "DIRECTION_QA";
+            /** @description Person id of a mentor from the caller's team. */
+            mentor_id?: string;
+            /** @description ISO 8601 date, e.g. 2026-11-16; empty means today. */
+            start_date?: string;
+        };
+        AddInternResponse: {
+            user?: components["schemas"]["User"];
+            login?: string;
+            temporary_password?: string;
+        };
         ApprovalStep: {
             /** @description object_owner, manager, devops or hr_admin. */
             resolver?: string;
@@ -271,12 +427,23 @@ export interface components {
              * Format: enum
              * @enum {string}
              */
-            type?: "THREAD_TYPE_UNSPECIFIED" | "THREAD_TYPE_GENERAL" | "THREAD_TYPE_PLAN" | "THREAD_TYPE_REQUEST" | "THREAD_TYPE_TASK";
+            type?: "THREAD_TYPE_UNSPECIFIED" | "THREAD_TYPE_GENERAL" | "THREAD_TYPE_PLAN" | "THREAD_TYPE_REQUEST" | "THREAD_TYPE_TASK" | "THREAD_TYPE_VAULT";
             title?: string;
             pin?: Record<string, never>;
         };
         CreateThreadResponse: {
             thread?: components["schemas"]["Thread"];
+        };
+        DeletePinResponse: Record<string, never>;
+        DeleteVaultItemResponse: Record<string, never>;
+        /** @description Focus is the sphere selected in a tab; empty means the tab overview. */
+        Focus: {
+            /**
+             * Format: enum
+             * @enum {string}
+             */
+            kind?: "FOCUS_KIND_UNSPECIFIED" | "FOCUS_KIND_PLAN_ITEM" | "FOCUS_KIND_VAULT_ITEM";
+            id?: string;
         };
         GetMeResponse: {
             user?: components["schemas"]["User"];
@@ -322,6 +489,9 @@ export interface components {
             /** Format: int32 */
             total?: number;
         };
+        GetVaultItemResponse: {
+            item?: components["schemas"]["VaultItem"];
+        };
         /** @description Contains an arbitrary serialized message along with a @type that describes the type of the serialized message. */
         GoogleProtobufAny: {
             /** @description The type of the serialized message. */
@@ -336,6 +506,9 @@ export interface components {
             /** @description The caller's team first, then by name. */
             people?: components["schemas"]["Person"][];
         };
+        ListPinsResponse: {
+            pins?: components["schemas"]["Pin"][];
+        };
         ListRequestTypesResponse: {
             types?: components["schemas"]["RequestType"][];
         };
@@ -344,6 +517,9 @@ export interface components {
         };
         ListThreadsResponse: {
             threads?: components["schemas"]["Thread"][];
+        };
+        ListVaultItemsResponse: {
+            items?: components["schemas"]["VaultItem"][];
         };
         LoginRequest: {
             login?: string;
@@ -375,6 +551,8 @@ export interface components {
             blocks?: Record<string, never>[];
             /** @description RFC 3339. */
             created_at?: string;
+            /** @description The sphere the message is about; absent for the overview. */
+            focus?: components["schemas"]["Focus"];
         };
         Person: {
             id?: string;
@@ -393,6 +571,29 @@ export interface components {
             id?: string;
             name?: string;
             role_title?: string;
+        };
+        Pin: {
+            id?: string;
+            focus?: components["schemas"]["Focus"];
+            /** @description Up to 60 characters. */
+            title?: string;
+            /** @description Markdown, up to 600 characters. */
+            text?: string;
+            /** @description The answer it came from, if any. */
+            message_id?: string;
+            /** @description RFC 3339. */
+            created_at?: string;
+            updated_at?: string;
+        };
+        PinMessageRequest: {
+            message_id?: string;
+            /** @description Defaults to the message's own sphere; a message without one needs it. */
+            focus?: components["schemas"]["Focus"];
+            /** @description Defaults to the first line of the message. */
+            title?: string;
+        };
+        PinMessageResponse: {
+            pin?: components["schemas"]["Pin"];
         };
         PlanItem: {
             /** @description Stable key, e.g. "w1-access". */
@@ -469,6 +670,22 @@ export interface components {
             /** Format: int32 */
             sla_hours?: number;
         };
+        RestoreVaultVersionRequest: {
+            item_id?: string;
+            /** Format: int32 */
+            version?: number;
+        };
+        RestoreVaultVersionResponse: {
+            item?: components["schemas"]["VaultItem"];
+        };
+        SaveMessageToVaultRequest: {
+            message_id?: string;
+            /** @description Defaults to the first line of the message. */
+            title?: string;
+        };
+        SaveMessageToVaultResponse: {
+            item?: components["schemas"]["VaultItem"];
+        };
         SendMessageRequest: {
             thread_id?: string;
             content?: string;
@@ -477,6 +694,8 @@ export interface components {
              * @enum {string}
              */
             mode?: "ANSWER_MODE_UNSPECIFIED" | "ANSWER_MODE_BRIEF" | "ANSWER_MODE_DETAILED";
+            /** @description The sphere selected in the tab; a sphere the user does not own is NOT_FOUND. */
+            focus?: components["schemas"]["Focus"];
         };
         SendMessageResponse: {
             message_id?: string;
@@ -527,12 +746,20 @@ export interface components {
              * Format: enum
              * @enum {string}
              */
-            type?: "THREAD_TYPE_UNSPECIFIED" | "THREAD_TYPE_GENERAL" | "THREAD_TYPE_PLAN" | "THREAD_TYPE_REQUEST" | "THREAD_TYPE_TASK";
+            type?: "THREAD_TYPE_UNSPECIFIED" | "THREAD_TYPE_GENERAL" | "THREAD_TYPE_PLAN" | "THREAD_TYPE_REQUEST" | "THREAD_TYPE_TASK" | "THREAD_TYPE_VAULT";
             title?: string;
             /** @description Pinned context: {plan_item_id} or {request_id} or {task: {key, title, repo}}. */
             pin?: Record<string, never>;
             /** @description RFC 3339. */
             created_at?: string;
+        };
+        UpdatePinRequest: {
+            pin_id?: string;
+            title?: string;
+            text?: string;
+        };
+        UpdatePinResponse: {
+            pin?: components["schemas"]["Pin"];
         };
         UpdatePlanItemRequest: {
             item_id?: string;
@@ -545,6 +772,15 @@ export interface components {
         };
         UpdatePlanItemResponse: {
             item?: components["schemas"]["PlanItem"];
+        };
+        UpdateVaultItemRequest: {
+            item_id?: string;
+            title?: string;
+            summary?: string;
+            tags?: string[];
+        };
+        UpdateVaultItemResponse: {
+            item?: components["schemas"]["VaultItem"];
         };
         User: {
             id?: string;
@@ -566,6 +802,22 @@ export interface components {
             location?: string;
             /** @description ISO 8601 date, e.g. 2026-11-09. */
             start_date?: string;
+        };
+        VaultItem: {
+            id?: string;
+            /** @description Up to 80 characters. */
+            title?: string;
+            /** @description Markdown, up to 1200 characters. */
+            summary?: string;
+            tags?: string[];
+            /** @description [{kind, id, title}]: messages, document fragments, plan items. */
+            sources?: Record<string, never>[];
+            /** Format: int32 */
+            version?: number;
+            /** @description RFC 3339. */
+            updated_at?: string;
+            /** @description Only in GetVaultItem, newest first. */
+            versions?: components["schemas"]["VaultItem"][];
         };
     };
     responses: never;
@@ -640,6 +892,76 @@ export interface operations {
             };
         };
     };
+    PinService_PinMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PinMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PinMessageResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    VaultService_SaveMessageToVault: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveMessageToVaultRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveMessageToVaultResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
     PeopleService_ListPeople: {
         parameters: {
             query?: {
@@ -691,6 +1013,104 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GetPersonResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    PinService_ListPins: {
+        parameters: {
+            query?: {
+                kind?: "FOCUS_KIND_UNSPECIFIED" | "FOCUS_KIND_PLAN_ITEM" | "FOCUS_KIND_VAULT_ITEM";
+                id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListPinsResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    PinService_DeletePin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletePinResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    PinService_UpdatePin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePinRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdatePinResponse"];
                 };
             };
             /** @description Default error response */
@@ -892,6 +1312,39 @@ export interface operations {
             };
         };
     };
+    TeamService_AddIntern: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddInternRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddInternResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
     ThreadService_ListThreads: {
         parameters: {
             query?: never;
@@ -1070,6 +1523,169 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GetTodayResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    VaultService_ListVaultItems: {
+        parameters: {
+            query?: {
+                tag?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListVaultItemsResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    VaultService_GetVaultItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetVaultItemResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    VaultService_DeleteVaultItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteVaultItemResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    VaultService_UpdateVaultItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateVaultItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateVaultItemResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    VaultService_RestoreVaultVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreVaultVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreVaultVersionResponse"];
                 };
             };
             /** @description Default error response */

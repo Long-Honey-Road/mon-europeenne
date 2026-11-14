@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -49,6 +50,10 @@ type Turn struct {
 	Today   string
 	Pinned  string
 	Summary string
+	// Sphere, SphereMemory and Overview are the sphere context of a tab (design §6.5), empty elsewhere.
+	Sphere       string
+	SphereMemory string
+	Overview     string
 	// History is the thread so far, oldest first; the agent keeps the tail.
 	History []llm.Message
 	Message string
@@ -109,6 +114,8 @@ type Result struct {
 	Mode   Mode
 	Blocks []Block
 	Events []Event
+	// UIEvents are screen updates the tools asked for, published to the thread after the answer is saved.
+	UIEvents []tools.UIEvent
 	// Trace is filled even when Run fails, as far as the turn got.
 	Trace Trace
 }
@@ -217,6 +224,7 @@ func (a *Agent) RunWith(ctx context.Context, model llm.Client, t Turn, emit Emit
 	offered := a.tools.Available(t.Principal, t.Thread)
 
 	var text string
+	called, retried := false, false
 	for step := 0; ; step++ {
 		req := llm.Request{Messages: msgs}
 		if t.Mode == ModeDetailed {
@@ -239,10 +247,25 @@ func (a *Agent) RunWith(ctx context.Context, model llm.Client, t Turn, emit Emit
 		ts.PromptTokens, ts.CompletionTokens, ts.Text = resp.Usage.PromptTokens, resp.Usage.CompletionTokens, resp.Message.Content
 		if len(resp.Message.ToolCalls) == 0 || len(req.Tools) == 0 {
 			trace.Steps = append(trace.Steps, ts)
+			// Facts, "not found" and actions need a tool in this turn; the prompt says so, long threads make the model forget.
+			if !called && !retried && len(req.Tools) > 0 && ungrounded(resp.Message.Content) {
+				retried = true
+				trace.Violations = append(trace.Violations, "answer without tools")
+				if streamed {
+					emit.Reset()
+				}
+				// Without the thread: in a long one the model answers from earlier replies instead of searching.
+				msgs = []llm.Message{msgs[0], {Role: llm.RoleUser, Content: t.Message},
+					{Role: llm.RoleSystem, Content: groundingReminder}}
+				continue
+			}
 			text = resp.Message.Content
 			break
 		}
-		if streamed {
+		called = true
+		// An answer written next to screen-only tools (highlight, pin) is final: those results add nothing to it.
+		final := screenOnly(resp.Message.ToolCalls) && utf8.RuneCountInString(strings.TrimSpace(resp.Message.Content)) >= minFinalText
+		if streamed && !final {
 			emit.Reset()
 		}
 		msgs = append(msgs, resp.Message)
@@ -256,6 +279,10 @@ func (a *Agent) RunWith(ctx context.Context, model llm.Client, t Turn, emit Emit
 			msgs = append(msgs, llm.Message{Role: llm.RoleTool, ToolCallID: call.ID, Content: content})
 		}
 		trace.Steps = append(trace.Steps, ts)
+		if final {
+			text = resp.Message.Content
+			break
+		}
 	}
 	trace.RawText = text
 
@@ -267,8 +294,35 @@ func (a *Agent) RunWith(ctx context.Context, model llm.Client, t Turn, emit Emit
 	st.closingEvents(blocks)
 	trace.Violations = append(trace.Violations, st.violations...)
 	trace.Duration = time.Since(started)
-	return Result{Text: text, Mode: t.Mode, Blocks: blocks, Events: st.events, Trace: trace}, nil
+	return Result{Text: text, Mode: t.Mode, Blocks: blocks, Events: st.events, UIEvents: st.uiEvents, Trace: trace}, nil
 }
+
+// minFinalText is the shortest text kept as the answer next to screen tools; shorter is a preamble like «Подсвечу».
+const minFinalText = 60
+
+// screenTools only change the user's screen; their results carry nothing for the answer.
+var screenTools = map[string]bool{"highlight_spheres": true, "focus_sphere": true, "pin_note": true}
+
+func screenOnly(calls []llm.ToolCall) bool {
+	for _, c := range calls {
+		if !screenTools[c.Name] {
+			return false
+		}
+	}
+	return true
+}
+
+const groundingReminder = "Server check: an answer without tools cited sources, said nothing was found or reported an " +
+	"action. Facts, «не нашёл» and actions come only from tool results of this turn. Call the right tool first " +
+	"(search_docs, get_plan, prepare_request, who_to_ask or another), then answer. If the message only greets or " +
+	"asks about you, answer without claims."
+
+// ungroundedRe catches what needs a tool: a citation marker, «не нашёл», a form that is «open», a done action.
+var ungroundedRe = regexp.MustCompile(`(?i)\[\d+\]|не\s+наш(ёл|ел|ла|лось|лись)|ничего\s+не\s+(наш|найд)|` +
+	`форм[аыу]\s[^.!?\n]{0,40}(открыт|готов|заполнен|ниже|слева)|` +
+	`(подсветил|закрепил|сохранил|отправил|подготовил|оформил|обновил)(а|и)?\s`)
+
+func ungrounded(text string) bool { return ungroundedRe.MatchString(text) }
 
 // callTool runs one call and returns what the model sees plus the outcome code for events.
 func (a *Agent) callTool(ctx context.Context, t Turn, call llm.ToolCall, st *turnState) (string, string) {
@@ -283,6 +337,9 @@ func (a *Agent) callTool(ctx context.Context, t Turn, call llm.ToolCall, st *tur
 
 var statusTexts = map[string]string{
 	"search_docs":        "ищу в документах",
+	"pin_note":           "закрепляю",
+	"highlight_spheres":  "подсвечиваю на карте",
+	"focus_sphere":       "предлагаю пункт плана",
 	"read_repo":          "читаю репозиторий",
 	"get_team_process":   "смотрю процессы команды",
 	"who_to_ask":         "ищу, к кому обратиться",
