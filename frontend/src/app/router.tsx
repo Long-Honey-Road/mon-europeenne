@@ -2,6 +2,7 @@ import { Navigate, Outlet, createRootRoute, createRoute, createRouter, redirect 
 import type { RouterHistory } from '@tanstack/react-router'
 import { LoginPage } from '../features/auth/LoginPage'
 import { useSession } from '../features/auth/session'
+import { DevSpheres } from '../features/dev/DevSpheres'
 import { Home } from '../features/home/Home'
 
 const rootRoute = createRootRoute({ component: Outlet })
@@ -36,8 +37,19 @@ const appRoute = createRoute({
 })
 const child = { getParentRoute: () => appRoute }
 
+// Service page for checking spheres by hand, outside the product screens.
+const devSpheresRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dev/spheres',
+  beforeLoad: () => {
+    if (!useSession.getState().token) throw redirect({ to: '/login' })
+  },
+  component: DevSpheres,
+})
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
+  devSpheresRoute,
   appRoute.addChildren([
     createRoute({ ...child, path: '/' }),
     createRoute({ ...child, path: '/today' }),
