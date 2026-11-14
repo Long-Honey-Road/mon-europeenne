@@ -166,3 +166,16 @@ func TestGetPlanReportsStorageFailure(t *testing.T) {
 		t.Fatal("storage failure swallowed")
 	}
 }
+
+// Only interns have an adaptation plan; for others the tools are not offered at all.
+func TestPlanToolsAreForInternsOnly(t *testing.T) {
+	r := planRegistry(t, samplePlan())
+	for _, role := range []domain.Role{domain.RoleMentor, domain.RoleManager, domain.RoleHRBP, domain.RoleHRAdmin} {
+		p := domain.Principal{UserID: "u-other", Role: role, TeamID: "t-messenger"}
+		for _, tool := range []string{"get_plan", "update_item_status"} {
+			if _, err := r.Call(context.Background(), p, domain.ThreadPlan, tool, json.RawMessage(`{"item_id":"w1-access","status":"done"}`)); !errors.Is(err, ErrForbidden) {
+				t.Errorf("%s as %v: error = %v, want forbidden", tool, role, err)
+			}
+		}
+	}
+}

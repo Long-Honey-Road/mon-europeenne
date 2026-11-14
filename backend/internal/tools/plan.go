@@ -37,11 +37,14 @@ type getPlanOut struct {
 	Total int `json:"total"`
 }
 
+// internOnly: only interns have an adaptation plan; mentors and managers get none rather than a stray copy.
+var internOnly = []domain.Role{domain.RoleIntern}
+
 // GetPlan shows the caller's own adaptation plan; there is no way to ask for someone else's.
 func GetPlan(plans PlanStore) (Tool, error) {
 	return Define("get_plan",
 		"The user's adaptation plan: practical items by period with status, note and what blocks each item.",
-		allRoles, []domain.ThreadType{domain.ThreadGeneral, domain.ThreadPlan, domain.ThreadTask},
+		internOnly, []domain.ThreadType{domain.ThreadGeneral, domain.ThreadPlan, domain.ThreadTask},
 		func(ctx context.Context, p domain.Principal, in getPlanIn) (getPlanOut, error) {
 			var period domain.PlanPeriod
 			var status domain.PlanItemStatus
@@ -90,7 +93,7 @@ type updateItemOut struct {
 func UpdateItemStatus(plans PlanStore) (Tool, error) {
 	return Define("update_item_status",
 		"Mark an item of the user's adaptation plan as todo, doing, blocked or done.",
-		allRoles, []domain.ThreadType{domain.ThreadPlan},
+		internOnly, []domain.ThreadType{domain.ThreadPlan},
 		func(ctx context.Context, p domain.Principal, in updateItemIn) (updateItemOut, error) {
 			status, err := domain.ParsePlanItemStatus(in.Status)
 			if err != nil {
