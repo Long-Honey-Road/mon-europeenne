@@ -114,3 +114,19 @@
   outline: none;
   border-color: rgb(255 255 255 / 0.45);
 }
+
+.hired__title {
+  font-weight: 800;
+}
+.hired__creds {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+.hired__creds dd {
+  margin: 2px 0 0;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  user-select: all;
+}

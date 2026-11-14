@@ -6,6 +6,34 @@ info:
     title: AI-buddy mock corporate services
     version: 0.1.0
 paths:
+    /auth/accounts:
+        post:
+            tags:
+                - AuthRolesService
+            description: |-
+                CreateAccount hires an intern into the requester's team: an account that signs in at once, a directory entry
+                 with mentor, manager and HR BP, and a one-time password returned only here. Only a manager may call it;
+                 PERMISSION_DENIED otherwise, INVALID_ARGUMENT for bad fields, ALREADY_EXISTS for a taken login.
+            operationId: AuthRolesService_CreateAccount
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateAccountRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CreateAccountResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /auth/accounts/{user_id}:
         get:
             tags:
@@ -469,6 +497,33 @@ components:
                 by:
                     type: string
                 note:
+                    type: string
+        CreateAccountRequest:
+            type: object
+            properties:
+                requester_id:
+                    type: string
+                    description: The manager who hires; the intern joins this manager's team.
+                display_name:
+                    type: string
+                login:
+                    type: string
+                    description: 'Lowercase latin, 3 to 32 characters: ^[a-z][a-z0-9._-]{2,31}$.'
+                direction:
+                    type: string
+                    description: backend, frontend or qa.
+                mentor_id:
+                    type: string
+                    description: Person id of a mentor from the same team.
+                start_date:
+                    type: string
+                    description: YYYY-MM-DD; empty means today.
+        CreateAccountResponse:
+            type: object
+            properties:
+                account:
+                    $ref: '#/components/schemas/Account'
+                temporary_password:
                     type: string
         DocumentInfo:
             type: object

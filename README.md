@@ -73,6 +73,10 @@ Sign in as `intern`. The screen is four orbs and the buddy chat on the right.
    steps (understand, the service, team conventions, check and hand off). Buddy explains each step; it never writes
    the code for the intern.
 6. **Team.** Click «Команда»: the directory, own team first, and «Спросить buddy» about a person.
+7. **New intern.** Sign in as `manager`, open «Команда», press «Добавить стажёра»: name, login (suggested from the
+   name), direction, mentor from the team, start date. The account is created in the company's account system (the
+   `auth-roles` mock) and the one-time password is shown once. Sign out and sign in with it: the new intern has
+   «Сегодня», the plan and the chat at once. Interns and mentors cannot add anyone.
 
 Permissions are checked in the tools and the API, not in prompts: what a role may not see is neither shown nor done.
 

@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package buddy.v1;
+
+import "buddy/v1/user.proto";
+import "google/api/annotations.proto";
+
+// TeamService lets a manager bring people into the team through the company's account system.
+service TeamService {
+  // AddIntern is for managers only; the intern joins the caller's team. The one-time password is in the response
+  // and nowhere else: buddy neither logs nor stores it.
+  rpc AddIntern(AddInternRequest) returns (AddInternResponse) {
+    option (google.api.http) = {
+      post: "/v1/private/team/interns"
+      body: "*"
+    };
+  }
+}
+
+message AddInternRequest {
+  string display_name = 1;
+  string login = 2;
+  Direction direction = 3;
+  // Person id of a mentor from the caller's team.
+  string mentor_id = 4;
+  // ISO 8601 date, e.g. 2026-11-16; empty means today.
+  string start_date = 5;
+}
+
+message AddInternResponse {
+  User user = 1;
+  string login = 2;
+  string temporary_password = 3;
+}

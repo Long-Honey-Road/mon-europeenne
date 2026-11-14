@@ -31,7 +31,9 @@ var errNoMocks = errors.New("FEATURE_REQUESTS needs MOCKS_ADDR: access requests 
 type sources struct {
 	accounts  auth.Directory
 	directory people.Directory
-	conn      *grpc.ClientConn
+	// hiring creates intern accounts; nil without MOCKS_ADDR, seed accounts are fixed.
+	hiring *auth.Remote
+	conn   *grpc.ClientConn
 }
 
 func openSources(cfg config.Config, data seed.Data) (sources, func(), error) {
@@ -46,7 +48,8 @@ func openSources(cfg config.Config, data seed.Data) (sources, func(), error) {
 	if err != nil {
 		return sources{}, nil, fmt.Errorf("MOCKS_ADDR: %w", err)
 	}
-	src := sources{accounts: auth.NewRemote(conn), directory: people.NewRemote(conn, directoryTTL), conn: conn}
+	remote := auth.NewRemote(conn)
+	src := sources{accounts: remote, directory: people.NewRemote(conn, directoryTTL), hiring: remote, conn: conn}
 	return src, func() { _ = conn.Close() }, nil
 }
 

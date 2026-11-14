@@ -69,3 +69,25 @@ func TestPeopleIsACopy(t *testing.T) {
 		t.Fatal("People() exposes internal state")
 	}
 }
+
+func TestMemoryAdd(t *testing.T) {
+	m := NewMemory([]domain.Team{{ID: "t1"}}, []domain.Person{{ID: "p-a", UserID: "u-a", TeamID: "t1"}}, nil)
+	if err := m.Add(domain.Person{ID: "p-b", UserID: "u-b", TeamID: "t1"}, Relations{MentorID: "p-a"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Add(domain.Person{ID: "p-b"}, Relations{}); err == nil {
+		t.Error("duplicate id accepted")
+	}
+	if p, ok := m.PersonOfUser("u-b"); !ok || p.ID != "p-b" {
+		t.Errorf("PersonOfUser(u-b) = %+v, %v", p, ok)
+	}
+	if _, ok := m.PersonOfUser("u-ghost"); ok {
+		t.Error("PersonOfUser found a ghost")
+	}
+	if rel, _ := m.Relations(t.Context(), "u-b"); rel.MentorID != "p-a" {
+		t.Errorf("relations = %+v", rel)
+	}
+	if all, _ := m.People(t.Context()); len(all) != 2 {
+		t.Errorf("people = %d, want 2", len(all))
+	}
+}

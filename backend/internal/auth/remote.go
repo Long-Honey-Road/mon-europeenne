@@ -88,3 +88,31 @@ func userOf(a *authrolesv1.Account) (domain.User, error) {
 	}
 	return u, nil
 }
+
+// Hire is what a manager fills in for a new intern; the team is always the manager's own.
+type Hire struct {
+	DisplayName string
+	Login       string
+	Direction   domain.Direction
+	// MentorID is a person id from the manager's team.
+	MentorID string
+	// StartDate is YYYY-MM-DD; empty means today.
+	StartDate string
+}
+
+// Hire asks auth-roles to create the intern's account; the one-time password is returned once and kept nowhere.
+// Refusals come back as the service's gRPC status (PERMISSION_DENIED, INVALID_ARGUMENT, ALREADY_EXISTS).
+func (r *Remote) Hire(ctx context.Context, requesterID string, h Hire) (domain.User, string, error) {
+	resp, err := r.c.CreateAccount(ctx, &authrolesv1.CreateAccountRequest{
+		RequesterId: requesterID, DisplayName: h.DisplayName, Login: h.Login, Direction: h.Direction.String(),
+		MentorId: h.MentorID, StartDate: h.StartDate,
+	})
+	if err != nil {
+		return domain.User{}, "", err
+	}
+	u, err := r.keep(resp.GetAccount())
+	if err != nil {
+		return domain.User{}, "", err
+	}
+	return u, resp.GetTemporaryPassword(), nil
+}

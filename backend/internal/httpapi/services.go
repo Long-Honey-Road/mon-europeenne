@@ -27,6 +27,11 @@ func (s *authService) Login(ctx context.Context, req *buddyv1.LoginRequest) (*bu
 	if err != nil {
 		return nil, status.Error(codes.Unavailable, "sign-in service is unavailable, try again")
 	}
+	if s.deps.Users != nil {
+		if err := s.deps.Users.EnsureUser(ctx, user); err != nil {
+			return nil, status.Error(codes.Unavailable, "sign-in service is unavailable, try again")
+		}
+	}
 	return &buddyv1.LoginResponse{Token: s.deps.Tokens.Issue(user.ID), User: userProto(user)}, nil
 }
 

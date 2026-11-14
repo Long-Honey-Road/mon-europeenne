@@ -34,7 +34,11 @@ func serveMocks(ctx context.Context, cfg config.Config, stdout io.Writer) error 
 	if err != nil {
 		return err
 	}
-	srv, err := mocks.New(data, mocks.Chaos{FailRate: cfg.Mocks.FailRate, MaxLatency: cfg.Mocks.MaxLatency})
+	var opts []mocks.Option
+	if cfg.Mocks.StateFile != "" {
+		opts = append(opts, mocks.WithStateFile(cfg.Mocks.StateFile))
+	}
+	srv, err := mocks.New(data, mocks.Chaos{FailRate: cfg.Mocks.FailRate, MaxLatency: cfg.Mocks.MaxLatency}, opts...)
 	if err != nil {
 		return err
 	}

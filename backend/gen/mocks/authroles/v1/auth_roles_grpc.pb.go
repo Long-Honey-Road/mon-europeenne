@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthRolesService_Authenticate_FullMethodName = "/mocks.authroles.v1.AuthRolesService/Authenticate"
-	AuthRolesService_GetAccount_FullMethodName   = "/mocks.authroles.v1.AuthRolesService/GetAccount"
+	AuthRolesService_Authenticate_FullMethodName  = "/mocks.authroles.v1.AuthRolesService/Authenticate"
+	AuthRolesService_GetAccount_FullMethodName    = "/mocks.authroles.v1.AuthRolesService/GetAccount"
+	AuthRolesService_CreateAccount_FullMethodName = "/mocks.authroles.v1.AuthRolesService/CreateAccount"
 )
 
 // AuthRolesServiceClient is the client API for AuthRolesService service.
@@ -34,6 +35,10 @@ type AuthRolesServiceClient interface {
 	Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*AuthenticateResponse, error)
 	// GetAccount fails with NOT_FOUND for an unknown user.
 	GetAccount(ctx context.Context, in *GetAccountRequest, opts ...grpc.CallOption) (*GetAccountResponse, error)
+	// CreateAccount hires an intern into the requester's team: an account that signs in at once, a directory entry
+	// with mentor, manager and HR BP, and a one-time password returned only here. Only a manager may call it;
+	// PERMISSION_DENIED otherwise, INVALID_ARGUMENT for bad fields, ALREADY_EXISTS for a taken login.
+	CreateAccount(ctx context.Context, in *CreateAccountRequest, opts ...grpc.CallOption) (*CreateAccountResponse, error)
 }
 
 type authRolesServiceClient struct {
@@ -64,6 +69,16 @@ func (c *authRolesServiceClient) GetAccount(ctx context.Context, in *GetAccountR
 	return out, nil
 }
 
+func (c *authRolesServiceClient) CreateAccount(ctx context.Context, in *CreateAccountRequest, opts ...grpc.CallOption) (*CreateAccountResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateAccountResponse)
+	err := c.cc.Invoke(ctx, AuthRolesService_CreateAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthRolesServiceServer is the server API for AuthRolesService service.
 // All implementations must embed UnimplementedAuthRolesServiceServer
 // for forward compatibility.
@@ -75,6 +90,10 @@ type AuthRolesServiceServer interface {
 	Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error)
 	// GetAccount fails with NOT_FOUND for an unknown user.
 	GetAccount(context.Context, *GetAccountRequest) (*GetAccountResponse, error)
+	// CreateAccount hires an intern into the requester's team: an account that signs in at once, a directory entry
+	// with mentor, manager and HR BP, and a one-time password returned only here. Only a manager may call it;
+	// PERMISSION_DENIED otherwise, INVALID_ARGUMENT for bad fields, ALREADY_EXISTS for a taken login.
+	CreateAccount(context.Context, *CreateAccountRequest) (*CreateAccountResponse, error)
 	mustEmbedUnimplementedAuthRolesServiceServer()
 }
 
@@ -90,6 +109,9 @@ func (UnimplementedAuthRolesServiceServer) Authenticate(context.Context, *Authen
 }
 func (UnimplementedAuthRolesServiceServer) GetAccount(context.Context, *GetAccountRequest) (*GetAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAccount not implemented")
+}
+func (UnimplementedAuthRolesServiceServer) CreateAccount(context.Context, *CreateAccountRequest) (*CreateAccountResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateAccount not implemented")
 }
 func (UnimplementedAuthRolesServiceServer) mustEmbedUnimplementedAuthRolesServiceServer() {}
 func (UnimplementedAuthRolesServiceServer) testEmbeddedByValue()                          {}
@@ -148,6 +170,24 @@ func _AuthRolesService_GetAccount_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthRolesService_CreateAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateAccountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthRolesServiceServer).CreateAccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthRolesService_CreateAccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthRolesServiceServer).CreateAccount(ctx, req.(*CreateAccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthRolesService_ServiceDesc is the grpc.ServiceDesc for AuthRolesService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -162,6 +202,10 @@ var AuthRolesService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAccount",
 			Handler:    _AuthRolesService_GetAccount_Handler,
+		},
+		{
+			MethodName: "CreateAccount",
+			Handler:    _AuthRolesService_CreateAccount_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

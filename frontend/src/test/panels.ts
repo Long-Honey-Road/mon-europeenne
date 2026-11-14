@@ -134,3 +134,9 @@ export const panelHandlers = [
     return HttpResponse.json({ item: found })
   }),
 ]
+
+/** Adds a person to the fake directory, own team; used by the fake hiring endpoint. */
+export function addPerson(p: Pick<Person, 'id' | 'name' | 'role_title'>) {
+  const state = panels.people as { people: Person[] }
+  state.people = [...state.people, person(p)]
+}

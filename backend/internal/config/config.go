@@ -56,6 +56,8 @@ type Mocks struct {
 	// FailRate is the share of calls that fail; MaxLatency is a random delay added to every call.
 	FailRate   float64
 	MaxLatency time.Duration
+	// StateFile keeps interns hired through auth-roles across restarts; empty keeps them in memory only.
+	StateFile string
 }
 
 type Config struct {
@@ -99,11 +101,14 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 
 			DetailedReasoningEffort: str("LLM_REASONING_EFFORT_DETAILED", ""),
 		},
-		Embeddings:    Embeddings{Model: str("EMBEDDINGS_MODEL", "")},
-		DatabaseURL:   str("DATABASE_URL", ""),
-		RedisAddr:     str("REDIS_ADDR", ""),
-		MocksAddr:     str("MOCKS_ADDR", ""),
-		Mocks:         Mocks{GRPCAddr: str("MOCKS_GRPC_ADDR", ":9091"), HTTPAddr: str("MOCKS_HTTP_ADDR", ":8090")},
+		Embeddings:  Embeddings{Model: str("EMBEDDINGS_MODEL", "")},
+		DatabaseURL: str("DATABASE_URL", ""),
+		RedisAddr:   str("REDIS_ADDR", ""),
+		MocksAddr:   str("MOCKS_ADDR", ""),
+		Mocks: Mocks{
+			GRPCAddr: str("MOCKS_GRPC_ADDR", ":9091"), HTTPAddr: str("MOCKS_HTTP_ADDR", ":8090"),
+			StateFile: str("MOCKS_STATE_FILE", ""),
+		},
 		SessionSecret: str("SESSION_SECRET", ""),
 		HTTPAddr:      str("HTTP_ADDR", ":8080"),
 		GRPCAddr:      str("GRPC_ADDR", ":9090"),
