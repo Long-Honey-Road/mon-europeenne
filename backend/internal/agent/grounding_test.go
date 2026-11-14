@@ -160,3 +160,26 @@ func TestInternalIDsInBracketsAreRemoved(t *testing.T) {
 		t.Errorf("violations = %v", res.Trace.Violations)
 	}
 }
+
+func TestStandRulesCloseTheSystemPrompt(t *testing.T) {
+	model := fake.New(fake.Text("Привет!"))
+	tr := turn("Привет")
+	tr.StandRules = "Это стейджинг: в конце ответа напоминай про 👍 и 👎."
+
+	run(t, &stubs{}, model, tr)
+
+	system := model.Calls()[0].Messages[0].Content
+	if !strings.HasSuffix(system, "## Rules of this stand\n\n"+standFrame+"\n\n"+tr.StandRules) {
+		t.Errorf("system prompt ends with %q", system[max(0, len(system)-300):])
+	}
+	if strings.Contains(fakeSystem(t), "Rules of this stand") {
+		t.Error("rules leak into turns without them")
+	}
+}
+
+func fakeSystem(t *testing.T) string {
+	t.Helper()
+	model := fake.New(fake.Text("Привет!"))
+	run(t, &stubs{}, model, turn("Привет"))
+	return model.Calls()[0].Messages[0].Content
+}

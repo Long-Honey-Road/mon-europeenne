@@ -13,5 +13,7 @@ NAME=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' "$ENV_FILE")
 # i think its bad, but for now its okay(usually this is the way to the critical issue, i guess)
 RELEASE="$(dirname "$ENV_FILE")/release.env"
 [ -f "$RELEASE" ] || RELEASE=/dev/null
-exec docker compose -p "$NAME" --env-file "$ENV_FILE" --env-file "$RELEASE" \
-  -f "$DIR/docker-compose.yml" -f "$DIR/compose.prod.yml" "$@"
+# Stand rules only where the env file points to a folder with them, never by default.
+STAND=$(sed -n 's/^STAND_DIR=//p' "$ENV_FILE")
+set -- -f "$DIR/docker-compose.yml" -f "$DIR/compose.prod.yml" ${STAND:+-f "$DIR/compose.stand.yml"} "$@"
+exec docker compose -p "$NAME" --env-file "$ENV_FILE" --env-file "$RELEASE" "$@"

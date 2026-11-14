@@ -64,6 +64,7 @@ func TestLoadReadsEnvironment(t *testing.T) {
 		"PLAYBOOK_REPO":        "",
 		"PLAYBOOK_REF":         "main",
 		"CHECKLIST_SHEET_URL":  "",
+		"PROMPT_EXTRA_FILE":    "/stand/prompt.md",
 	}))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -97,6 +98,7 @@ func TestLoadReadsEnvironment(t *testing.T) {
 		GRPCAddr:        ":19090",
 		FeatureRequests: false,
 		PlaybookRef:     "main",
+		PromptExtraFile: "/stand/prompt.md",
 	}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Fatalf("Load() =\n%+v\nwant\n%+v", cfg, want)

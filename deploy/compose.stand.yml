@@ -1,0 +1,9 @@
+# Stand-specific prompt rules (e.g. a briefing for testers on staging): <STAND_DIR>/prompt.md, read on every turn.
+# deploy/stack.sh adds this file when STAND_DIR is set in the stack's env file.
+
+services:
+  worker:
+    environment:
+      PROMPT_EXTRA_FILE: /stand/prompt.md
+    volumes:
+      - ${STAND_DIR:?set STAND_DIR}:/stand:ro

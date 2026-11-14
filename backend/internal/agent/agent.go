@@ -54,6 +54,8 @@ type Turn struct {
 	Sphere       string
 	SphereMemory string
 	Overview     string
+	// StandRules are extra prompt rules of a test stand, from its operator; empty elsewhere.
+	StandRules string
 	// History is the thread so far, oldest first; the agent keeps the tail.
 	History []llm.Message
 	Message string
