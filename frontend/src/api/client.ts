@@ -89,7 +89,8 @@ export type Api = {
   messages: (threadId: string) => Promise<ChatMessage[]>
   /** Queues an agent turn; the answer arrives over the thread's event stream. */
   sendMessage: (threadId: string, content: string, mode: AnswerMode) => Promise<{ message_id: string; job_id: string }>
-  rateMessage: (messageId: string, value: Rating) => Promise<void>
+  /** Rates an answer; the note is the tester's comment and goes to the developers with the rating. */
+  rateMessage: (messageId: string, value: Rating, note?: string) => Promise<void>
 }
 
 type Result = { data?: unknown; error?: unknown; response: Response }
@@ -201,12 +202,12 @@ export function createApi({ baseUrl, getToken, onUnauthorized, fetch: fetchImpl 
         sendMessageResponseSchema,
         true,
       ),
-    rateMessage: async (messageId, value) => {
+    rateMessage: async (messageId, value, note) => {
       await call(
         () =>
           client.POST('/v1/private/messages/{message_id}/feedback', {
             params: { path: { message_id: messageId } },
-            body: { value: value === 'up' ? 'RATING_UP' : 'RATING_DOWN' },
+            body: { value: value === 'up' ? 'RATING_UP' : 'RATING_DOWN', ...(note ? { note } : {}) },
           }),
         emptySchema,
         true,

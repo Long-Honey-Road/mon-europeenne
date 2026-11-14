@@ -32,6 +32,7 @@ var commands = []command{
 	{name: "ask", summary: "run one agent turn against the configured model", run: runAsk},
 	{name: "llm-check", summary: "probe the configured model: text, tool call, JSON, stream", run: runLLMCheck},
 	{name: "trace", summary: "print the latest agent turns with tool calls (-n, -as, -thread, -prompt, -json)", run: runTrace},
+	{name: "feedback", summary: "print testers' ratings with the question, the answer and the comment (-n, -notes)", run: runFeedback},
 }
 
 func main() {

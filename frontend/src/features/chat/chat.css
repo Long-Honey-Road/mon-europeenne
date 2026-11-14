@@ -305,6 +305,31 @@
   background: rgb(255 255 255 / 0.12);
 }
 
+.msg__note {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.msg__note input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.06);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+}
+.msg__note button {
+  padding: 6px 12px;
+}
+.msg__note-done {
+  margin: 8px 0 0;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
 /* Blocks under an answer */
 .blocks {
   display: flex;
