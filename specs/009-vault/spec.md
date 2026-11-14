@@ -33,7 +33,8 @@ the length and that there is at least one source.
 
 `GET /v1/private/vault`, `GET /v1/private/vault/{id}` (with versions), `PATCH /v1/private/vault/{id}` (manual
 edit, a new version), `POST /v1/private/vault/{id}/restore {version}`, `DELETE /v1/private/vault/{id}`,
-`POST /v1/private/messages/{id}/vault` (the button «В хранилище»: buddy writes the summary in the next turn).
+`POST /v1/private/messages/{id}/vault` (the button «В хранилище»: the answer is saved as it is, its first line as
+the title and the answer itself as the source; buddy writes a summary only when asked in the chat).
 
 ## Thread
 
