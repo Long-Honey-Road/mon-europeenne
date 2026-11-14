@@ -17,6 +17,7 @@ const threadTypeNames: Record<ThreadType, string> = {
   THREAD_TYPE_PLAN: 'План',
   THREAD_TYPE_REQUEST: 'Заявки',
   THREAD_TYPE_TASK: 'Задача',
+  THREAD_TYPE_VAULT: 'Хранилище',
 }
 
 // Thread types a user can start from the chat; task threads start from a task (S-08).

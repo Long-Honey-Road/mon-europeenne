@@ -58,6 +58,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/private/messages/{message_id}/vault": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description SaveMessageToVault is the button «В хранилище»: the answer becomes a record with itself as the source. */
+        post: operations["VaultService_SaveMessageToVault"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/private/people": {
         parameters: {
             query?: never;
@@ -278,6 +295,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/private/vault": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["VaultService_ListVaultItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/private/vault/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GetVaultItem returns the record with its versions, newest first. */
+        get: operations["VaultService_GetVaultItem"];
+        put?: never;
+        post?: never;
+        delete: operations["VaultService_DeleteVaultItem"];
+        options?: never;
+        head?: never;
+        /** @description UpdateVaultItem is a manual edit; it makes a new version. */
+        patch: operations["VaultService_UpdateVaultItem"];
+        trace?: never;
+    };
+    "/v1/private/vault/{item_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description RestoreVaultVersion makes an old version current again, as a new version. */
+        post: operations["VaultService_RestoreVaultVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/auth/login": {
         parameters: {
             query?: never;
@@ -321,7 +389,7 @@ export interface components {
              * Format: enum
              * @enum {string}
              */
-            type?: "THREAD_TYPE_UNSPECIFIED" | "THREAD_TYPE_GENERAL" | "THREAD_TYPE_PLAN" | "THREAD_TYPE_REQUEST" | "THREAD_TYPE_TASK";
+            type?: "THREAD_TYPE_UNSPECIFIED" | "THREAD_TYPE_GENERAL" | "THREAD_TYPE_PLAN" | "THREAD_TYPE_REQUEST" | "THREAD_TYPE_TASK" | "THREAD_TYPE_VAULT";
             title?: string;
             pin?: Record<string, never>;
         };
@@ -329,6 +397,7 @@ export interface components {
             thread?: components["schemas"]["Thread"];
         };
         DeletePinResponse: Record<string, never>;
+        DeleteVaultItemResponse: Record<string, never>;
         /** @description Focus is the sphere selected in a tab; empty means the tab overview. */
         Focus: {
             /**
@@ -382,6 +451,9 @@ export interface components {
             /** Format: int32 */
             total?: number;
         };
+        GetVaultItemResponse: {
+            item?: components["schemas"]["VaultItem"];
+        };
         /** @description Contains an arbitrary serialized message along with a @type that describes the type of the serialized message. */
         GoogleProtobufAny: {
             /** @description The type of the serialized message. */
@@ -407,6 +479,9 @@ export interface components {
         };
         ListThreadsResponse: {
             threads?: components["schemas"]["Thread"][];
+        };
+        ListVaultItemsResponse: {
+            items?: components["schemas"]["VaultItem"][];
         };
         LoginRequest: {
             login?: string;
@@ -557,6 +632,22 @@ export interface components {
             /** Format: int32 */
             sla_hours?: number;
         };
+        RestoreVaultVersionRequest: {
+            item_id?: string;
+            /** Format: int32 */
+            version?: number;
+        };
+        RestoreVaultVersionResponse: {
+            item?: components["schemas"]["VaultItem"];
+        };
+        SaveMessageToVaultRequest: {
+            message_id?: string;
+            /** @description Defaults to the first line of the message. */
+            title?: string;
+        };
+        SaveMessageToVaultResponse: {
+            item?: components["schemas"]["VaultItem"];
+        };
         SendMessageRequest: {
             thread_id?: string;
             content?: string;
@@ -617,7 +708,7 @@ export interface components {
              * Format: enum
              * @enum {string}
              */
-            type?: "THREAD_TYPE_UNSPECIFIED" | "THREAD_TYPE_GENERAL" | "THREAD_TYPE_PLAN" | "THREAD_TYPE_REQUEST" | "THREAD_TYPE_TASK";
+            type?: "THREAD_TYPE_UNSPECIFIED" | "THREAD_TYPE_GENERAL" | "THREAD_TYPE_PLAN" | "THREAD_TYPE_REQUEST" | "THREAD_TYPE_TASK" | "THREAD_TYPE_VAULT";
             title?: string;
             /** @description Pinned context: {plan_item_id} or {request_id} or {task: {key, title, repo}}. */
             pin?: Record<string, never>;
@@ -644,6 +735,15 @@ export interface components {
         UpdatePlanItemResponse: {
             item?: components["schemas"]["PlanItem"];
         };
+        UpdateVaultItemRequest: {
+            item_id?: string;
+            title?: string;
+            summary?: string;
+            tags?: string[];
+        };
+        UpdateVaultItemResponse: {
+            item?: components["schemas"]["VaultItem"];
+        };
         User: {
             id?: string;
             login?: string;
@@ -664,6 +764,22 @@ export interface components {
             location?: string;
             /** @description ISO 8601 date, e.g. 2026-11-09. */
             start_date?: string;
+        };
+        VaultItem: {
+            id?: string;
+            /** @description Up to 80 characters. */
+            title?: string;
+            /** @description Markdown, up to 1200 characters. */
+            summary?: string;
+            tags?: string[];
+            /** @description [{kind, id, title}]: messages, document fragments, plan items. */
+            sources?: Record<string, never>[];
+            /** Format: int32 */
+            version?: number;
+            /** @description RFC 3339. */
+            updated_at?: string;
+            /** @description Only in GetVaultItem, newest first. */
+            versions?: components["schemas"]["VaultItem"][];
         };
     };
     responses: never;
@@ -760,6 +876,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PinMessageResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    VaultService_SaveMessageToVault: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveMessageToVaultRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveMessageToVaultResponse"];
                 };
             };
             /** @description Default error response */
@@ -1301,6 +1452,169 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GetTodayResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    VaultService_ListVaultItems: {
+        parameters: {
+            query?: {
+                tag?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListVaultItemsResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    VaultService_GetVaultItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetVaultItemResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    VaultService_DeleteVaultItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteVaultItemResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    VaultService_UpdateVaultItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateVaultItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateVaultItemResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    VaultService_RestoreVaultVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreVaultVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreVaultVersionResponse"];
                 };
             };
             /** @description Default error response */

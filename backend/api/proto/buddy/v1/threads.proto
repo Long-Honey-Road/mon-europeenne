@@ -61,6 +61,8 @@ enum ThreadType {
   THREAD_TYPE_PLAN = 2;
   THREAD_TYPE_REQUEST = 3;
   THREAD_TYPE_TASK = 4;
+  // The vault tab: one per user, focus on a vault record.
+  THREAD_TYPE_VAULT = 5;
 }
 
 enum MessageRole {

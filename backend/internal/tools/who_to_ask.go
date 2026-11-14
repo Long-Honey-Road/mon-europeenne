@@ -61,7 +61,7 @@ var allRoles = []domain.Role{
 }
 
 var allThreads = []domain.ThreadType{
-	domain.ThreadGeneral, domain.ThreadPlan, domain.ThreadRequest, domain.ThreadTask,
+	domain.ThreadGeneral, domain.ThreadPlan, domain.ThreadRequest, domain.ThreadTask, domain.ThreadVault,
 }
 
 // WhoToAsk suggests people for a topic and always returns the escalation chain of the caller.

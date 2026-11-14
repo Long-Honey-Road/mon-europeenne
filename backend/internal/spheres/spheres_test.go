@@ -107,6 +107,16 @@ func (p pinsOf) Pins(_ context.Context, userID string, f domain.Focus) ([]domain
 	return p[f], nil
 }
 
+type vaultOf map[string]domain.VaultItem
+
+func (v vaultOf) VaultItem(_ context.Context, _ string, id string) (domain.VaultItem, error) {
+	item, ok := v[id]
+	if !ok {
+		return domain.VaultItem{}, store.ErrNotFound
+	}
+	return item, nil
+}
+
 type queue struct{ got []domain.Focus }
 
 func (q *queue) EnqueueSummary(_ context.Context, _ string, f domain.Focus) error {
@@ -117,7 +127,7 @@ func (q *queue) EnqueueSummary(_ context.Context, _ string, f domain.Focus) erro
 func TestForAFocusedMessage(t *testing.T) {
 	st := newMem()
 	st.summaries[access] = "Лиза отправила три заявки"
-	svc := New(st, plans{}, pinsOf{}, &queue{})
+	svc := New(st, plans{}, pinsOf{}, vaultOf{}, &queue{})
 	th := domain.Thread{ID: "t1", UserID: "u-liza", Summary: "обзор"}
 
 	c, err := svc.For(t.Context(), th, st.msgs[3])
@@ -141,9 +151,25 @@ func TestForAFocusedMessage(t *testing.T) {
 	if err != nil || plain.Card != "" || plain.History != nil || !strings.Contains(plain.Overview, "w1-access «Запросить доступы»") {
 		t.Errorf("overview turn = %+v, %v", plain, err)
 	}
-	unknown := domain.Message{Focus: domain.Focus{Kind: domain.FocusVaultItem, ID: "v1"}, CreatedAt: t0}
-	if c, _ := svc.For(t.Context(), th, unknown); c.Card != "vault_item v1" {
+	unknown := domain.Message{Focus: domain.Focus{Kind: domain.FocusPlanItem, ID: "ghost"}, CreatedAt: t0}
+	if c, _ := svc.For(t.Context(), th, unknown); c.Card != "plan_item ghost" {
 		t.Errorf("unknown sphere card = %q", c.Card)
+	}
+}
+
+func TestVaultRecordCard(t *testing.T) {
+	rec := domain.Focus{Kind: domain.FocusVaultItem, ID: "v1"}
+	st := newMem()
+	st.msgs = append(st.msgs, domain.Message{ID: "z", Focus: rec, CreatedAt: t0.Add(time.Hour)})
+	vault := vaultOf{"v1": {ID: "v1", Title: "Доступы", Version: 3, Tags: []string{"w1"}, Summary: "Jira первой"}}
+	svc := New(st, plans{}, pinsOf{}, vault, &queue{})
+	th := domain.Thread{ID: "t1", UserID: "u-liza"}
+	c, err := svc.For(t.Context(), th, domain.Message{Focus: rec, CreatedAt: t0.Add(2 * time.Hour)})
+	if err != nil || !strings.Contains(c.Card, "«Доступы», version 3, tags w1") || !strings.Contains(c.Card, "Jira первой") {
+		t.Errorf("card = %q, %v", c.Card, err)
+	}
+	if _, err := svc.For(t.Context(), th, domain.Message{Focus: domain.Focus{Kind: domain.FocusVaultItem, ID: "nope"}}); err == nil {
+		t.Error("missing record accepted")
 	}
 }
 
@@ -152,7 +178,7 @@ func TestCardListsPins(t *testing.T) {
 	for i := range 12 {
 		many = append(many, domain.Pin{Title: fmt.Sprint("закреп ", i), Text: strings.Repeat("я", 300) + "\nконец"})
 	}
-	svc := New(newMem(), plans{}, pinsOf{access: many}, &queue{})
+	svc := New(newMem(), plans{}, pinsOf{access: many}, vaultOf{}, &queue{})
 	c, err := svc.For(t.Context(), domain.Thread{ID: "t1", UserID: "u-liza"}, domain.Message{Focus: access, CreatedAt: t0.Add(time.Hour)})
 	if err != nil {
 		t.Fatal(err)
@@ -167,12 +193,12 @@ func TestCardListsPins(t *testing.T) {
 
 func TestForErrors(t *testing.T) {
 	th := domain.Thread{ID: "t1", UserID: "u-liza"}
-	if _, err := New(newMem(), plans{err: errors.New("down")}, pinsOf{}, &queue{}).For(t.Context(), th, domain.Message{}); err == nil {
+	if _, err := New(newMem(), plans{err: errors.New("down")}, pinsOf{}, vaultOf{}, &queue{}).For(t.Context(), th, domain.Message{}); err == nil {
 		t.Error("plan error swallowed")
 	}
 	st := newMem()
 	st.err = errors.New("db down")
-	if _, err := New(st, plans{}, pinsOf{}, &queue{}).For(t.Context(), th, domain.Message{Focus: access}); err == nil {
+	if _, err := New(st, plans{}, pinsOf{}, vaultOf{}, &queue{}).For(t.Context(), th, domain.Message{Focus: access}); err == nil {
 		t.Error("store error swallowed")
 	}
 }
@@ -180,7 +206,7 @@ func TestForErrors(t *testing.T) {
 func TestAfterTurnSchedulesSummaries(t *testing.T) {
 	st := newMem()
 	q := &queue{}
-	svc := New(st, plans{}, pinsOf{}, q)
+	svc := New(st, plans{}, pinsOf{}, vaultOf{}, q)
 	th := domain.Thread{ID: "t1"}
 	svc.AfterTurn(t.Context(), th, access)
 	if len(q.got) != 2 || q.got[0] != access || !q.got[1].IsZero() {

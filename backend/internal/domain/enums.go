@@ -49,6 +49,7 @@ const (
 	ThreadPlan
 	ThreadRequest
 	ThreadTask
+	ThreadVault
 )
 
 const (
@@ -111,7 +112,7 @@ var (
 		DirectionBackend: "backend", DirectionFrontend: "frontend", DirectionQA: "qa",
 	}
 	threadTypeNames = map[ThreadType]string{
-		ThreadGeneral: "general", ThreadPlan: "plan", ThreadRequest: "request", ThreadTask: "task",
+		ThreadGeneral: "general", ThreadPlan: "plan", ThreadRequest: "request", ThreadTask: "task", ThreadVault: "vault",
 	}
 	messageRoleNames = map[MessageRole]string{
 		MessageUser: "user", MessageAssistant: "assistant", MessageTool: "tool",

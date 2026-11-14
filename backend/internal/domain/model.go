@@ -216,3 +216,25 @@ type Pin struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
+
+// VaultItem is a note in the user's vault; every change makes a new version.
+type VaultItem struct {
+	ID        string
+	UserID    string
+	Title     string
+	Summary   string
+	Tags      []string
+	Sources   json.RawMessage
+	Version   int
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	// Versions are filled only when one item is read with its history, newest first.
+	Versions []VaultItem
+}
+
+// VaultPatch changes the fields that are set; Tags nil keeps the tags.
+type VaultPatch struct {
+	Title   *string
+	Summary *string
+	Tags    []string
+}

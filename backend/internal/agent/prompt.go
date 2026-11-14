@@ -16,6 +16,7 @@ var threadPrompts = map[domain.ThreadType]string{
 	domain.ThreadPlan:    "thread_plan.md",
 	domain.ThreadRequest: "thread_request.md",
 	domain.ThreadTask:    "thread_task.md",
+	domain.ThreadVault:   "thread_vault.md",
 }
 
 var modePrompts = map[Mode]string{

@@ -204,7 +204,7 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 }
 
 // sphereTabs are the thread types shown as a tab with spheres; other threads keep the plain tail and summary.
-var sphereTabs = map[domain.ThreadType]bool{domain.ThreadPlan: true}
+var sphereTabs = map[domain.ThreadType]bool{domain.ThreadPlan: true, domain.ThreadVault: true}
 
 // withSphere swaps the thread tail for the sphere's own context: card, memory, overview and its messages.
 func (h *Handler) withSphere(ctx context.Context, t *agent.Turn, th domain.Thread, msg domain.Message) error {

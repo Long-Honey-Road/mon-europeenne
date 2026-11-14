@@ -74,6 +74,7 @@ export const threadTypeSchema = z.enum([
   'THREAD_TYPE_PLAN',
   'THREAD_TYPE_REQUEST',
   'THREAD_TYPE_TASK',
+  'THREAD_TYPE_VAULT',
 ])
 
 export const taskPinSchema = z.object({

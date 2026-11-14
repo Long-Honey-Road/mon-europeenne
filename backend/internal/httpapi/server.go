@@ -66,6 +66,8 @@ type Deps struct {
 	// Pins are the sphere pins; nil leaves the pins API unimplemented. Publish sends the pinned event.
 	Pins    Pins
 	Publish Publisher
+	// Vault is the private vault; nil leaves the vault API unimplemented.
+	Vault Vault
 	// Blockers add to the "today" blockers beyond the plan, e.g. access requests.
 	Blockers []BlockerSource
 	Jobs     Jobs
@@ -126,6 +128,13 @@ func New(ctx context.Context, d Deps) (http.Handler, error) {
 	}
 	if err := buddyv1.RegisterPinServiceHandlerServer(ctx, gw, pins); err != nil {
 		return nil, fmt.Errorf("register pin service: %w", err)
+	}
+	var vault buddyv1.VaultServiceServer = buddyv1.UnimplementedVaultServiceServer{}
+	if d.Vault != nil {
+		vault = &vaultService{deps: d}
+	}
+	if err := buddyv1.RegisterVaultServiceHandlerServer(ctx, gw, vault); err != nil {
+		return nil, fmt.Errorf("register vault service: %w", err)
 	}
 	var requests buddyv1.RequestServiceServer = buddyv1.UnimplementedRequestServiceServer{}
 	if d.Requests != nil {

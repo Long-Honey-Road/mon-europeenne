@@ -80,6 +80,8 @@ const (
 	ThreadType_THREAD_TYPE_PLAN        ThreadType = 2
 	ThreadType_THREAD_TYPE_REQUEST     ThreadType = 3
 	ThreadType_THREAD_TYPE_TASK        ThreadType = 4
+	// The vault tab: one per user, focus on a vault record.
+	ThreadType_THREAD_TYPE_VAULT ThreadType = 5
 )
 
 // Enum value maps for ThreadType.
@@ -90,6 +92,7 @@ var (
 		2: "THREAD_TYPE_PLAN",
 		3: "THREAD_TYPE_REQUEST",
 		4: "THREAD_TYPE_TASK",
+		5: "THREAD_TYPE_VAULT",
 	}
 	ThreadType_value = map[string]int32{
 		"THREAD_TYPE_UNSPECIFIED": 0,
@@ -97,6 +100,7 @@ var (
 		"THREAD_TYPE_PLAN":        2,
 		"THREAD_TYPE_REQUEST":     3,
 		"THREAD_TYPE_TASK":        4,
+		"THREAD_TYPE_VAULT":       5,
 	}
 )
 
@@ -1149,14 +1153,15 @@ const file_buddy_v1_threads_proto_rawDesc = "" +
 	"\x06Rating\x12\x16\n" +
 	"\x12RATING_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tRATING_UP\x10\x01\x12\x0f\n" +
-	"\vRATING_DOWN\x10\x02*\x87\x01\n" +
+	"\vRATING_DOWN\x10\x02*\x9e\x01\n" +
 	"\n" +
 	"ThreadType\x12\x1b\n" +
 	"\x17THREAD_TYPE_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13THREAD_TYPE_GENERAL\x10\x01\x12\x14\n" +
 	"\x10THREAD_TYPE_PLAN\x10\x02\x12\x17\n" +
 	"\x13THREAD_TYPE_REQUEST\x10\x03\x12\x14\n" +
-	"\x10THREAD_TYPE_TASK\x10\x04*^\n" +
+	"\x10THREAD_TYPE_TASK\x10\x04\x12\x15\n" +
+	"\x11THREAD_TYPE_VAULT\x10\x05*^\n" +
 	"\vMessageRole\x12\x1c\n" +
 	"\x18MESSAGE_ROLE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11MESSAGE_ROLE_USER\x10\x01\x12\x1a\n" +

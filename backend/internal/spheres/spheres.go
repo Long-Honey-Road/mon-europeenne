@@ -35,6 +35,11 @@ type Plans interface {
 	Plan(ctx context.Context, userID string) ([]domain.PlanEntry, error)
 }
 
+// Vault reads one of the user's vault records.
+type Vault interface {
+	VaultItem(ctx context.Context, userID, id string) (domain.VaultItem, error)
+}
+
 // Pins lists the user's pins of one sphere.
 type Pins interface {
 	Pins(ctx context.Context, userID string, f domain.Focus) ([]domain.Pin, error)
@@ -63,11 +68,12 @@ type Service struct {
 	store Store
 	plans Plans
 	pins  Pins
+	vault Vault
 	queue Queue
 }
 
-func New(st Store, plans Plans, pins Pins, queue Queue) *Service {
-	return &Service{store: st, plans: plans, pins: pins, queue: queue}
+func New(st Store, plans Plans, pins Pins, vault Vault, queue Queue) *Service {
+	return &Service{store: st, plans: plans, pins: pins, vault: vault, queue: queue}
 }
 
 // For builds the context of a message: with a focus the sphere's card, memory and own history; without one only
@@ -88,11 +94,19 @@ func (s *Service) For(ctx context.Context, th domain.Thread, msg domain.Message)
 	if msg.Focus.IsZero() {
 		return out, nil
 	}
-	pins, err := s.pins.Pins(ctx, th.UserID, msg.Focus)
-	if err != nil {
-		return Context{}, err
+	if msg.Focus.Kind == domain.FocusVaultItem {
+		v, err := s.vault.VaultItem(ctx, th.UserID, msg.Focus.ID)
+		if err != nil {
+			return Context{}, err
+		}
+		out.Card = vaultCard(v)
+	} else {
+		pins, err := s.pins.Pins(ctx, th.UserID, msg.Focus)
+		if err != nil {
+			return Context{}, err
+		}
+		out.Card = card(msg.Focus, titles) + pinLines(pins)
 	}
-	out.Card = card(msg.Focus, titles) + pinLines(pins)
 	if out.Memory, _, err = s.store.FocusSummary(ctx, th.ID, msg.Focus); err != nil {
 		return Context{}, err
 	}
@@ -123,6 +137,14 @@ func card(f domain.Focus, items map[string]plan.Item) string {
 		fmt.Fprintf(&b, "Waits for: %s\n", strings.Join(names, ", "))
 	}
 	return strings.TrimSpace(b.String())
+}
+
+func vaultCard(v domain.VaultItem) string {
+	tags := ""
+	if len(v.Tags) > 0 {
+		tags = ", tags " + strings.Join(v.Tags, ", ")
+	}
+	return fmt.Sprintf("Vault record %s «%s», version %d%s.\nSummary:\n%s", v.ID, v.Title, v.Version, tags, v.Summary)
 }
 
 func pinLines(pins []domain.Pin) string {
@@ -158,6 +180,11 @@ func (s *Service) overview(ctx context.Context, th domain.Thread, current domain
 		title := a.Focus.ID
 		if it, ok := items[a.Focus.ID]; ok && a.Focus.Kind == domain.FocusPlanItem {
 			title = fmt.Sprintf("%s «%s», %s", a.Focus.ID, it.Item.Title, it.Status)
+		}
+		if a.Focus.Kind == domain.FocusVaultItem {
+			if v, err := s.vault.VaultItem(ctx, th.UserID, a.Focus.ID); err == nil {
+				title = fmt.Sprintf("record «%s»", v.Title)
+			}
 		}
 		lines = append(lines, fmt.Sprintf("- %s: %d messages, last %s", title, a.Messages, a.Last.Format("02.01 15:04")))
 	}

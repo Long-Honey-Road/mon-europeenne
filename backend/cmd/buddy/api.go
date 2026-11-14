@@ -89,7 +89,7 @@ func buildAPI(ctx context.Context, cfg config.Config) (http.Handler, func(), err
 	st := store.New(pool)
 	deps := httpapi.Deps{
 		Accounts: src.accounts, Tokens: tokens, Directory: src.directory,
-		Threads: st, Plans: st, Jobs: queue, Bus: stream.NewRedisBus(rdb), Pins: st, Publish: stream.NewRedisBus(rdb),
+		Threads: st, Plans: st, Jobs: queue, Bus: stream.NewRedisBus(rdb), Pins: st, Publish: stream.NewRedisBus(rdb), Vault: st,
 	}
 	if cfg.FeatureRequests {
 		desk, err := newDesk(data, src, st, rdb)

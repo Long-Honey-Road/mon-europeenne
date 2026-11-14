@@ -89,6 +89,37 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/private/messages/{message_id}/vault:
+        post:
+            tags:
+                - VaultService
+            description: 'SaveMessageToVault is the button «В хранилище»: the answer becomes a record with itself as the source.'
+            operationId: VaultService_SaveMessageToVault
+            parameters:
+                - name: message_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/SaveMessageToVaultRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SaveMessageToVaultResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/private/people:
         get:
             tags:
@@ -515,6 +546,138 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/private/vault:
+        get:
+            tags:
+                - VaultService
+            operationId: VaultService_ListVaultItems
+            parameters:
+                - name: tag
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListVaultItemsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/private/vault/{item_id}:
+        get:
+            tags:
+                - VaultService
+            description: GetVaultItem returns the record with its versions, newest first.
+            operationId: VaultService_GetVaultItem
+            parameters:
+                - name: item_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetVaultItemResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        delete:
+            tags:
+                - VaultService
+            operationId: VaultService_DeleteVaultItem
+            parameters:
+                - name: item_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/DeleteVaultItemResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        patch:
+            tags:
+                - VaultService
+            description: UpdateVaultItem is a manual edit; it makes a new version.
+            operationId: VaultService_UpdateVaultItem
+            parameters:
+                - name: item_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UpdateVaultItemRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UpdateVaultItemResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/private/vault/{item_id}/restore:
+        post:
+            tags:
+                - VaultService
+            description: RestoreVaultVersion makes an old version current again, as a new version.
+            operationId: VaultService_RestoreVaultVersion
+            parameters:
+                - name: item_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RestoreVaultVersionRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RestoreVaultVersionResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/public/auth/login:
         post:
             tags:
@@ -581,6 +744,7 @@ components:
                         - THREAD_TYPE_PLAN
                         - THREAD_TYPE_REQUEST
                         - THREAD_TYPE_TASK
+                        - THREAD_TYPE_VAULT
                     type: string
                     format: enum
                 title:
@@ -593,6 +757,9 @@ components:
                 thread:
                     $ref: '#/components/schemas/Thread'
         DeletePinResponse:
+            type: object
+            properties: {}
+        DeleteVaultItemResponse:
             type: object
             properties: {}
         Focus:
@@ -683,6 +850,11 @@ components:
                 total:
                     type: integer
                     format: int32
+        GetVaultItemResponse:
+            type: object
+            properties:
+                item:
+                    $ref: '#/components/schemas/VaultItem'
         GoogleProtobufAny:
             type: object
             properties:
@@ -734,6 +906,13 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Thread'
+        ListVaultItemsResponse:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/VaultItem'
         LoginRequest:
             type: object
             properties:
@@ -1003,6 +1182,32 @@ components:
                 sla_hours:
                     type: integer
                     format: int32
+        RestoreVaultVersionRequest:
+            type: object
+            properties:
+                item_id:
+                    type: string
+                version:
+                    type: integer
+                    format: int32
+        RestoreVaultVersionResponse:
+            type: object
+            properties:
+                item:
+                    $ref: '#/components/schemas/VaultItem'
+        SaveMessageToVaultRequest:
+            type: object
+            properties:
+                message_id:
+                    type: string
+                title:
+                    type: string
+                    description: Defaults to the first line of the message.
+        SaveMessageToVaultResponse:
+            type: object
+            properties:
+                item:
+                    $ref: '#/components/schemas/VaultItem'
         SendMessageRequest:
             type: object
             properties:
@@ -1102,6 +1307,7 @@ components:
                         - THREAD_TYPE_PLAN
                         - THREAD_TYPE_REQUEST
                         - THREAD_TYPE_TASK
+                        - THREAD_TYPE_VAULT
                     type: string
                     format: enum
                 title:
@@ -1147,6 +1353,24 @@ components:
             properties:
                 item:
                     $ref: '#/components/schemas/PlanItem'
+        UpdateVaultItemRequest:
+            type: object
+            properties:
+                item_id:
+                    type: string
+                title:
+                    type: string
+                summary:
+                    type: string
+                tags:
+                    type: array
+                    items:
+                        type: string
+        UpdateVaultItemResponse:
+            type: object
+            properties:
+                item:
+                    $ref: '#/components/schemas/VaultItem'
         User:
             type: object
             properties:
@@ -1189,6 +1413,37 @@ components:
                 start_date:
                     type: string
                     description: ISO 8601 date, e.g. 2026-11-09.
+        VaultItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                title:
+                    type: string
+                    description: Up to 80 characters.
+                summary:
+                    type: string
+                    description: Markdown, up to 1200 characters.
+                tags:
+                    type: array
+                    items:
+                        type: string
+                sources:
+                    type: array
+                    items:
+                        type: object
+                    description: '[{kind, id, title}]: messages, document fragments, plan items.'
+                version:
+                    type: integer
+                    format: int32
+                updated_at:
+                    type: string
+                    description: RFC 3339.
+                versions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/VaultItem'
+                    description: Only in GetVaultItem, newest first.
 tags:
     - name: AuthService
       description: AuthService signs in test accounts; real auth is assumed to exist at Avito.
@@ -1205,3 +1460,7 @@ tags:
          status. A removable module behind FEATURE_REQUESTS: when it is off every method is UNIMPLEMENTED.
     - name: ThreadService
       description: ThreadService keeps the caller's conversations with buddy; answers arrive over SSE.
+    - name: VaultService
+      description: |-
+        VaultService is the user's private vault (design §6.5): notes made from conversations, each change a version.
+         Nobody but the owner sees it, mentors and managers neither.
