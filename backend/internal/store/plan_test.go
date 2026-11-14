@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 )
@@ -114,5 +115,39 @@ func TestSeedPlanRejectsUnknownDependency(t *testing.T) {
 	bad := []domain.PlanItem{{Key: "x", Title: "x", Period: domain.PeriodWeek1, DependsOn: []string{"nope"}}}
 	if err := s.SeedPlan(context.Background(), bad, nil); err == nil {
 		t.Fatal("unknown dependency accepted")
+	}
+}
+
+func TestEnsureUserGivesAHiredInternTheSharedPlan(t *testing.T) {
+	s := seededPlan(t)
+	ctx := context.Background()
+	vera := domain.User{
+		ID: "u-vnovikova", Login: "vnovikova", DisplayName: "Вера", Role: domain.RoleIntern,
+		Direction: domain.DirectionBackend, TeamID: "t-messenger", StartDate: time.Date(2026, 11, 16, 0, 0, 0, 0, time.UTC),
+	}
+	if _, err := s.Plan(ctx, vera.ID); err != nil {
+		t.Fatalf("Plan before the user exists: %v", err)
+	}
+	if err := s.EnsureUser(ctx, vera); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.EnsureUser(ctx, vera); err != nil {
+		t.Fatalf("second EnsureUser: %v", err)
+	}
+	mine, err := s.Plan(ctx, vera.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	liza, _ := s.Plan(ctx, "u-liza")
+	if len(mine) == 0 || len(mine) != len(liza) {
+		t.Fatalf("hired intern sees %d items, an intern of the same team %d", len(mine), len(liza))
+	}
+	for _, e := range mine {
+		if e.Status != domain.ItemTodo {
+			t.Errorf("item %s is %v for a new intern, want todo", e.Item.Key, e.Status)
+		}
+	}
+	if _, err := s.CreateThread(ctx, vera.ID, domain.ThreadGeneral, "", domain.ThreadPin{}); err != nil {
+		t.Errorf("thread of the hired intern: %v", err)
 	}
 }
