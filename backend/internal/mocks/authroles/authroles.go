@@ -28,6 +28,10 @@ import (
 
 var loginRe = regexp.MustCompile(`^[a-z][a-z0-9._-]{2,31}$`)
 
+// The hash keeps generated passwords out of the state file; brute-force cost is the real system's concern, and a
+// low cost keeps the mock quick under the race detector.
+const hashCost = bcrypt.MinCost
+
 // No look-alikes (0/O, 1/l/I), so a password read aloud or copied by hand survives.
 const passwordAlphabet = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
@@ -113,11 +117,19 @@ func (s *Service) CreateAccount(ctx context.Context, req *authrolesv1.CreateAcco
 	if err != nil {
 		return nil, err
 	}
+	// A taken login is refused before the costly hashing.
+	s.mu.RLock()
+	_, taken := s.byLogin[h.User.Login]
+	_, takenID := s.byID[h.User.ID]
+	s.mu.RUnlock()
+	if taken || takenID {
+		return nil, status.Errorf(codes.AlreadyExists, "login %q is taken", h.User.Login)
+	}
 	password, err := newPassword()
 	if err != nil {
 		return nil, status.Error(codes.Internal, "password generation failed")
 	}
-	if h.Hash, err = bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost); err != nil {
+	if h.Hash, err = bcrypt.GenerateFromPassword([]byte(password), hashCost); err != nil {
 		return nil, status.Error(codes.Internal, "password hashing failed")
 	}
 
