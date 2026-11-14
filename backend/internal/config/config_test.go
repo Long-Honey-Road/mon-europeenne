@@ -63,6 +63,7 @@ func TestLoadReadsEnvironment(t *testing.T) {
 		"FEATURE_REQUESTS":     "false",
 		"PLAYBOOK_REPO":        "",
 		"PLAYBOOK_REF":         "main",
+		"CHECKLIST_SHEET_URL":  "",
 	}))
 	if err != nil {
 		t.Fatalf("Load: %v", err)

@@ -34,6 +34,21 @@ func (s SeedDocs) Fetch(context.Context) ([]Document, error) {
 	return out, nil
 }
 
+// Guide is buddy's own guide to the app, shipped with the code; it answers "how do I use you".
+type Guide []seed.Doc
+
+func (Guide) Name() string            { return "buddy guide" }
+func (Guide) Kind() domain.SourceKind { return domain.SourceGuide }
+
+func (g Guide) Fetch(context.Context) ([]Document, error) {
+	now := time.Now().UTC()
+	out := make([]Document, 0, len(g))
+	for _, d := range g {
+		out = append(out, Document{ID: d.ID, Title: d.Title, Topic: d.Topic, Markdown: d.Markdown, FetchedAt: now})
+	}
+	return out, nil
+}
+
 // MockDocs reads the team wiki through the documents service.
 type MockDocs struct {
 	c documentsv1.DocumentsServiceClient

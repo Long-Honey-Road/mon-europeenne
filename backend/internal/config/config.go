@@ -17,6 +17,8 @@ var (
 const (
 	DefaultPlaybookRepo = "avito-tech/playbook"
 	DefaultPlaybookRef  = "0c1d2aa1501ca6889357908f54b12695f0534e48"
+	// DefaultChecklistSheet is the public Avito intern checklist from the case.
+	DefaultChecklistSheet = "https://docs.google.com/spreadsheets/d/1qKFqOzfSZ2jEz57jBSmq7rukDXi_tRfWohgemViceV0/edit"
 )
 
 type Provider string
@@ -76,6 +78,8 @@ type Config struct {
 	// PlaybookRepo is the GitHub repository of the open Avito Playbook; empty turns it off.
 	PlaybookRepo string
 	PlaybookRef  string
+	// ChecklistSheet is the Google Sheet of the Avito intern checklist (URL or id); empty turns it off.
+	ChecklistSheet string
 	// TurnTimeout limits one agent turn, counted from getting a model endpoint.
 	TurnTimeout       time.Duration
 	WorkerConcurrency int
@@ -109,11 +113,12 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			GRPCAddr: str("MOCKS_GRPC_ADDR", ":9091"), HTTPAddr: str("MOCKS_HTTP_ADDR", ":8090"),
 			StateFile: str("MOCKS_STATE_FILE", ""),
 		},
-		SessionSecret: str("SESSION_SECRET", ""),
-		HTTPAddr:      str("HTTP_ADDR", ":8080"),
-		GRPCAddr:      str("GRPC_ADDR", ":9090"),
-		PlaybookRepo:  str("PLAYBOOK_REPO", DefaultPlaybookRepo),
-		PlaybookRef:   str("PLAYBOOK_REF", DefaultPlaybookRef),
+		SessionSecret:  str("SESSION_SECRET", ""),
+		HTTPAddr:       str("HTTP_ADDR", ":8080"),
+		GRPCAddr:       str("GRPC_ADDR", ":9090"),
+		PlaybookRepo:   str("PLAYBOOK_REPO", DefaultPlaybookRepo),
+		PlaybookRef:    str("PLAYBOOK_REF", DefaultPlaybookRef),
+		ChecklistSheet: str("CHECKLIST_SHEET_URL", DefaultChecklistSheet),
 	}
 
 	switch cfg.LLM.Provider {

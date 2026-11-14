@@ -26,13 +26,19 @@ filtered by the caller's team in SQL: a team document is invisible to other team
 - **Playbook**: the GitHub tarball of `PLAYBOOK_REPO` at `PLAYBOOK_REF`, markdown files only, kind `playbook`, URL
   of the file on GitHub, fetch date. Empty `PLAYBOOK_REPO` turns it off. Without network the previous copy in
   Postgres stays.
+- **Intern checklist**: the public Avito checklist from the case, a Google Sheet at `CHECKLIST_SHEET_URL` (URL or
+  id; empty turns it off), read as CSV per tab («Материалы для всех», «Чек-лист Backend»). One document per tab
+  and period (`checklist-backend-w1`), every row a `##` section (first line of the material cell, then its other
+  lines and the description). Kind `checklist`, URL of the tab, fetch date. Nothing is stored in the repo.
+- **buddy guide**: `seed/guide/*.md`, buddy's own description of the app (screens, threads, requests, tasks,
+  roles, feedback, what does not work yet). Kind `guide`, general, not a training instruction.
 - A document is replaced as a whole (its chunks are rewritten); a document gone from its source is removed.
 - A failing source is logged and skipped; the other source is still synced.
 
 ## search_docs
 
 - **Args**: `{query, limit?}`; `limit` 1..8, default 5.
-- **Result**: `{sources: [{source_id, title, heading, text, url, kind: doc|playbook, scope: team|general,
+- **Result**: `{sources: [{source_id, title, heading, text, url, kind: doc|playbook|checklist|guide, scope: team|general,
   test_instruction}], conflict_candidates: [{doc_a, doc_b, topic}]}`. Empty `sources` when nothing matches.
 - **Ranking**: Russian full-text search (`websearch_to_tsquery`), best chunks first.
 - **Rights**: general documents and Playbook for everyone; a team document only for its team. The filter is in
@@ -53,6 +59,10 @@ filtered by the caller's team in SQL: a team document is invisible to other team
    both and the message has a `conflict` block.
 4. **Playbook.** «Какие ценности у инженерной культуры Авито?» → Playbook chunks with GitHub URLs, kind
    `playbook`; the agent says the Playbook is public and may be outdated.
+5. **Checklist.** «Что по чек-листу нужно сделать на первой неделе?» → chunks of `checklist-*-w1`, kind
+   `checklist`; the agent says it is the Avito intern checklist and which items are the mentor's.
+6. **Guide.** «Как тобой пользоваться?» → chunks of `buddy-guide`, kind `guide`; the agent walks through the
+   screens and threads from the guide, without inventing features.
 
 ## Out of scope now
 
