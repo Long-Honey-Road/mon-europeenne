@@ -35,6 +35,17 @@ type Plans interface {
 	Plan(ctx context.Context, userID string) ([]domain.PlanEntry, error)
 }
 
+// Pins lists the user's pins of one sphere.
+type Pins interface {
+	Pins(ctx context.Context, userID string, f domain.Focus) ([]domain.Pin, error)
+}
+
+const (
+	// CardPins and pinPreview keep the card small: up to 10 pins, each title and the start of its text.
+	CardPins   = 10
+	pinPreview = 200
+)
+
 // Queue schedules summaries in the background; a duplicate request for the same sphere is dropped.
 type Queue interface {
 	EnqueueSummary(ctx context.Context, threadID string, f domain.Focus) error
@@ -51,11 +62,12 @@ type Context struct {
 type Service struct {
 	store Store
 	plans Plans
+	pins  Pins
 	queue Queue
 }
 
-func New(st Store, plans Plans, queue Queue) *Service {
-	return &Service{store: st, plans: plans, queue: queue}
+func New(st Store, plans Plans, pins Pins, queue Queue) *Service {
+	return &Service{store: st, plans: plans, pins: pins, queue: queue}
 }
 
 // For builds the context of a message: with a focus the sphere's card, memory and own history; without one only
@@ -76,7 +88,11 @@ func (s *Service) For(ctx context.Context, th domain.Thread, msg domain.Message)
 	if msg.Focus.IsZero() {
 		return out, nil
 	}
-	out.Card = card(msg.Focus, titles)
+	pins, err := s.pins.Pins(ctx, th.UserID, msg.Focus)
+	if err != nil {
+		return Context{}, err
+	}
+	out.Card = card(msg.Focus, titles) + pinLines(pins)
 	if out.Memory, _, err = s.store.FocusSummary(ctx, th.ID, msg.Focus); err != nil {
 		return Context{}, err
 	}
@@ -107,6 +123,21 @@ func card(f domain.Focus, items map[string]plan.Item) string {
 		fmt.Fprintf(&b, "Waits for: %s\n", strings.Join(names, ", "))
 	}
 	return strings.TrimSpace(b.String())
+}
+
+func pinLines(pins []domain.Pin) string {
+	if len(pins) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("\nPinned by the user:")
+	for i, p := range pins {
+		if i == CardPins {
+			break
+		}
+		fmt.Fprintf(&b, "\n- %s: %s", p.Title, cut(strings.ReplaceAll(p.Text, "\n", " "), pinPreview))
+	}
+	return b.String()
 }
 
 func (s *Service) overview(ctx context.Context, th domain.Thread, current domain.Focus, items map[string]plan.Item) (string, error) {

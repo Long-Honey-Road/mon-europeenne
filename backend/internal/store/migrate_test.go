@@ -13,7 +13,7 @@ import (
 
 var wantTables = []string{
 	"chunks", "conflict_statuses", "conflicts", "directions", "documents", "event_types", "events", "focus_kinds", "focus_summaries",
-	"message_roles", "messages", "people", "plan_item_dependencies", "plan_item_statuses", "plan_items", "plan_periods",
+	"message_roles", "messages", "people", "pins", "plan_item_dependencies", "plan_item_statuses", "plan_items", "plan_periods",
 	"plan_status", "requests", "roles", "source_kinds", "teams", "thread_types", "threads", "turn_traces", "users",
 }
 

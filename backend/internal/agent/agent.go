@@ -113,6 +113,8 @@ type Result struct {
 	Mode   Mode
 	Blocks []Block
 	Events []Event
+	// UIEvents are screen updates the tools asked for, published to the thread after the answer is saved.
+	UIEvents []tools.UIEvent
 	// Trace is filled even when Run fails, as far as the turn got.
 	Trace Trace
 }
@@ -271,7 +273,7 @@ func (a *Agent) RunWith(ctx context.Context, model llm.Client, t Turn, emit Emit
 	st.closingEvents(blocks)
 	trace.Violations = append(trace.Violations, st.violations...)
 	trace.Duration = time.Since(started)
-	return Result{Text: text, Mode: t.Mode, Blocks: blocks, Events: st.events, Trace: trace}, nil
+	return Result{Text: text, Mode: t.Mode, Blocks: blocks, Events: st.events, UIEvents: st.uiEvents, Trace: trace}, nil
 }
 
 // callTool runs one call and returns what the model sees plus the outcome code for events.
@@ -287,6 +289,9 @@ func (a *Agent) callTool(ctx context.Context, t Turn, call llm.ToolCall, st *tur
 
 var statusTexts = map[string]string{
 	"search_docs":        "ищу в документах",
+	"pin_note":           "закрепляю",
+	"highlight_spheres":  "подсвечиваю на карте",
+	"focus_sphere":       "предлагаю пункт плана",
 	"read_repo":          "читаю репозиторий",
 	"get_team_process":   "смотрю процессы команды",
 	"who_to_ask":         "ищу, к кому обратиться",

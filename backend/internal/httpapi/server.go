@@ -63,6 +63,9 @@ type Deps struct {
 	Plans     Plans
 	// Requests is the removable requests module; nil (FEATURE_REQUESTS off) answers UNIMPLEMENTED.
 	Requests buddyv1.RequestServiceServer
+	// Pins are the sphere pins; nil leaves the pins API unimplemented. Publish sends the pinned event.
+	Pins    Pins
+	Publish Publisher
 	// Blockers add to the "today" blockers beyond the plan, e.g. access requests.
 	Blockers []BlockerSource
 	Jobs     Jobs
@@ -116,6 +119,13 @@ func New(ctx context.Context, d Deps) (http.Handler, error) {
 	}
 	if err := buddyv1.RegisterPeopleServiceHandlerServer(ctx, gw, &peopleService{deps: d}); err != nil {
 		return nil, fmt.Errorf("register people service: %w", err)
+	}
+	var pins buddyv1.PinServiceServer = buddyv1.UnimplementedPinServiceServer{}
+	if d.Pins != nil {
+		pins = &pinService{deps: d}
+	}
+	if err := buddyv1.RegisterPinServiceHandlerServer(ctx, gw, pins); err != nil {
+		return nil, fmt.Errorf("register pin service: %w", err)
 	}
 	var requests buddyv1.RequestServiceServer = buddyv1.UnimplementedRequestServiceServer{}
 	if d.Requests != nil {

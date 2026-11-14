@@ -195,6 +195,9 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	if h.d.Spheres != nil {
 		h.d.Spheres.AfterTurn(ctx, thread, msgs[idx].Focus)
 	}
+	for _, e := range res.UIEvents {
+		emit.publish(e.Type, e.Data)
+	}
 	// The saved text may differ from the stream: invariants remove invented links and markers.
 	emit.publish("done", map[string]any{"message_id": saved.ID, "text": saved.Content})
 	return nil

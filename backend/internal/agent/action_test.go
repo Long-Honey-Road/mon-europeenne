@@ -56,3 +56,13 @@ func TestPseudoMarkersAreRemoved(t *testing.T) {
 		t.Fatalf("violations = %v", st.violations)
 	}
 }
+
+func TestUIEventsFromToolsArePassedOn(t *testing.T) {
+	st := &turnState{}
+	st.absorb("highlight_spheres", []byte(`{"highlighted":["w1-access"],"ui_event":{"type":"highlight","data":{"ids":["w1-access"]}}}`))
+	st.absorb("pin_note", []byte(`{"ui_event":{"data":{}}}`))
+	st.absorb("pin_note", []byte(`{"ui_event":"oops"}`))
+	if len(st.uiEvents) != 1 || st.uiEvents[0].Type != "highlight" {
+		t.Errorf("ui events = %+v", st.uiEvents)
+	}
+}

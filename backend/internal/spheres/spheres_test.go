@@ -3,6 +3,7 @@ package spheres
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -97,6 +98,15 @@ func (p plans) Plan(context.Context, string) ([]domain.PlanEntry, error) {
 	}, p.err
 }
 
+type pinsOf map[domain.Focus][]domain.Pin
+
+func (p pinsOf) Pins(_ context.Context, userID string, f domain.Focus) ([]domain.Pin, error) {
+	if userID == "u-broken" {
+		return nil, errors.New("db down")
+	}
+	return p[f], nil
+}
+
 type queue struct{ got []domain.Focus }
 
 func (q *queue) EnqueueSummary(_ context.Context, _ string, f domain.Focus) error {
@@ -107,7 +117,7 @@ func (q *queue) EnqueueSummary(_ context.Context, _ string, f domain.Focus) erro
 func TestForAFocusedMessage(t *testing.T) {
 	st := newMem()
 	st.summaries[access] = "Лиза отправила три заявки"
-	svc := New(st, plans{}, &queue{})
+	svc := New(st, plans{}, pinsOf{}, &queue{})
 	th := domain.Thread{ID: "t1", UserID: "u-liza", Summary: "обзор"}
 
 	c, err := svc.For(t.Context(), th, st.msgs[3])
@@ -137,14 +147,32 @@ func TestForAFocusedMessage(t *testing.T) {
 	}
 }
 
+func TestCardListsPins(t *testing.T) {
+	var many []domain.Pin
+	for i := range 12 {
+		many = append(many, domain.Pin{Title: fmt.Sprint("закреп ", i), Text: strings.Repeat("я", 300) + "\nконец"})
+	}
+	svc := New(newMem(), plans{}, pinsOf{access: many}, &queue{})
+	c, err := svc.For(t.Context(), domain.Thread{ID: "t1", UserID: "u-liza"}, domain.Message{Focus: access, CreatedAt: t0.Add(time.Hour)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(c.Card, "\n- закреп "); n != CardPins || strings.Contains(c.Card, "конец") || !strings.Contains(c.Card, "Pinned by the user:") {
+		t.Errorf("card has %d pins: %q", n, c.Card)
+	}
+	if _, err := svc.For(t.Context(), domain.Thread{ID: "t1", UserID: "u-broken"}, domain.Message{Focus: access}); err == nil {
+		t.Error("pin error swallowed")
+	}
+}
+
 func TestForErrors(t *testing.T) {
 	th := domain.Thread{ID: "t1", UserID: "u-liza"}
-	if _, err := New(newMem(), plans{err: errors.New("down")}, &queue{}).For(t.Context(), th, domain.Message{}); err == nil {
+	if _, err := New(newMem(), plans{err: errors.New("down")}, pinsOf{}, &queue{}).For(t.Context(), th, domain.Message{}); err == nil {
 		t.Error("plan error swallowed")
 	}
 	st := newMem()
 	st.err = errors.New("db down")
-	if _, err := New(st, plans{}, &queue{}).For(t.Context(), th, domain.Message{Focus: access}); err == nil {
+	if _, err := New(st, plans{}, pinsOf{}, &queue{}).For(t.Context(), th, domain.Message{Focus: access}); err == nil {
 		t.Error("store error swallowed")
 	}
 }
@@ -152,7 +180,7 @@ func TestForErrors(t *testing.T) {
 func TestAfterTurnSchedulesSummaries(t *testing.T) {
 	st := newMem()
 	q := &queue{}
-	svc := New(st, plans{}, q)
+	svc := New(st, plans{}, pinsOf{}, q)
 	th := domain.Thread{ID: "t1"}
 	svc.AfterTurn(t.Context(), th, access)
 	if len(q.got) != 2 || q.got[0] != access || !q.got[1].IsZero() {

@@ -139,6 +139,13 @@ func (s *Store) Messages(ctx context.Context, threadID string, limit int) ([]dom
 
 const messageColumns = `id, thread_id, role_id, content, blocks, attachments, job_id, coalesce(focus_kind_id, 0), focus_id, created_at`
 
+// messageColumnsOf is messageColumns qualified by a table alias, for joins.
+func messageColumnsOf(alias string) string {
+	return alias + ".id, " + alias + ".thread_id, " + alias + ".role_id, " + alias + ".content, " + alias + ".blocks, " +
+		alias + ".attachments, " + alias + ".job_id, coalesce(" + alias + ".focus_kind_id, 0), " + alias + ".focus_id, " +
+		alias + ".created_at"
+}
+
 func collectMessages(rows pgx.Rows) ([]domain.Message, error) {
 	defer rows.Close()
 	var out []domain.Message

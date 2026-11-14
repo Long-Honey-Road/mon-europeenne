@@ -41,6 +41,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/private/messages/{message_id}/pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description PinMessage pins an answer, on the given sphere or the message's own; NOT_FOUND for someone else's message. */
+        post: operations["PinService_PinMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/private/people": {
         parameters: {
             query?: never;
@@ -71,6 +88,39 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/private/pins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description ListPins lists the user's pins of one sphere, or all of them without a focus. */
+        get: operations["PinService_ListPins"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/private/pins/{pin_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["PinService_DeletePin"];
+        options?: never;
+        head?: never;
+        patch: operations["PinService_UpdatePin"];
         trace?: never;
     };
     "/v1/private/plan": {
@@ -278,6 +328,7 @@ export interface components {
         CreateThreadResponse: {
             thread?: components["schemas"]["Thread"];
         };
+        DeletePinResponse: Record<string, never>;
         /** @description Focus is the sphere selected in a tab; empty means the tab overview. */
         Focus: {
             /**
@@ -345,6 +396,9 @@ export interface components {
             /** @description The caller's team first, then by name. */
             people?: components["schemas"]["Person"][];
         };
+        ListPinsResponse: {
+            pins?: components["schemas"]["Pin"][];
+        };
         ListRequestTypesResponse: {
             types?: components["schemas"]["RequestType"][];
         };
@@ -404,6 +458,29 @@ export interface components {
             id?: string;
             name?: string;
             role_title?: string;
+        };
+        Pin: {
+            id?: string;
+            focus?: components["schemas"]["Focus"];
+            /** @description Up to 60 characters. */
+            title?: string;
+            /** @description Markdown, up to 600 characters. */
+            text?: string;
+            /** @description The answer it came from, if any. */
+            message_id?: string;
+            /** @description RFC 3339. */
+            created_at?: string;
+            updated_at?: string;
+        };
+        PinMessageRequest: {
+            message_id?: string;
+            /** @description Defaults to the message's own sphere; a message without one needs it. */
+            focus?: components["schemas"]["Focus"];
+            /** @description Defaults to the first line of the message. */
+            title?: string;
+        };
+        PinMessageResponse: {
+            pin?: components["schemas"]["Pin"];
         };
         PlanItem: {
             /** @description Stable key, e.g. "w1-access". */
@@ -547,6 +624,14 @@ export interface components {
             /** @description RFC 3339. */
             created_at?: string;
         };
+        UpdatePinRequest: {
+            pin_id?: string;
+            title?: string;
+            text?: string;
+        };
+        UpdatePinResponse: {
+            pin?: components["schemas"]["Pin"];
+        };
         UpdatePlanItemRequest: {
             item_id?: string;
             /**
@@ -653,6 +738,41 @@ export interface operations {
             };
         };
     };
+    PinService_PinMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PinMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PinMessageResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
     PeopleService_ListPeople: {
         parameters: {
             query?: {
@@ -704,6 +824,104 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GetPersonResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    PinService_ListPins: {
+        parameters: {
+            query?: {
+                kind?: "FOCUS_KIND_UNSPECIFIED" | "FOCUS_KIND_PLAN_ITEM" | "FOCUS_KIND_VAULT_ITEM";
+                id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListPinsResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    PinService_DeletePin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletePinResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    PinService_UpdatePin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePinRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdatePinResponse"];
                 };
             };
             /** @description Default error response */

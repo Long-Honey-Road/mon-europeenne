@@ -6,10 +6,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/agent"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/llm/fake"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/spheres"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/tools"
 )
 
 type fakeSpheres struct {
@@ -113,3 +115,34 @@ func TestSphereContextErrorFailsTheTask(t *testing.T) {
 }
 
 var _ llm.Client = (*fake.Client)(nil)
+
+type lightIn struct {
+	IDs []string `json:"ids"`
+}
+
+type lightOut struct {
+	UIEvent tools.UIEvent `json:"ui_event"`
+}
+
+// Tool UI events reach the thread before done, so the map lights up as the answer lands.
+func TestToolUIEventsArePublished(t *testing.T) {
+	light, err := tools.Define("light", "test", []domain.Role{domain.RoleIntern}, []domain.ThreadType{domain.ThreadGeneral},
+		func(_ context.Context, _ domain.Principal, in lightIn) (lightOut, error) {
+			return lightOut{UIEvent: tools.UIEvent{Type: "highlight", Data: map[string]any{"ids": in.IDs}}}, nil
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reg, _ := tools.NewRegistry(light)
+	st, msgID := newStore("что заблокировано?")
+	model := fake.New(fake.ToolCall("light", map[string]any{"ids": []string{"w1-access"}}), fake.Text("Вот."))
+	h, rec := handler(t, st, model)
+	h.d.Agent = agent.New(nil, reg, agent.Config{})
+	if err := h.ProcessTask(context.Background(), task(t, ChatTurn{ThreadID: "t1", UserID: "u-liza", MessageID: msgID, Mode: "brief"})); err != nil {
+		t.Fatal(err)
+	}
+	got := rec.types()
+	if len(got) < 2 || got[len(got)-2] != "highlight" || got[len(got)-1] != "done" {
+		t.Errorf("published %v, want highlight right before done", got)
+	}
+}

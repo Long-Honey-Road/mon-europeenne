@@ -41,6 +41,7 @@ type turnState struct {
 	general    *tools.GeneralKnowledgeNote
 	actions    []json.RawMessage
 	conflicts  []Block
+	uiEvents   []tools.UIEvent
 	violations []string
 	events     []Event
 }
@@ -68,6 +69,13 @@ func (s *turnState) absorb(tool string, raw []byte) []byte {
 			if b, err := json.Marshal(items); err == nil {
 				obj["sources"] = b
 			}
+		}
+	}
+	// Any tool may ask the server to update the user's screen (pins, highlights); the agent only passes it on.
+	if raw, ok := obj["ui_event"]; ok {
+		var e tools.UIEvent
+		if json.Unmarshal(raw, &e) == nil && e.Type != "" {
+			s.uiEvents = append(s.uiEvents, e)
 		}
 	}
 	// Any tool may offer a user action (a form to confirm); the agent does not know what it does.

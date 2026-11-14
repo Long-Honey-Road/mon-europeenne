@@ -203,3 +203,16 @@ type Event struct {
 	Payload json.RawMessage
 	At      time.Time
 }
+
+// Pin is a short note the user pinned to a sphere; MessageID is the answer it came from, if any.
+type Pin struct {
+	ID        string
+	UserID    string
+	Focus     Focus
+	Title     string
+	Text      string
+	Sources   json.RawMessage
+	MessageID string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}

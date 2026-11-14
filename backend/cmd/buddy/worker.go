@@ -90,7 +90,7 @@ func buildWorker(cfg config.Config) (*asynq.Server, *asynq.ServeMux, func(), err
 		Agent: agent.New(model, registry, agent.Config{DetailedEffort: cfg.LLM.DetailedReasoningEffort, Timeout: cfg.TurnTimeout}),
 		Users: src.accounts, Directory: src.directory,
 		Models: model, Turns: jobs.NewActiveTurns(rdb, jobs.TaskTimeout(cfg.LLM.QueueTimeout, cfg.TurnTimeout)),
-		QueueTimeout: cfg.LLM.QueueTimeout, Spheres: spheres.New(st, st, queue),
+		QueueTimeout: cfg.LLM.QueueTimeout, Spheres: spheres.New(st, st, st, queue),
 	})
 	mux := jobs.Mux(h)
 	handleSphereJobs(mux, spheres.NewSummarizer(st, model))
