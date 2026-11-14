@@ -78,6 +78,10 @@ type Deps struct {
 	Heartbeat time.Duration
 	// Now is the clock for "today"; time.Now if nil.
 	Now func() time.Time
+	// Hiring creates accounts for new interns; nil (no account system) answers UNIMPLEMENTED.
+	Hiring Hiring
+	// Users gets every signed-in account, so interns hired a minute ago have their own data; nil skips it.
+	Users Users
 }
 
 func (d Deps) now() time.Time {
@@ -123,6 +127,9 @@ func New(ctx context.Context, d Deps) (http.Handler, error) {
 	}
 	if err := buddyv1.RegisterPeopleServiceHandlerServer(ctx, gw, &peopleService{deps: d}); err != nil {
 		return nil, fmt.Errorf("register people service: %w", err)
+	}
+	if err := buddyv1.RegisterTeamServiceHandlerServer(ctx, gw, &teamService{deps: d}); err != nil {
+		return nil, fmt.Errorf("register team service: %w", err)
 	}
 	var pins buddyv1.PinServiceServer = buddyv1.UnimplementedPinServiceServer{}
 	if d.Pins != nil {

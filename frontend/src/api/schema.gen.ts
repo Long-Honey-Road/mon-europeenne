@@ -225,6 +225,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/private/team/interns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description AddIntern is for managers only; the intern joins the caller's team. The one-time password is in the response
+         *      and nowhere else: buddy neither logs nor stores it.
+         */
+        post: operations["TeamService_AddIntern"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/private/threads": {
         parameters: {
             query?: never;
@@ -366,6 +386,24 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AddInternRequest: {
+            display_name?: string;
+            login?: string;
+            /**
+             * Format: enum
+             * @enum {string}
+             */
+            direction?: "DIRECTION_UNSPECIFIED" | "DIRECTION_BACKEND" | "DIRECTION_FRONTEND" | "DIRECTION_QA";
+            /** @description Person id of a mentor from the caller's team. */
+            mentor_id?: string;
+            /** @description ISO 8601 date, e.g. 2026-11-16; empty means today. */
+            start_date?: string;
+        };
+        AddInternResponse: {
+            user?: components["schemas"]["User"];
+            login?: string;
+            temporary_password?: string;
+        };
         ApprovalStep: {
             /** @description object_owner, manager, devops or hr_admin. */
             resolver?: string;
@@ -1261,6 +1299,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GetRequestResponse"];
+                };
+            };
+            /** @description Default error response */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+        };
+    };
+    TeamService_AddIntern: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddInternRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddInternResponse"];
                 };
             };
             /** @description Default error response */

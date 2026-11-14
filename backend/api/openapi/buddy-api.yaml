@@ -399,6 +399,33 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/private/team/interns:
+        post:
+            tags:
+                - TeamService
+            description: |-
+                AddIntern is for managers only; the intern joins the caller's team. The one-time password is in the response
+                 and nowhere else: buddy neither logs nor stores it.
+            operationId: TeamService_AddIntern
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AddInternRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AddInternResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/private/threads:
         get:
             tags:
@@ -704,6 +731,36 @@ paths:
                                 $ref: '#/components/schemas/Status'
 components:
     schemas:
+        AddInternRequest:
+            type: object
+            properties:
+                display_name:
+                    type: string
+                login:
+                    type: string
+                direction:
+                    enum:
+                        - DIRECTION_UNSPECIFIED
+                        - DIRECTION_BACKEND
+                        - DIRECTION_FRONTEND
+                        - DIRECTION_QA
+                    type: string
+                    format: enum
+                mentor_id:
+                    type: string
+                    description: Person id of a mentor from the caller's team.
+                start_date:
+                    type: string
+                    description: ISO 8601 date, e.g. 2026-11-16; empty means today.
+        AddInternResponse:
+            type: object
+            properties:
+                user:
+                    $ref: '#/components/schemas/User'
+                login:
+                    type: string
+                temporary_password:
+                    type: string
         ApprovalStep:
             type: object
             properties:
@@ -1458,6 +1515,8 @@ tags:
       description: |-
         RequestService sends access requests the user confirmed to the company's request system and shows their
          status. A removable module behind FEATURE_REQUESTS: when it is off every method is UNIMPLEMENTED.
+    - name: TeamService
+      description: TeamService lets a manager bring people into the team through the company's account system.
     - name: ThreadService
       description: ThreadService keeps the caller's conversations with buddy; answers arrive over SSE.
     - name: VaultService

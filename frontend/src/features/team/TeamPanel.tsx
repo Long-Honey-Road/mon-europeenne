@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import type { Person } from '../../api/schemas'
 import { QueryState } from '../../shared/ui/QueryState'
+import { useMe } from '../auth/useMe'
+import { useSession } from '../auth/session'
+import '../task/task.css'
+import { HireIntern } from './HireForm'
 import { usePeople } from './usePeople'
 
 type Scope = 'mine' | 'all'
@@ -8,6 +12,9 @@ type Scope = 'mine' | 'all'
 /** Live content of the «Команда» orb: the directory with the own team first. */
 export function TeamPanel({ onAsk }: { onAsk: (text: string) => void }) {
   const people = usePeople()
+  const me = useMe()
+  const savedRole = useSession((st) => st.user?.role)
+  const isManager = (me.data?.user.role ?? savedRole) === 'ROLE_MANAGER'
   const [scope, setScope] = useState<Scope>('mine')
   const [open, setOpen] = useState<string | null>(null)
 
@@ -53,6 +60,7 @@ export function TeamPanel({ onAsk }: { onAsk: (text: string) => void }) {
                 ))}
               </ul>
             )}
+            {isManager && <HireIntern team={list.filter((p) => !p.other_team)} />}
           </>
         )
       }}

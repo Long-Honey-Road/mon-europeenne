@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	authrolesv1 "github.com/Long-Honey-Road/mon-europeenne/backend/gen/mocks/authroles/v1"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/mocks"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/mocks/mockstest"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/people"
@@ -76,5 +77,27 @@ func TestRemoteColdErrors(t *testing.T) {
 	}
 	if _, err := dir.Relations(ctx, "u-liza"); err == nil {
 		t.Error("Relations: no error")
+	}
+}
+
+func TestRemoteForgetSeesNewPeople(t *testing.T) {
+	conn, srv := mockstest.Start(t, mocks.Chaos{})
+	r := people.NewRemote(conn, time.Hour)
+	ctx := t.Context()
+	before, err := r.People(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := srv.Auth.CreateAccount(ctx, &authrolesv1.CreateAccountRequest{
+		RequesterId: "u-dmitry", DisplayName: "Вера Новикова", Login: "vnovikova", Direction: "backend", MentorId: "p-anna",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if cached, _ := r.People(ctx); len(cached) != len(before) {
+		t.Errorf("cache changed before Forget: %d → %d", len(before), len(cached))
+	}
+	r.Forget()
+	if fresh, _ := r.People(ctx); len(fresh) != len(before)+1 {
+		t.Errorf("after Forget: %d people, want %d", len(fresh), len(before)+1)
 	}
 }

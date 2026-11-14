@@ -341,6 +341,147 @@ func (x *GetAccountResponse) GetAccount() *Account {
 	return nil
 }
 
+type CreateAccountRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The manager who hires; the intern joins this manager's team.
+	RequesterId string `protobuf:"bytes,1,opt,name=requester_id,json=requesterId,proto3" json:"requester_id,omitempty"`
+	DisplayName string `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	// Lowercase latin, 3 to 32 characters: ^[a-z][a-z0-9._-]{2,31}$.
+	Login string `protobuf:"bytes,3,opt,name=login,proto3" json:"login,omitempty"`
+	// backend, frontend or qa.
+	Direction string `protobuf:"bytes,4,opt,name=direction,proto3" json:"direction,omitempty"`
+	// Person id of a mentor from the same team.
+	MentorId string `protobuf:"bytes,5,opt,name=mentor_id,json=mentorId,proto3" json:"mentor_id,omitempty"`
+	// YYYY-MM-DD; empty means today.
+	StartDate     string `protobuf:"bytes,6,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateAccountRequest) Reset() {
+	*x = CreateAccountRequest{}
+	mi := &file_mocks_authroles_v1_auth_roles_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateAccountRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateAccountRequest) ProtoMessage() {}
+
+func (x *CreateAccountRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mocks_authroles_v1_auth_roles_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateAccountRequest.ProtoReflect.Descriptor instead.
+func (*CreateAccountRequest) Descriptor() ([]byte, []int) {
+	return file_mocks_authroles_v1_auth_roles_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *CreateAccountRequest) GetRequesterId() string {
+	if x != nil {
+		return x.RequesterId
+	}
+	return ""
+}
+
+func (x *CreateAccountRequest) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+func (x *CreateAccountRequest) GetLogin() string {
+	if x != nil {
+		return x.Login
+	}
+	return ""
+}
+
+func (x *CreateAccountRequest) GetDirection() string {
+	if x != nil {
+		return x.Direction
+	}
+	return ""
+}
+
+func (x *CreateAccountRequest) GetMentorId() string {
+	if x != nil {
+		return x.MentorId
+	}
+	return ""
+}
+
+func (x *CreateAccountRequest) GetStartDate() string {
+	if x != nil {
+		return x.StartDate
+	}
+	return ""
+}
+
+type CreateAccountResponse struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Account           *Account               `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	TemporaryPassword string                 `protobuf:"bytes,2,opt,name=temporary_password,json=temporaryPassword,proto3" json:"temporary_password,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *CreateAccountResponse) Reset() {
+	*x = CreateAccountResponse{}
+	mi := &file_mocks_authroles_v1_auth_roles_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateAccountResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateAccountResponse) ProtoMessage() {}
+
+func (x *CreateAccountResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mocks_authroles_v1_auth_roles_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateAccountResponse.ProtoReflect.Descriptor instead.
+func (*CreateAccountResponse) Descriptor() ([]byte, []int) {
+	return file_mocks_authroles_v1_auth_roles_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *CreateAccountResponse) GetAccount() *Account {
+	if x != nil {
+		return x.Account
+	}
+	return nil
+}
+
+func (x *CreateAccountResponse) GetTemporaryPassword() string {
+	if x != nil {
+		return x.TemporaryPassword
+	}
+	return ""
+}
+
 var File_mocks_authroles_v1_auth_roles_proto protoreflect.FileDescriptor
 
 const file_mocks_authroles_v1_auth_roles_proto_rawDesc = "" +
@@ -370,11 +511,23 @@ const file_mocks_authroles_v1_auth_roles_proto_rawDesc = "" +
 	"\x11GetAccountRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"K\n" +
 	"\x12GetAccountResponse\x125\n" +
-	"\aaccount\x18\x01 \x01(\v2\x1b.mocks.authroles.v1.AccountR\aaccount2\x94\x02\n" +
+	"\aaccount\x18\x01 \x01(\v2\x1b.mocks.authroles.v1.AccountR\aaccount\"\xcc\x01\n" +
+	"\x14CreateAccountRequest\x12!\n" +
+	"\frequester_id\x18\x01 \x01(\tR\vrequesterId\x12!\n" +
+	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12\x14\n" +
+	"\x05login\x18\x03 \x01(\tR\x05login\x12\x1c\n" +
+	"\tdirection\x18\x04 \x01(\tR\tdirection\x12\x1b\n" +
+	"\tmentor_id\x18\x05 \x01(\tR\bmentorId\x12\x1d\n" +
+	"\n" +
+	"start_date\x18\x06 \x01(\tR\tstartDate\"}\n" +
+	"\x15CreateAccountResponse\x125\n" +
+	"\aaccount\x18\x01 \x01(\v2\x1b.mocks.authroles.v1.AccountR\aaccount\x12-\n" +
+	"\x12temporary_password\x18\x02 \x01(\tR\x11temporaryPassword2\x95\x03\n" +
 	"\x10AuthRolesService\x12\x80\x01\n" +
 	"\fAuthenticate\x12'.mocks.authroles.v1.AuthenticateRequest\x1a(.mocks.authroles.v1.AuthenticateResponse\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/auth/authenticate\x12}\n" +
 	"\n" +
-	"GetAccount\x12%.mocks.authroles.v1.GetAccountRequest\x1a&.mocks.authroles.v1.GetAccountResponse\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/auth/accounts/{user_id}B\xe8\x01\n" +
+	"GetAccount\x12%.mocks.authroles.v1.GetAccountRequest\x1a&.mocks.authroles.v1.GetAccountResponse\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/auth/accounts/{user_id}\x12\x7f\n" +
+	"\rCreateAccount\x12(.mocks.authroles.v1.CreateAccountRequest\x1a).mocks.authroles.v1.CreateAccountResponse\"\x19\x82\xd3\xe4\x93\x02\x13:\x01*\"\x0e/auth/accountsB\xe8\x01\n" +
 	"\x16com.mocks.authroles.v1B\x0eAuthRolesProtoP\x01ZTgithub.com/Long-Honey-Road/mon-europeenne/backend/gen/mocks/authroles/v1;authrolesv1\xa2\x02\x03MAX\xaa\x02\x12Mocks.Authroles.V1\xca\x02\x12Mocks\\Authroles\\V1\xe2\x02\x1eMocks\\Authroles\\V1\\GPBMetadata\xea\x02\x14Mocks::Authroles::V1b\x06proto3"
 
 var (
@@ -389,26 +542,31 @@ func file_mocks_authroles_v1_auth_roles_proto_rawDescGZIP() []byte {
 	return file_mocks_authroles_v1_auth_roles_proto_rawDescData
 }
 
-var file_mocks_authroles_v1_auth_roles_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_mocks_authroles_v1_auth_roles_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_mocks_authroles_v1_auth_roles_proto_goTypes = []any{
-	(*Account)(nil),              // 0: mocks.authroles.v1.Account
-	(*AuthenticateRequest)(nil),  // 1: mocks.authroles.v1.AuthenticateRequest
-	(*AuthenticateResponse)(nil), // 2: mocks.authroles.v1.AuthenticateResponse
-	(*GetAccountRequest)(nil),    // 3: mocks.authroles.v1.GetAccountRequest
-	(*GetAccountResponse)(nil),   // 4: mocks.authroles.v1.GetAccountResponse
+	(*Account)(nil),               // 0: mocks.authroles.v1.Account
+	(*AuthenticateRequest)(nil),   // 1: mocks.authroles.v1.AuthenticateRequest
+	(*AuthenticateResponse)(nil),  // 2: mocks.authroles.v1.AuthenticateResponse
+	(*GetAccountRequest)(nil),     // 3: mocks.authroles.v1.GetAccountRequest
+	(*GetAccountResponse)(nil),    // 4: mocks.authroles.v1.GetAccountResponse
+	(*CreateAccountRequest)(nil),  // 5: mocks.authroles.v1.CreateAccountRequest
+	(*CreateAccountResponse)(nil), // 6: mocks.authroles.v1.CreateAccountResponse
 }
 var file_mocks_authroles_v1_auth_roles_proto_depIdxs = []int32{
 	0, // 0: mocks.authroles.v1.AuthenticateResponse.account:type_name -> mocks.authroles.v1.Account
 	0, // 1: mocks.authroles.v1.GetAccountResponse.account:type_name -> mocks.authroles.v1.Account
-	1, // 2: mocks.authroles.v1.AuthRolesService.Authenticate:input_type -> mocks.authroles.v1.AuthenticateRequest
-	3, // 3: mocks.authroles.v1.AuthRolesService.GetAccount:input_type -> mocks.authroles.v1.GetAccountRequest
-	2, // 4: mocks.authroles.v1.AuthRolesService.Authenticate:output_type -> mocks.authroles.v1.AuthenticateResponse
-	4, // 5: mocks.authroles.v1.AuthRolesService.GetAccount:output_type -> mocks.authroles.v1.GetAccountResponse
-	4, // [4:6] is the sub-list for method output_type
-	2, // [2:4] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0, // 2: mocks.authroles.v1.CreateAccountResponse.account:type_name -> mocks.authroles.v1.Account
+	1, // 3: mocks.authroles.v1.AuthRolesService.Authenticate:input_type -> mocks.authroles.v1.AuthenticateRequest
+	3, // 4: mocks.authroles.v1.AuthRolesService.GetAccount:input_type -> mocks.authroles.v1.GetAccountRequest
+	5, // 5: mocks.authroles.v1.AuthRolesService.CreateAccount:input_type -> mocks.authroles.v1.CreateAccountRequest
+	2, // 6: mocks.authroles.v1.AuthRolesService.Authenticate:output_type -> mocks.authroles.v1.AuthenticateResponse
+	4, // 7: mocks.authroles.v1.AuthRolesService.GetAccount:output_type -> mocks.authroles.v1.GetAccountResponse
+	6, // 8: mocks.authroles.v1.AuthRolesService.CreateAccount:output_type -> mocks.authroles.v1.CreateAccountResponse
+	6, // [6:9] is the sub-list for method output_type
+	3, // [3:6] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_mocks_authroles_v1_auth_roles_proto_init() }
@@ -422,7 +580,7 @@ func file_mocks_authroles_v1_auth_roles_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mocks_authroles_v1_auth_roles_proto_rawDesc), len(file_mocks_authroles_v1_auth_roles_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

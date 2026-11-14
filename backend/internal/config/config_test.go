@@ -54,6 +54,7 @@ func TestLoadReadsEnvironment(t *testing.T) {
 		"MOCKS_ADDR":           "mocks:9091",
 		"MOCKS_GRPC_ADDR":      ":19091",
 		"MOCKS_HTTP_ADDR":      ":18090",
+		"MOCKS_STATE_FILE":     "/data/state.json",
 		"MOCK_MAX_LATENCY":     "200ms",
 		"SESSION_SECRET":       "s3",
 		"MOCK_FAIL_RATE":       "0.25",
@@ -87,11 +88,14 @@ func TestLoadReadsEnvironment(t *testing.T) {
 		RedisAddr:         "redis:6379",
 		MocksAddr:         "mocks:9091",
 		SessionSecret:     "s3",
-		Mocks:             Mocks{GRPCAddr: ":19091", HTTPAddr: ":18090", FailRate: 0.25, MaxLatency: 200 * time.Millisecond},
-		HTTPAddr:          ":18080",
-		GRPCAddr:          ":19090",
-		FeatureRequests:   false,
-		PlaybookRef:       "main",
+		Mocks: Mocks{
+			GRPCAddr: ":19091", HTTPAddr: ":18090", FailRate: 0.25, MaxLatency: 200 * time.Millisecond,
+			StateFile: "/data/state.json",
+		},
+		HTTPAddr:        ":18080",
+		GRPCAddr:        ":19090",
+		FeatureRequests: false,
+		PlaybookRef:     "main",
 	}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Fatalf("Load() =\n%+v\nwant\n%+v", cfg, want)

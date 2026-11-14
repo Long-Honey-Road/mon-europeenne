@@ -258,3 +258,8 @@ func orObject(raw json.RawMessage) json.RawMessage {
 	}
 	return raw
 }
+
+// EnsureUser creates or refreshes the buddy row of an account, e.g. an intern signing in for the first time.
+func (s *Store) EnsureUser(ctx context.Context, u domain.User) error {
+	return s.SeedOrg(ctx, nil, []domain.User{u})
+}
