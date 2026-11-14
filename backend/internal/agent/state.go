@@ -26,6 +26,8 @@ var (
 	doubleSpaceRe = regexp.MustCompile(`(\S)[ \t]{2,}`)
 	// A marker in the model's own style, e.g. [ref], [ref1] or [источник 2]; a markdown link right after it keeps it.
 	digitsRe    = regexp.MustCompile(`\d+`)
+	// A markdown image: a picture loads its URL in the user's browser, a way to leak data out of the chat.
+	imageRe = regexp.MustCompile(`!\[([^\]\n]*)\]\([^)\n]*\)`)
 	pseudoRefRe = regexp.MustCompile(`(?i)\[(?:ref|refs|source|sources|src|cite|источник|ссылка)[^\]\n]{0,6}\](\()?`)
 )
 
@@ -103,6 +105,11 @@ func (s *turnState) absorb(tool string, raw []byte) []byte {
 func (s *turnState) finishText(text string, thread domain.ThreadType) (string, map[int]bool) {
 	cited := map[int]bool{}
 	removed := false
+	text = imageRe.ReplaceAllStringFunc(text, func(m string) string {
+		s.violations = append(s.violations, "image "+m)
+		removed = true
+		return ""
+	})
 	text = footnoteRe.ReplaceAllStringFunc(text, func(line string) string {
 		n, _ := strconv.Atoi(footnoteRe.FindStringSubmatch(line)[1])
 		if n >= 1 && n <= len(s.refs) {

