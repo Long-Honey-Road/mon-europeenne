@@ -49,6 +49,10 @@ type Turn struct {
 	Today   string
 	Pinned  string
 	Summary string
+	// Sphere, SphereMemory and Overview are the sphere context of a tab (design §6.5), empty elsewhere.
+	Sphere       string
+	SphereMemory string
+	Overview     string
 	// History is the thread so far, oldest first; the agent keeps the tail.
 	History []llm.Message
 	Message string

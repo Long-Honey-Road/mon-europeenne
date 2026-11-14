@@ -278,6 +278,15 @@ export interface components {
         CreateThreadResponse: {
             thread?: components["schemas"]["Thread"];
         };
+        /** @description Focus is the sphere selected in a tab; empty means the tab overview. */
+        Focus: {
+            /**
+             * Format: enum
+             * @enum {string}
+             */
+            kind?: "FOCUS_KIND_UNSPECIFIED" | "FOCUS_KIND_PLAN_ITEM" | "FOCUS_KIND_VAULT_ITEM";
+            id?: string;
+        };
         GetMeResponse: {
             user?: components["schemas"]["User"];
             team?: components["schemas"]["Team"];
@@ -375,6 +384,8 @@ export interface components {
             blocks?: Record<string, never>[];
             /** @description RFC 3339. */
             created_at?: string;
+            /** @description The sphere the message is about; absent for the overview. */
+            focus?: components["schemas"]["Focus"];
         };
         Person: {
             id?: string;
@@ -477,6 +488,8 @@ export interface components {
              * @enum {string}
              */
             mode?: "ANSWER_MODE_UNSPECIFIED" | "ANSWER_MODE_BRIEF" | "ANSWER_MODE_DETAILED";
+            /** @description The sphere selected in the tab; a sphere the user does not own is NOT_FOUND. */
+            focus?: components["schemas"]["Focus"];
         };
         SendMessageResponse: {
             message_id?: string;

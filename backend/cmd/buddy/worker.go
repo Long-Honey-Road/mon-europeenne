@@ -12,6 +12,7 @@ import (
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/agent"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/jobs"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/spheres"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/store"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/stream"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/seed"
@@ -81,14 +82,18 @@ func buildWorker(cfg config.Config) (*asynq.Server, *asynq.ServeMux, func(), err
 		return nil, nil, nil, err
 	}
 
+	queue := jobs.NewClient(cfg.RedisAddr, jobs.TaskTimeout(cfg.LLM.QueueTimeout, cfg.TurnTimeout))
+	closeRest := cleanup
+	cleanup = func() { _ = queue.Close(); closeRest() }
 	h := jobs.NewHandler(jobs.Deps{
 		Store: st, Publisher: stream.NewRedisBus(rdb),
 		Agent: agent.New(model, registry, agent.Config{DetailedEffort: cfg.LLM.DetailedReasoningEffort, Timeout: cfg.TurnTimeout}),
 		Users: src.accounts, Directory: src.directory,
 		Models: model, Turns: jobs.NewActiveTurns(rdb, jobs.TaskTimeout(cfg.LLM.QueueTimeout, cfg.TurnTimeout)),
-		QueueTimeout: cfg.LLM.QueueTimeout,
+		QueueTimeout: cfg.LLM.QueueTimeout, Spheres: spheres.New(st, st, queue),
 	})
 	mux := jobs.Mux(h)
+	handleSphereJobs(mux, spheres.NewSummarizer(st, model))
 	handleKnowledgeJobs(mux, know)
 	if cfg.FeatureRequests {
 		desk, err := newDesk(data, src, st, rdb)

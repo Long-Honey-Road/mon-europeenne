@@ -11,3 +11,12 @@ type ChatTurn struct {
 	MessageID string `json:"message_id"`
 	Mode      string `json:"mode"`
 }
+
+// TypeSummarize rewrites the summary of a sphere, or of the whole thread when the focus is empty.
+const TypeSummarize = "summarize"
+
+type Summary struct {
+	ThreadID  string `json:"thread_id"`
+	FocusKind int16  `json:"focus_kind,omitempty"`
+	FocusID   string `json:"focus_id,omitempty"`
+}

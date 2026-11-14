@@ -62,18 +62,29 @@ type Task struct {
 }
 
 type Thread struct {
-	ID        string
-	UserID    string
-	Type      ThreadType
-	Title     string
-	Pin       ThreadPin
-	Summary   string
-	CreatedAt time.Time
+	ID      string
+	UserID  string
+	Type    ThreadType
+	Title   string
+	Pin     ThreadPin
+	Summary string
+	// SummaryUntil is the created_at of the newest message Summary covers; zero without a summary.
+	SummaryUntil time.Time
+	CreatedAt    time.Time
 }
+
+// Focus is the sphere a message is about (design §6.5); the zero value is the tab overview.
+type Focus struct {
+	Kind FocusKind
+	ID   string
+}
+
+func (f Focus) IsZero() bool { return f.Kind == 0 }
 
 type Message struct {
 	ID          string
 	ThreadID    string
+	Focus       Focus
 	Role        MessageRole
 	Content     string
 	Blocks      json.RawMessage

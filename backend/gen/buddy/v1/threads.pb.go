@@ -225,6 +225,58 @@ func (AnswerMode) EnumDescriptor() ([]byte, []int) {
 	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{3}
 }
 
+// FocusKind is the kind of sphere a message is about (design §6.5).
+type FocusKind int32
+
+const (
+	FocusKind_FOCUS_KIND_UNSPECIFIED FocusKind = 0
+	// An item of the user's own plan; plan threads only.
+	FocusKind_FOCUS_KIND_PLAN_ITEM FocusKind = 1
+	// A record of the user's own vault; vault threads only.
+	FocusKind_FOCUS_KIND_VAULT_ITEM FocusKind = 2
+)
+
+// Enum value maps for FocusKind.
+var (
+	FocusKind_name = map[int32]string{
+		0: "FOCUS_KIND_UNSPECIFIED",
+		1: "FOCUS_KIND_PLAN_ITEM",
+		2: "FOCUS_KIND_VAULT_ITEM",
+	}
+	FocusKind_value = map[string]int32{
+		"FOCUS_KIND_UNSPECIFIED": 0,
+		"FOCUS_KIND_PLAN_ITEM":   1,
+		"FOCUS_KIND_VAULT_ITEM":  2,
+	}
+)
+
+func (x FocusKind) Enum() *FocusKind {
+	p := new(FocusKind)
+	*p = x
+	return p
+}
+
+func (x FocusKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (FocusKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_buddy_v1_threads_proto_enumTypes[4].Descriptor()
+}
+
+func (FocusKind) Type() protoreflect.EnumType {
+	return &file_buddy_v1_threads_proto_enumTypes[4]
+}
+
+func (x FocusKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use FocusKind.Descriptor instead.
+func (FocusKind) EnumDescriptor() ([]byte, []int) {
+	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{4}
+}
+
 type RateMessageRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MessageId     string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
@@ -399,6 +451,59 @@ func (x *Thread) GetCreatedAt() string {
 	return ""
 }
 
+// Focus is the sphere selected in a tab; empty means the tab overview.
+type Focus struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kind          FocusKind              `protobuf:"varint,1,opt,name=kind,proto3,enum=buddy.v1.FocusKind" json:"kind,omitempty"`
+	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Focus) Reset() {
+	*x = Focus{}
+	mi := &file_buddy_v1_threads_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Focus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Focus) ProtoMessage() {}
+
+func (x *Focus) ProtoReflect() protoreflect.Message {
+	mi := &file_buddy_v1_threads_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Focus.ProtoReflect.Descriptor instead.
+func (*Focus) Descriptor() ([]byte, []int) {
+	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Focus) GetKind() FocusKind {
+	if x != nil {
+		return x.Kind
+	}
+	return FocusKind_FOCUS_KIND_UNSPECIFIED
+}
+
+func (x *Focus) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
 type Message struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -408,14 +513,16 @@ type Message struct {
 	// Server-built blocks of an assistant message (sources, person, not_found, ...).
 	Blocks []*structpb.Struct `protobuf:"bytes,5,rep,name=blocks,proto3" json:"blocks,omitempty"`
 	// RFC 3339.
-	CreatedAt     string `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	CreatedAt string `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// The sphere the message is about; absent for the overview.
+	Focus         *Focus `protobuf:"bytes,7,opt,name=focus,proto3" json:"focus,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Message) Reset() {
 	*x = Message{}
-	mi := &file_buddy_v1_threads_proto_msgTypes[3]
+	mi := &file_buddy_v1_threads_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -427,7 +534,7 @@ func (x *Message) String() string {
 func (*Message) ProtoMessage() {}
 
 func (x *Message) ProtoReflect() protoreflect.Message {
-	mi := &file_buddy_v1_threads_proto_msgTypes[3]
+	mi := &file_buddy_v1_threads_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -440,7 +547,7 @@ func (x *Message) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Message.ProtoReflect.Descriptor instead.
 func (*Message) Descriptor() ([]byte, []int) {
-	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{3}
+	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Message) GetId() string {
@@ -485,6 +592,13 @@ func (x *Message) GetCreatedAt() string {
 	return ""
 }
 
+func (x *Message) GetFocus() *Focus {
+	if x != nil {
+		return x.Focus
+	}
+	return nil
+}
+
 type ListThreadsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -493,7 +607,7 @@ type ListThreadsRequest struct {
 
 func (x *ListThreadsRequest) Reset() {
 	*x = ListThreadsRequest{}
-	mi := &file_buddy_v1_threads_proto_msgTypes[4]
+	mi := &file_buddy_v1_threads_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -505,7 +619,7 @@ func (x *ListThreadsRequest) String() string {
 func (*ListThreadsRequest) ProtoMessage() {}
 
 func (x *ListThreadsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_buddy_v1_threads_proto_msgTypes[4]
+	mi := &file_buddy_v1_threads_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -518,7 +632,7 @@ func (x *ListThreadsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListThreadsRequest.ProtoReflect.Descriptor instead.
 func (*ListThreadsRequest) Descriptor() ([]byte, []int) {
-	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{4}
+	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{5}
 }
 
 type ListThreadsResponse struct {
@@ -530,7 +644,7 @@ type ListThreadsResponse struct {
 
 func (x *ListThreadsResponse) Reset() {
 	*x = ListThreadsResponse{}
-	mi := &file_buddy_v1_threads_proto_msgTypes[5]
+	mi := &file_buddy_v1_threads_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -542,7 +656,7 @@ func (x *ListThreadsResponse) String() string {
 func (*ListThreadsResponse) ProtoMessage() {}
 
 func (x *ListThreadsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_buddy_v1_threads_proto_msgTypes[5]
+	mi := &file_buddy_v1_threads_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -555,7 +669,7 @@ func (x *ListThreadsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListThreadsResponse.ProtoReflect.Descriptor instead.
 func (*ListThreadsResponse) Descriptor() ([]byte, []int) {
-	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{5}
+	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListThreadsResponse) GetThreads() []*Thread {
@@ -576,7 +690,7 @@ type CreateThreadRequest struct {
 
 func (x *CreateThreadRequest) Reset() {
 	*x = CreateThreadRequest{}
-	mi := &file_buddy_v1_threads_proto_msgTypes[6]
+	mi := &file_buddy_v1_threads_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -588,7 +702,7 @@ func (x *CreateThreadRequest) String() string {
 func (*CreateThreadRequest) ProtoMessage() {}
 
 func (x *CreateThreadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_buddy_v1_threads_proto_msgTypes[6]
+	mi := &file_buddy_v1_threads_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -601,7 +715,7 @@ func (x *CreateThreadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateThreadRequest.ProtoReflect.Descriptor instead.
 func (*CreateThreadRequest) Descriptor() ([]byte, []int) {
-	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{6}
+	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CreateThreadRequest) GetType() ThreadType {
@@ -634,7 +748,7 @@ type CreateThreadResponse struct {
 
 func (x *CreateThreadResponse) Reset() {
 	*x = CreateThreadResponse{}
-	mi := &file_buddy_v1_threads_proto_msgTypes[7]
+	mi := &file_buddy_v1_threads_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -646,7 +760,7 @@ func (x *CreateThreadResponse) String() string {
 func (*CreateThreadResponse) ProtoMessage() {}
 
 func (x *CreateThreadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_buddy_v1_threads_proto_msgTypes[7]
+	mi := &file_buddy_v1_threads_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -659,7 +773,7 @@ func (x *CreateThreadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateThreadResponse.ProtoReflect.Descriptor instead.
 func (*CreateThreadResponse) Descriptor() ([]byte, []int) {
-	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{7}
+	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CreateThreadResponse) GetThread() *Thread {
@@ -678,7 +792,7 @@ type GetThreadRequest struct {
 
 func (x *GetThreadRequest) Reset() {
 	*x = GetThreadRequest{}
-	mi := &file_buddy_v1_threads_proto_msgTypes[8]
+	mi := &file_buddy_v1_threads_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -690,7 +804,7 @@ func (x *GetThreadRequest) String() string {
 func (*GetThreadRequest) ProtoMessage() {}
 
 func (x *GetThreadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_buddy_v1_threads_proto_msgTypes[8]
+	mi := &file_buddy_v1_threads_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -703,7 +817,7 @@ func (x *GetThreadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetThreadRequest.ProtoReflect.Descriptor instead.
 func (*GetThreadRequest) Descriptor() ([]byte, []int) {
-	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{8}
+	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetThreadRequest) GetThreadId() string {
@@ -722,7 +836,7 @@ type GetThreadResponse struct {
 
 func (x *GetThreadResponse) Reset() {
 	*x = GetThreadResponse{}
-	mi := &file_buddy_v1_threads_proto_msgTypes[9]
+	mi := &file_buddy_v1_threads_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -734,7 +848,7 @@ func (x *GetThreadResponse) String() string {
 func (*GetThreadResponse) ProtoMessage() {}
 
 func (x *GetThreadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_buddy_v1_threads_proto_msgTypes[9]
+	mi := &file_buddy_v1_threads_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -747,7 +861,7 @@ func (x *GetThreadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetThreadResponse.ProtoReflect.Descriptor instead.
 func (*GetThreadResponse) Descriptor() ([]byte, []int) {
-	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{9}
+	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetThreadResponse) GetThread() *Thread {
@@ -768,7 +882,7 @@ type ListMessagesRequest struct {
 
 func (x *ListMessagesRequest) Reset() {
 	*x = ListMessagesRequest{}
-	mi := &file_buddy_v1_threads_proto_msgTypes[10]
+	mi := &file_buddy_v1_threads_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -780,7 +894,7 @@ func (x *ListMessagesRequest) String() string {
 func (*ListMessagesRequest) ProtoMessage() {}
 
 func (x *ListMessagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_buddy_v1_threads_proto_msgTypes[10]
+	mi := &file_buddy_v1_threads_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -793,7 +907,7 @@ func (x *ListMessagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMessagesRequest.ProtoReflect.Descriptor instead.
 func (*ListMessagesRequest) Descriptor() ([]byte, []int) {
-	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{10}
+	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ListMessagesRequest) GetThreadId() string {
@@ -819,7 +933,7 @@ type ListMessagesResponse struct {
 
 func (x *ListMessagesResponse) Reset() {
 	*x = ListMessagesResponse{}
-	mi := &file_buddy_v1_threads_proto_msgTypes[11]
+	mi := &file_buddy_v1_threads_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -831,7 +945,7 @@ func (x *ListMessagesResponse) String() string {
 func (*ListMessagesResponse) ProtoMessage() {}
 
 func (x *ListMessagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_buddy_v1_threads_proto_msgTypes[11]
+	mi := &file_buddy_v1_threads_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -844,7 +958,7 @@ func (x *ListMessagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMessagesResponse.ProtoReflect.Descriptor instead.
 func (*ListMessagesResponse) Descriptor() ([]byte, []int) {
-	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{11}
+	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListMessagesResponse) GetMessages() []*Message {
@@ -855,17 +969,19 @@ func (x *ListMessagesResponse) GetMessages() []*Message {
 }
 
 type SendMessageRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ThreadId      string                 `protobuf:"bytes,1,opt,name=thread_id,json=threadId,proto3" json:"thread_id,omitempty"`
-	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
-	Mode          AnswerMode             `protobuf:"varint,3,opt,name=mode,proto3,enum=buddy.v1.AnswerMode" json:"mode,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	ThreadId string                 `protobuf:"bytes,1,opt,name=thread_id,json=threadId,proto3" json:"thread_id,omitempty"`
+	Content  string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	Mode     AnswerMode             `protobuf:"varint,3,opt,name=mode,proto3,enum=buddy.v1.AnswerMode" json:"mode,omitempty"`
+	// The sphere selected in the tab; a sphere the user does not own is NOT_FOUND.
+	Focus         *Focus `protobuf:"bytes,4,opt,name=focus,proto3" json:"focus,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SendMessageRequest) Reset() {
 	*x = SendMessageRequest{}
-	mi := &file_buddy_v1_threads_proto_msgTypes[12]
+	mi := &file_buddy_v1_threads_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -877,7 +993,7 @@ func (x *SendMessageRequest) String() string {
 func (*SendMessageRequest) ProtoMessage() {}
 
 func (x *SendMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_buddy_v1_threads_proto_msgTypes[12]
+	mi := &file_buddy_v1_threads_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -890,7 +1006,7 @@ func (x *SendMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendMessageRequest.ProtoReflect.Descriptor instead.
 func (*SendMessageRequest) Descriptor() ([]byte, []int) {
-	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{12}
+	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SendMessageRequest) GetThreadId() string {
@@ -914,6 +1030,13 @@ func (x *SendMessageRequest) GetMode() AnswerMode {
 	return AnswerMode_ANSWER_MODE_UNSPECIFIED
 }
 
+func (x *SendMessageRequest) GetFocus() *Focus {
+	if x != nil {
+		return x.Focus
+	}
+	return nil
+}
+
 type SendMessageResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MessageId     string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
@@ -924,7 +1047,7 @@ type SendMessageResponse struct {
 
 func (x *SendMessageResponse) Reset() {
 	*x = SendMessageResponse{}
-	mi := &file_buddy_v1_threads_proto_msgTypes[13]
+	mi := &file_buddy_v1_threads_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -936,7 +1059,7 @@ func (x *SendMessageResponse) String() string {
 func (*SendMessageResponse) ProtoMessage() {}
 
 func (x *SendMessageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_buddy_v1_threads_proto_msgTypes[13]
+	mi := &file_buddy_v1_threads_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -949,7 +1072,7 @@ func (x *SendMessageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendMessageResponse.ProtoReflect.Descriptor instead.
 func (*SendMessageResponse) Descriptor() ([]byte, []int) {
-	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{13}
+	return file_buddy_v1_threads_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SendMessageResponse) GetMessageId() string {
@@ -983,7 +1106,10 @@ const file_buddy_v1_threads_proto_rawDesc = "" +
 	"\x05title\x18\x03 \x01(\tR\x05title\x12)\n" +
 	"\x03pin\x18\x04 \x01(\v2\x17.google.protobuf.StructR\x03pin\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x05 \x01(\tR\tcreatedAt\"\xc5\x01\n" +
+	"created_at\x18\x05 \x01(\tR\tcreatedAt\"@\n" +
+	"\x05Focus\x12'\n" +
+	"\x04kind\x18\x01 \x01(\x0e2\x13.buddy.v1.FocusKindR\x04kind\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\"\xec\x01\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12)\n" +
@@ -991,7 +1117,8 @@ const file_buddy_v1_threads_proto_rawDesc = "" +
 	"\x04text\x18\x04 \x01(\tR\x04text\x12/\n" +
 	"\x06blocks\x18\x05 \x03(\v2\x17.google.protobuf.StructR\x06blocks\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\tR\tcreatedAt\"\x14\n" +
+	"created_at\x18\x06 \x01(\tR\tcreatedAt\x12%\n" +
+	"\x05focus\x18\a \x01(\v2\x0f.buddy.v1.FocusR\x05focus\"\x14\n" +
 	"\x12ListThreadsRequest\"A\n" +
 	"\x13ListThreadsResponse\x12*\n" +
 	"\athreads\x18\x01 \x03(\v2\x10.buddy.v1.ThreadR\athreads\"\x80\x01\n" +
@@ -1009,11 +1136,12 @@ const file_buddy_v1_threads_proto_rawDesc = "" +
 	"\tthread_id\x18\x01 \x01(\tR\bthreadId\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\"E\n" +
 	"\x14ListMessagesResponse\x12-\n" +
-	"\bmessages\x18\x01 \x03(\v2\x11.buddy.v1.MessageR\bmessages\"u\n" +
+	"\bmessages\x18\x01 \x03(\v2\x11.buddy.v1.MessageR\bmessages\"\x9c\x01\n" +
 	"\x12SendMessageRequest\x12\x1b\n" +
 	"\tthread_id\x18\x01 \x01(\tR\bthreadId\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12(\n" +
-	"\x04mode\x18\x03 \x01(\x0e2\x14.buddy.v1.AnswerModeR\x04mode\"K\n" +
+	"\x04mode\x18\x03 \x01(\x0e2\x14.buddy.v1.AnswerModeR\x04mode\x12%\n" +
+	"\x05focus\x18\x04 \x01(\v2\x0f.buddy.v1.FocusR\x05focus\"K\n" +
 	"\x13SendMessageResponse\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x15\n" +
@@ -1037,7 +1165,11 @@ const file_buddy_v1_threads_proto_rawDesc = "" +
 	"AnswerMode\x12\x1b\n" +
 	"\x17ANSWER_MODE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11ANSWER_MODE_BRIEF\x10\x01\x12\x18\n" +
-	"\x14ANSWER_MODE_DETAILED\x10\x022\xdc\x05\n" +
+	"\x14ANSWER_MODE_DETAILED\x10\x02*\\\n" +
+	"\tFocusKind\x12\x1a\n" +
+	"\x16FOCUS_KIND_UNSPECIFIED\x10\x00\x12\x18\n" +
+	"\x14FOCUS_KIND_PLAN_ITEM\x10\x01\x12\x19\n" +
+	"\x15FOCUS_KIND_VAULT_ITEM\x10\x022\xdc\x05\n" +
 	"\rThreadService\x12g\n" +
 	"\vListThreads\x12\x1c.buddy.v1.ListThreadsRequest\x1a\x1d.buddy.v1.ListThreadsResponse\"\x1b\x82\xd3\xe4\x93\x02\x15\x12\x13/v1/private/threads\x12m\n" +
 	"\fCreateThread\x12\x1d.buddy.v1.CreateThreadRequest\x1a\x1e.buddy.v1.CreateThreadResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/v1/private/threads\x12m\n" +
@@ -1059,59 +1191,64 @@ func file_buddy_v1_threads_proto_rawDescGZIP() []byte {
 	return file_buddy_v1_threads_proto_rawDescData
 }
 
-var file_buddy_v1_threads_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_buddy_v1_threads_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_buddy_v1_threads_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_buddy_v1_threads_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_buddy_v1_threads_proto_goTypes = []any{
 	(Rating)(0),                  // 0: buddy.v1.Rating
 	(ThreadType)(0),              // 1: buddy.v1.ThreadType
 	(MessageRole)(0),             // 2: buddy.v1.MessageRole
 	(AnswerMode)(0),              // 3: buddy.v1.AnswerMode
-	(*RateMessageRequest)(nil),   // 4: buddy.v1.RateMessageRequest
-	(*RateMessageResponse)(nil),  // 5: buddy.v1.RateMessageResponse
-	(*Thread)(nil),               // 6: buddy.v1.Thread
-	(*Message)(nil),              // 7: buddy.v1.Message
-	(*ListThreadsRequest)(nil),   // 8: buddy.v1.ListThreadsRequest
-	(*ListThreadsResponse)(nil),  // 9: buddy.v1.ListThreadsResponse
-	(*CreateThreadRequest)(nil),  // 10: buddy.v1.CreateThreadRequest
-	(*CreateThreadResponse)(nil), // 11: buddy.v1.CreateThreadResponse
-	(*GetThreadRequest)(nil),     // 12: buddy.v1.GetThreadRequest
-	(*GetThreadResponse)(nil),    // 13: buddy.v1.GetThreadResponse
-	(*ListMessagesRequest)(nil),  // 14: buddy.v1.ListMessagesRequest
-	(*ListMessagesResponse)(nil), // 15: buddy.v1.ListMessagesResponse
-	(*SendMessageRequest)(nil),   // 16: buddy.v1.SendMessageRequest
-	(*SendMessageResponse)(nil),  // 17: buddy.v1.SendMessageResponse
-	(*structpb.Struct)(nil),      // 18: google.protobuf.Struct
+	(FocusKind)(0),               // 4: buddy.v1.FocusKind
+	(*RateMessageRequest)(nil),   // 5: buddy.v1.RateMessageRequest
+	(*RateMessageResponse)(nil),  // 6: buddy.v1.RateMessageResponse
+	(*Thread)(nil),               // 7: buddy.v1.Thread
+	(*Focus)(nil),                // 8: buddy.v1.Focus
+	(*Message)(nil),              // 9: buddy.v1.Message
+	(*ListThreadsRequest)(nil),   // 10: buddy.v1.ListThreadsRequest
+	(*ListThreadsResponse)(nil),  // 11: buddy.v1.ListThreadsResponse
+	(*CreateThreadRequest)(nil),  // 12: buddy.v1.CreateThreadRequest
+	(*CreateThreadResponse)(nil), // 13: buddy.v1.CreateThreadResponse
+	(*GetThreadRequest)(nil),     // 14: buddy.v1.GetThreadRequest
+	(*GetThreadResponse)(nil),    // 15: buddy.v1.GetThreadResponse
+	(*ListMessagesRequest)(nil),  // 16: buddy.v1.ListMessagesRequest
+	(*ListMessagesResponse)(nil), // 17: buddy.v1.ListMessagesResponse
+	(*SendMessageRequest)(nil),   // 18: buddy.v1.SendMessageRequest
+	(*SendMessageResponse)(nil),  // 19: buddy.v1.SendMessageResponse
+	(*structpb.Struct)(nil),      // 20: google.protobuf.Struct
 }
 var file_buddy_v1_threads_proto_depIdxs = []int32{
 	0,  // 0: buddy.v1.RateMessageRequest.value:type_name -> buddy.v1.Rating
 	1,  // 1: buddy.v1.Thread.type:type_name -> buddy.v1.ThreadType
-	18, // 2: buddy.v1.Thread.pin:type_name -> google.protobuf.Struct
-	2,  // 3: buddy.v1.Message.role:type_name -> buddy.v1.MessageRole
-	18, // 4: buddy.v1.Message.blocks:type_name -> google.protobuf.Struct
-	6,  // 5: buddy.v1.ListThreadsResponse.threads:type_name -> buddy.v1.Thread
-	1,  // 6: buddy.v1.CreateThreadRequest.type:type_name -> buddy.v1.ThreadType
-	18, // 7: buddy.v1.CreateThreadRequest.pin:type_name -> google.protobuf.Struct
-	6,  // 8: buddy.v1.CreateThreadResponse.thread:type_name -> buddy.v1.Thread
-	6,  // 9: buddy.v1.GetThreadResponse.thread:type_name -> buddy.v1.Thread
-	7,  // 10: buddy.v1.ListMessagesResponse.messages:type_name -> buddy.v1.Message
-	3,  // 11: buddy.v1.SendMessageRequest.mode:type_name -> buddy.v1.AnswerMode
-	8,  // 12: buddy.v1.ThreadService.ListThreads:input_type -> buddy.v1.ListThreadsRequest
-	10, // 13: buddy.v1.ThreadService.CreateThread:input_type -> buddy.v1.CreateThreadRequest
-	12, // 14: buddy.v1.ThreadService.GetThread:input_type -> buddy.v1.GetThreadRequest
-	14, // 15: buddy.v1.ThreadService.ListMessages:input_type -> buddy.v1.ListMessagesRequest
-	16, // 16: buddy.v1.ThreadService.SendMessage:input_type -> buddy.v1.SendMessageRequest
-	4,  // 17: buddy.v1.ThreadService.RateMessage:input_type -> buddy.v1.RateMessageRequest
-	9,  // 18: buddy.v1.ThreadService.ListThreads:output_type -> buddy.v1.ListThreadsResponse
-	11, // 19: buddy.v1.ThreadService.CreateThread:output_type -> buddy.v1.CreateThreadResponse
-	13, // 20: buddy.v1.ThreadService.GetThread:output_type -> buddy.v1.GetThreadResponse
-	15, // 21: buddy.v1.ThreadService.ListMessages:output_type -> buddy.v1.ListMessagesResponse
-	17, // 22: buddy.v1.ThreadService.SendMessage:output_type -> buddy.v1.SendMessageResponse
-	5,  // 23: buddy.v1.ThreadService.RateMessage:output_type -> buddy.v1.RateMessageResponse
-	18, // [18:24] is the sub-list for method output_type
-	12, // [12:18] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	20, // 2: buddy.v1.Thread.pin:type_name -> google.protobuf.Struct
+	4,  // 3: buddy.v1.Focus.kind:type_name -> buddy.v1.FocusKind
+	2,  // 4: buddy.v1.Message.role:type_name -> buddy.v1.MessageRole
+	20, // 5: buddy.v1.Message.blocks:type_name -> google.protobuf.Struct
+	8,  // 6: buddy.v1.Message.focus:type_name -> buddy.v1.Focus
+	7,  // 7: buddy.v1.ListThreadsResponse.threads:type_name -> buddy.v1.Thread
+	1,  // 8: buddy.v1.CreateThreadRequest.type:type_name -> buddy.v1.ThreadType
+	20, // 9: buddy.v1.CreateThreadRequest.pin:type_name -> google.protobuf.Struct
+	7,  // 10: buddy.v1.CreateThreadResponse.thread:type_name -> buddy.v1.Thread
+	7,  // 11: buddy.v1.GetThreadResponse.thread:type_name -> buddy.v1.Thread
+	9,  // 12: buddy.v1.ListMessagesResponse.messages:type_name -> buddy.v1.Message
+	3,  // 13: buddy.v1.SendMessageRequest.mode:type_name -> buddy.v1.AnswerMode
+	8,  // 14: buddy.v1.SendMessageRequest.focus:type_name -> buddy.v1.Focus
+	10, // 15: buddy.v1.ThreadService.ListThreads:input_type -> buddy.v1.ListThreadsRequest
+	12, // 16: buddy.v1.ThreadService.CreateThread:input_type -> buddy.v1.CreateThreadRequest
+	14, // 17: buddy.v1.ThreadService.GetThread:input_type -> buddy.v1.GetThreadRequest
+	16, // 18: buddy.v1.ThreadService.ListMessages:input_type -> buddy.v1.ListMessagesRequest
+	18, // 19: buddy.v1.ThreadService.SendMessage:input_type -> buddy.v1.SendMessageRequest
+	5,  // 20: buddy.v1.ThreadService.RateMessage:input_type -> buddy.v1.RateMessageRequest
+	11, // 21: buddy.v1.ThreadService.ListThreads:output_type -> buddy.v1.ListThreadsResponse
+	13, // 22: buddy.v1.ThreadService.CreateThread:output_type -> buddy.v1.CreateThreadResponse
+	15, // 23: buddy.v1.ThreadService.GetThread:output_type -> buddy.v1.GetThreadResponse
+	17, // 24: buddy.v1.ThreadService.ListMessages:output_type -> buddy.v1.ListMessagesResponse
+	19, // 25: buddy.v1.ThreadService.SendMessage:output_type -> buddy.v1.SendMessageResponse
+	6,  // 26: buddy.v1.ThreadService.RateMessage:output_type -> buddy.v1.RateMessageResponse
+	21, // [21:27] is the sub-list for method output_type
+	15, // [15:21] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_buddy_v1_threads_proto_init() }
@@ -1124,8 +1261,8 @@ func file_buddy_v1_threads_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_buddy_v1_threads_proto_rawDesc), len(file_buddy_v1_threads_proto_rawDesc)),
-			NumEnums:      4,
-			NumMessages:   14,
+			NumEnums:      5,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -8,6 +8,8 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/domain"
 )
 
 const (
@@ -50,6 +52,20 @@ func (c *Client) EnqueueChatTurn(ctx context.Context, jobID string, t ChatTurn) 
 	}
 	_, err = c.c.EnqueueContext(ctx, asynq.NewTask(TypeChatTurn, payload),
 		asynq.TaskID(jobID), asynq.Queue(queueChat), asynq.MaxRetry(0), asynq.Timeout(c.timeout))
+	return err
+}
+
+// EnqueueSummary asks for a new summary; a second request for the same sphere within a few minutes is dropped.
+func (c *Client) EnqueueSummary(ctx context.Context, threadID string, f domain.Focus) error {
+	payload, err := json.Marshal(Summary{ThreadID: threadID, FocusKind: int16(f.Kind), FocusID: f.ID})
+	if err != nil {
+		return err
+	}
+	_, err = c.c.EnqueueContext(ctx, asynq.NewTask(TypeSummarize, payload),
+		asynq.Queue(queueSystem), asynq.MaxRetry(1), asynq.Timeout(2*time.Minute), asynq.Unique(3*time.Minute))
+	if errors.Is(err, asynq.ErrDuplicateTask) {
+		return nil
+	}
 	return err
 }
 

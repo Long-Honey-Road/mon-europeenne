@@ -475,6 +475,19 @@ components:
             properties:
                 thread:
                     $ref: '#/components/schemas/Thread'
+        Focus:
+            type: object
+            properties:
+                kind:
+                    enum:
+                        - FOCUS_KIND_UNSPECIFIED
+                        - FOCUS_KIND_PLAN_ITEM
+                        - FOCUS_KIND_VAULT_ITEM
+                    type: string
+                    format: enum
+                id:
+                    type: string
+            description: Focus is the sphere selected in a tab; empty means the tab overview.
         GetMeResponse:
             type: object
             properties:
@@ -645,6 +658,10 @@ components:
                 created_at:
                     type: string
                     description: RFC 3339.
+                focus:
+                    allOf:
+                        - $ref: '#/components/schemas/Focus'
+                    description: The sphere the message is about; absent for the overview.
         Person:
             type: object
             properties:
@@ -835,6 +852,10 @@ components:
                         - ANSWER_MODE_DETAILED
                     type: string
                     format: enum
+                focus:
+                    allOf:
+                        - $ref: '#/components/schemas/Focus'
+                    description: The sphere selected in the tab; a sphere the user does not own is NOT_FOUND.
         SendMessageResponse:
             type: object
             properties:

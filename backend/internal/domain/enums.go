@@ -22,6 +22,12 @@ type (
 	SourceKind     int16
 	ConflictStatus int16
 	EventType      int16
+	FocusKind      int16
+)
+
+const (
+	FocusPlanItem FocusKind = iota + 1
+	FocusVaultItem
 )
 
 const (
@@ -123,6 +129,7 @@ var (
 	conflictStatusNames = map[ConflictStatus]string{
 		ConflictOpen: "open", ConflictReported: "reported", ConflictResolved: "resolved",
 	}
+	focusKindNames = map[FocusKind]string{FocusPlanItem: "plan_item", FocusVaultItem: "vault_item"}
 	eventTypeNames = map[EventType]string{
 		EventMessageSent:          "message_sent",
 		EventToolCalled:           "tool_called",
@@ -148,6 +155,7 @@ func Lookups() map[string]map[int16]string {
 		"thread_types":       ids(threadTypeNames),
 		"message_roles":      ids(messageRoleNames),
 		"plan_periods":       ids(planPeriodNames),
+		"focus_kinds":        ids(focusKindNames),
 		"plan_item_statuses": ids(planItemStatusNames),
 		"source_kinds":       ids(sourceKindNames),
 		"conflict_statuses":  ids(conflictStatusNames),
@@ -157,6 +165,7 @@ func Lookups() map[string]map[int16]string {
 
 func (v Role) String() string           { return nameOf(roleNames, v) }
 func (v Direction) String() string      { return nameOf(directionNames, v) }
+func (v FocusKind) String() string      { return nameOf(focusKindNames, v) }
 func (v ThreadType) String() string     { return nameOf(threadTypeNames, v) }
 func (v MessageRole) String() string    { return nameOf(messageRoleNames, v) }
 func (v PlanPeriod) String() string     { return nameOf(planPeriodNames, v) }
@@ -167,6 +176,7 @@ func (v EventType) String() string      { return nameOf(eventTypeNames, v) }
 
 func ParseRole(s string) (Role, error)                     { return parse(roleNames, s) }
 func ParseDirection(s string) (Direction, error)           { return parse(directionNames, s) }
+func ParseFocusKind(s string) (FocusKind, error)           { return parse(focusKindNames, s) }
 func ParseThreadType(s string) (ThreadType, error)         { return parse(threadTypeNames, s) }
 func ParseMessageRole(s string) (MessageRole, error)       { return parse(messageRoleNames, s) }
 func ParsePlanPeriod(s string) (PlanPeriod, error)         { return parse(planPeriodNames, s) }
