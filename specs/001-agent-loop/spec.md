@@ -100,7 +100,8 @@ When the available materials do not answer the question, the agent says so and s
   user saw only «Подсветил пункт на карте».
 - **Answer with no tool call that needs one**: a reply with no tool call in this turn that cites `[n]`, says
   «не нашёл», reports a form as open or an action as done gets one retry: the draft is withdrawn with `reset`,
-  a server reminder is added and the model is called again with tools; `answer without tools` goes to the trace
+  the model is called again with tools on the system prompt, the message and a server reminder, without the
+  thread history (in long threads the model answers from earlier replies instead of searching); `answer without tools` goes to the trace
   violations. A second such reply is kept (markers to unknown refs are removed as usual). Greetings, questions
   back and talk about buddy itself are not retried. Found on the live model in long threads: «не нашёл» with no
   search, and «форма открыта слева» with no form.
@@ -115,6 +116,8 @@ When the available materials do not answer the question, the agent says so and s
   is removed, `invariant_violation` written. Found on the live model: it made up `https://avito.internal/...`.
 - **Invented footnotes** (the model's own list of sources, lines starting with a marker to an unknown ref):
   the line is removed.
+- **Internal id in brackets** (`[w1-access]`, the model pointing at a plan item): removed, `invariant_violation`
+  written. A markdown link with such text is kept.
 - **Empty or whitespace-only user message**: rejected before any model call.
 
 ## Requirements *(mandatory)*

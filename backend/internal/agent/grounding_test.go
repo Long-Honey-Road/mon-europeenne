@@ -82,7 +82,9 @@ func TestUngroundedAnswerIsRetriedWithTools(t *testing.T) {
 				fake.Text("Нужен один аппрув [1]."),
 			)
 
-			res, rec := run(t, s, model, turn("Сколько апрувов нужно для PR?"))
+			tr := turn("Сколько апрувов нужно для PR?")
+			tr.History = []llm.Message{{Role: llm.RoleUser, Content: "Кто поможет с деплоем?"}, {Role: llm.RoleAssistant, Content: "Игорь [1]."}}
+			res, rec := run(t, s, model, tr)
 
 			if res.Text != "Нужен один аппрув [1]." {
 				t.Errorf("text = %q", res.Text)
@@ -92,8 +94,9 @@ func TestUngroundedAnswerIsRetriedWithTools(t *testing.T) {
 				t.Fatalf("%d calls, want the draft, a tool call and the answer", len(calls))
 			}
 			msgs := calls[1].Messages
-			if last := msgs[len(msgs)-1]; last.Role != llm.RoleSystem || !strings.Contains(last.Content, "no tool") {
-				t.Errorf("retry ends with %s %q, want the server's reminder", last.Role, last.Content)
+			if len(msgs) != 3 || msgs[0].Role != llm.RoleSystem || msgs[1].Content != tr.Message ||
+				msgs[2].Role != llm.RoleSystem || !strings.Contains(msgs[2].Content, "without tools") {
+				t.Errorf("retry messages = %+v, want the prompt, the question and the reminder without the thread", msgs)
 			}
 			if rec.log[0] != "delta" || rec.log[1] != "reset" {
 				t.Errorf("stream = %v, the draft must be withdrawn", rec.log)
@@ -141,5 +144,19 @@ func TestNoRetryWhenTheThreadOffersNoTools(t *testing.T) {
 
 	if err != nil || len(model.Calls()) != 1 || res.Text != "Ничего не нашёл." {
 		t.Errorf("err %v, %d calls, text %q", err, len(model.Calls()), res.Text)
+	}
+}
+
+func TestInternalIDsInBracketsAreRemoved(t *testing.T) {
+	model := fake.New(fake.ToolCall("search_docs", map[string]string{"query": "план"}),
+		fake.Text("Первое на сегодня — доступы [w1-access]. Потом ключи [w1-ssh-keys], подробнее [в доке](/docs/dev-setup#local)."))
+
+	res, _ := run(t, &stubs{found: []map[string]string{devChunk}}, model, turn("Что сегодня?"))
+
+	if want := "Первое на сегодня — доступы. Потом ключи, подробнее [в доке](/docs/dev-setup#local)."; res.Text != want {
+		t.Errorf("text = %q\nwant  %q", res.Text, want)
+	}
+	if !slices.Contains(res.Trace.Violations, "internal id [w1-access]") {
+		t.Errorf("violations = %v", res.Trace.Violations)
 	}
 }

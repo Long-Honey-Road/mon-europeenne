@@ -254,7 +254,9 @@ func (a *Agent) RunWith(ctx context.Context, model llm.Client, t Turn, emit Emit
 				if streamed {
 					emit.Reset()
 				}
-				msgs = append(msgs, resp.Message, llm.Message{Role: llm.RoleSystem, Content: groundingReminder})
+				// Without the thread: in a long one the model answers from earlier replies instead of searching.
+				msgs = []llm.Message{msgs[0], {Role: llm.RoleUser, Content: t.Message},
+					{Role: llm.RoleSystem, Content: groundingReminder}}
 				continue
 			}
 			text = resp.Message.Content
@@ -310,10 +312,10 @@ func screenOnly(calls []llm.ToolCall) bool {
 	return true
 }
 
-const groundingReminder = "Server check: your answer used no tool in this turn, yet it cites sources, says nothing was " +
-	"found or reports an action. Facts, «не нашёл» and actions come only from tool results of this turn. Call the " +
-	"right tool now (search_docs, get_plan, prepare_request, who_to_ask or another), then answer again. If the " +
-	"answer only greets, asks back or talks about yourself, repeat it without the claims."
+const groundingReminder = "Server check: an answer without tools cited sources, said nothing was found or reported an " +
+	"action. Facts, «не нашёл» and actions come only from tool results of this turn. Call the right tool first " +
+	"(search_docs, get_plan, prepare_request, who_to_ask or another), then answer. If the message only greets or " +
+	"asks about you, answer without claims."
 
 // ungroundedRe catches what needs a tool: a citation marker, «не нашёл», a form that is «open», a done action.
 var ungroundedRe = regexp.MustCompile(`(?i)\[\d+\]|не\s+наш(ёл|ел|ла|лось|лись)|ничего\s+не\s+(наш|найд)|` +
