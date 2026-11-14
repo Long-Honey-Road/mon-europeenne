@@ -18,6 +18,7 @@ import (
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/config"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/httpapi"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/jobs"
+	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/mcpserver"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/requests"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/store"
 	"github.com/Long-Honey-Road/mon-europeenne/backend/internal/stream"
@@ -99,6 +100,13 @@ func buildAPI(ctx context.Context, cfg config.Config) (http.Handler, func(), err
 		}
 		deps.Requests, deps.Blockers = requests.NewAPI(desk), []httpapi.BlockerSource{desk}
 	}
+	// The same registry as the worker's agent, so MCP clients get the same tools and rights.
+	registry, err := agentTools(data, src.directory, st, newKnowledge(cfg, data, src, st), src.teamRepo(), cfg.FeatureRequests)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	deps.MCP = mcpserver.NewHTTPHandler(registry, "dev")
 	h, err := httpapi.New(ctx, deps)
 	if err != nil {
 		cleanup()

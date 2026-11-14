@@ -67,6 +67,8 @@ type Deps struct {
 	Blockers []BlockerSource
 	Jobs     Jobs
 	Bus      Bus
+	// MCP serves the agent's tools at /v1/private/mcp as the session user; nil leaves the path unrouted.
+	MCP http.Handler
 	// Heartbeat is how often SSE sends a comment so proxies keep the stream open; 15 s if zero.
 	Heartbeat time.Duration
 	// Now is the clock for "today"; time.Now if nil.
@@ -125,10 +127,16 @@ func New(ctx context.Context, d Deps) (http.Handler, error) {
 		return nil, fmt.Errorf("register request service: %w", err)
 	}
 
+	private := http.NewServeMux()
+	private.Handle(privatePrefix, gw)
+	private.Handle("GET "+privatePrefix+"threads/{id}/events", streamThread(d))
+	if d.MCP != nil {
+		private.Handle(privatePrefix+"mcp", d.MCP)
+	}
+
 	mux := http.NewServeMux()
 	mux.Handle(publicPrefix, gw)
-	mux.Handle(privatePrefix, requireSession(d, gw))
-	mux.Handle("GET "+privatePrefix+"threads/{id}/events", requireSession(d, streamThread(d)))
+	mux.Handle(privatePrefix, requireSession(d, private))
 	mux.HandleFunc("GET /healthz", ok)
 	mux.HandleFunc("GET /readyz", ok)
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
