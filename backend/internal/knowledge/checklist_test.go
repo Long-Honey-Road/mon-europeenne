@@ -63,11 +63,11 @@ func TestChecklist(t *testing.T) {
 		t.Fatalf("ids = %s\nwant  %s", got, want)
 	}
 	w1 := byID["checklist-common-w1"]
-	if w1.Title != "Чек-лист стажёра Авито: Материалы для всех, 1 неделя" || w1.Topic != "checklist" ||
+	if w1.Title != "Чек-лист стажёра Авито: Материалы для всех, 1 неделя (первая неделя)" || w1.Topic != "checklist" ||
 		w1.URL != "https://docs.google.com/spreadsheets/d/sheet-1/edit#gid=1073060303" || w1.TestInstruction || w1.FetchedAt.IsZero() {
 		t.Errorf("doc = %+v", w1)
 	}
-	wantMD := "# Чек-лист стажёра Авито: Материалы для всех, 1 неделя\n\n## Организационные моменты\n\n" +
+	wantMD := "# Чек-лист стажёра Авито: Материалы для всех, 1 неделя (первая неделя)\n\n## Организационные моменты\n\n" +
 		"1. Добавь стажёра в чаты\n2. Назначь 1:1\n\n## Познакомься с командой"
 	if w1.Markdown != wantMD {
 		t.Errorf("markdown = %q\nwant       %q", w1.Markdown, wantMD)

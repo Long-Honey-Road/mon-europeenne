@@ -97,6 +97,12 @@ func (c Checklist) Fetch(ctx context.Context) ([]Document, error) {
 // periodOrder sorts the checklist's periods as the intern lives them.
 var periodOrder = []string{"1 неделя", "2 неделя", "1 месяц", "2 месяц", "3 месяц", "после 3-х месяцев"}
 
+// periodWords are how people say the periods: search for «первая неделя» must find «1 неделя».
+var periodWords = map[string]string{
+	"1 неделя": "первая неделя", "2 неделя": "вторая неделя", "1 месяц": "первый месяц", "2 месяц": "второй месяц",
+	"3 месяц": "третий месяц", "после 3-х месяцев": "после трёх месяцев",
+}
+
 var periodSlugs = map[string]string{
 	"1 неделя": "w1", "2 неделя": "w2", "1 месяц": "m1", "2 месяц": "m2", "3 месяц": "m3", "после 3-х месяцев": "later",
 }
@@ -163,6 +169,9 @@ func checklistDocs(r io.Reader, sh ChecklistSheet, link string, now time.Time) (
 			slug = strings.ReplaceAll(when, " ", "-")
 		}
 		title := fmt.Sprintf("Чек-лист стажёра Авито: %s, %s", sh.Name, when)
+		if words, ok := periodWords[when]; ok {
+			title += " (" + words + ")"
+		}
 		out = append(out, Document{
 			ID: "checklist-" + sh.Slug + "-" + slug, Title: title, Topic: "checklist", URL: link, FetchedAt: now,
 			Markdown: "# " + title + "\n\n" + strings.TrimSpace(b.String()),
