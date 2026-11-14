@@ -27,7 +27,9 @@ var (
 	// A marker in the model's own style, e.g. [ref], [ref1] or [источник 2]; a markdown link right after it keeps it.
 	digitsRe = regexp.MustCompile(`\d+`)
 	// A markdown image: a picture loads its URL in the user's browser, a way to leak data out of the chat.
-	imageRe     = regexp.MustCompile(`!\[([^\]\n]*)\]\([^)\n]*\)`)
+	imageRe = regexp.MustCompile(`!\[([^\]\n]*)\]\([^)\n]*\)`)
+	// An internal id in brackets, e.g. [w1-access]: the model's way to point at a plan item, noise for the user.
+	idRefRe     = regexp.MustCompile(`\[[a-z][a-z0-9]*(?:-[a-z0-9]+)+\](\()?`)
 	pseudoRefRe = regexp.MustCompile(`(?i)\[(?:ref|refs|source|sources|src|cite|источник|ссылка)[^\]\n]{0,6}\](\()?`)
 )
 
@@ -136,6 +138,14 @@ func (s *turnState) finishText(text string, thread domain.ThreadType) (string, m
 			return "[" + n + "]"
 		}
 		s.violations = append(s.violations, "pseudo marker "+m)
+		removed = true
+		return ""
+	})
+	text = idRefRe.ReplaceAllStringFunc(text, func(m string) string {
+		if strings.HasSuffix(m, "(") {
+			return m
+		}
+		s.violations = append(s.violations, "internal id "+m)
 		removed = true
 		return ""
 	})

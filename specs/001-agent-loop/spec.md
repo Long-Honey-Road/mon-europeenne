@@ -94,7 +94,17 @@ When the available materials do not answer the question, the agent says so and s
 - **Model unavailable** (`llm.ErrUnavailable`): the turn fails with an `error` event that carries the
   escalation chain; no assistant message is saved; text already streamed is discarded by the UI on `error`.
 - **Text, then tool call in the same reply**: the streamed text is withdrawn with a `reset` event, the tool
-  runs, the loop continues.
+  runs, the loop continues. Exception: when every call is a screen tool (`highlight_spheres`, `focus_sphere`,
+  `pin_note`) and the text has at least 60 characters, the text is the answer: the tools run, their UI events
+  are sent, no further model call. Found on the live model: a full answer was withdrawn for a highlight and the
+  user saw only «Подсветил пункт на карте».
+- **Answer with no tool call that needs one**: a reply with no tool call in this turn that cites `[n]`, says
+  «не нашёл», reports a form as open or an action as done gets one retry: the draft is withdrawn with `reset`,
+  the model is called again with tools on the system prompt, the message and a server reminder, without the
+  thread history (in long threads the model answers from earlier replies instead of searching); `answer without tools` goes to the trace
+  violations. A second such reply is kept (markers to unknown refs are removed as usual). Greetings, questions
+  back and talk about buddy itself are not retried. Found on the live model in long threads: «не нашёл» with no
+  search, and «форма открыта слева» with no form.
 - **Iteration limit**: after 6 model calls that still request tools, the agent makes one last call without
   tools so the model must answer with what it has.
 - **Turn timeout**: 60 s for the whole turn; on expiry the turn fails like "model unavailable".
@@ -106,6 +116,8 @@ When the available materials do not answer the question, the agent says so and s
   is removed, `invariant_violation` written. Found on the live model: it made up `https://avito.internal/...`.
 - **Invented footnotes** (the model's own list of sources, lines starting with a marker to an unknown ref):
   the line is removed.
+- **Internal id in brackets** (`[w1-access]`, the model pointing at a plan item): removed, `invariant_violation`
+  written. A markdown link with such text is kept.
 - **Empty or whitespace-only user message**: rejected before any model call.
 
 ## Requirements *(mandatory)*

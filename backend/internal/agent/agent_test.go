@@ -113,6 +113,12 @@ func registry(t *testing.T, s *stubs) *tools.Registry {
 			func(context.Context, domain.Principal, query) (map[string]string, error) {
 				return nil, tools.ErrNotFound
 			})),
+		must(tools.Define("highlight_spheres", "Highlight plan items", allRoles, general,
+			func(_ context.Context, _ domain.Principal, in struct {
+				IDs []string `json:"ids"`
+			}) (map[string]any, error) {
+				return map[string]any{"ui_event": tools.UIEvent{Type: "highlight", Data: map[string]any{"ids": in.IDs}}}, nil
+			})),
 		must(tools.WhoToAsk(directory())),
 		must(tools.ReportNotFound(directory())),
 	)
@@ -198,7 +204,7 @@ func TestG1AnswerWithSources(t *testing.T) {
 	}
 
 	first := model.Calls()[0]
-	if first.Format != nil || !slices.Equal(toolNames(first), []string{"find_item", "flaky", "get_request_status", "report_not_found", "search_docs", "who_to_ask"}) {
+	if first.Format != nil || !slices.Equal(toolNames(first), []string{"find_item", "flaky", "get_request_status", "highlight_spheres", "report_not_found", "search_docs", "who_to_ask"}) {
 		t.Errorf("first call tools %v, format %v", toolNames(first), first.Format)
 	}
 	found := lastToolMessage(t, model)["sources"].([]any)[0].(map[string]any)
@@ -539,7 +545,8 @@ func TestInventedLinksAreRemoved(t *testing.T) {
 }
 
 func TestNoSpaceLeftBeforePunctuationAfterDroppedMarker(t *testing.T) {
-	model := fake.New(fake.Text("Обратитесь к Зое [1]. Или к наставнику [2]!"))
+	draft := fake.Text("Обратитесь к Зое [1]. Или к наставнику [2]!")
+	model := fake.New(draft, draft)
 
 	res, _ := run(t, &stubs{}, model, turn("Как оформить ДМС?"))
 
