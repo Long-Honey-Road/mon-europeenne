@@ -21,6 +21,8 @@ const rehypePlugins: Options['rehypePlugins'] = [
 ]
 
 const components: Components = {
+  // An image URL from the model can carry user data out (exfiltration), so images are never loaded.
+  img: ({ alt }) => (alt ? <span className="msg__img-alt">{alt}</span> : null),
   // Wide tables scroll inside the bubble instead of stretching the chat panel.
   table: ({ node: _node, ...props }) => (
     <div className="msg__table">

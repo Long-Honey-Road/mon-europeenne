@@ -66,6 +66,16 @@ describe('answer formatting', () => {
     expect(answer.querySelector('b')).toBeNull()
   })
 
+  it('never loads images from markdown or math, showing only the alt text', async () => {
+    const answer = await renderAnswer(
+      'Смотри ![схема](https://x.test/y.png?d=profile) и [![лого](https://x.test/l.png)](https://x.test) и $\\includegraphics{https://x.test/z.png}$.',
+    )
+
+    expect(answer.querySelector('img')).toBeNull()
+    expect(answer).toHaveTextContent('схема')
+    expect(answer).toHaveTextContent('лого')
+  })
+
   it('leaves code in an unknown language as plain text', async () => {
     const answer = await renderAnswer('```brainfuck\n++[>+<-]\n```')
 

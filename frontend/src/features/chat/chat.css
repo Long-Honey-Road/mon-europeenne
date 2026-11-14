@@ -631,3 +631,7 @@ select.request__input option {
   --dot: var(--orb-red);
   border-color: rgb(255 64 83 / 0.45);
 }
+.msg__img-alt {
+  color: var(--text-soft);
+  font-style: italic;
+}
