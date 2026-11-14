@@ -18,9 +18,9 @@ type Doc struct {
 	Markdown string
 }
 
-// loadDocs reads docs/*.md: a front matter of "key: value" lines between "---" lines, then markdown.
-func loadDocs(fsys fs.FS) ([]Doc, error) {
-	names, err := fs.Glob(fsys, "docs/*.md")
+// loadDocs reads markdown files matching glob: a front matter of "key: value" lines between "---" lines, then text.
+func loadDocs(fsys fs.FS, glob string) ([]Doc, error) {
+	names, err := fs.Glob(fsys, glob)
 	if err != nil {
 		return nil, err
 	}

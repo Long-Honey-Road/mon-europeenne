@@ -69,3 +69,18 @@ func TestLoadDocsChecksNamesTeamsAndLabels(t *testing.T) {
 		}
 	}
 }
+
+func TestShippedGuide(t *testing.T) {
+	d, err := Load(Files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(d.Guide) != 1 || d.Guide[0].ID != "buddy-guide" || d.Guide[0].TeamID != "" {
+		t.Fatalf("guide = %+v", d.Guide)
+	}
+	for _, section := range []string{"## Треды", "## Заявки на доступ", "## Как оставить отзыв", "## Что пока не работает"} {
+		if !strings.Contains(d.Guide[0].Markdown, section) {
+			t.Errorf("guide has no section %q", section)
+		}
+	}
+}
